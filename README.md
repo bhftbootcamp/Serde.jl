@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/bhftbootcamp/Serde.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/bhftbootcamp/Serde.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/bhftbootcamp/Serde.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/bhftbootcamp/Serde.jl)
 
-Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types. It supports the following data formats:
+Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types. Inspired by the [serde.rs](https://serde.rs/) Rust library, it supports the following data formats:
 
 <html>
   <body>
