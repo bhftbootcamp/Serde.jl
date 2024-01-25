@@ -1,0 +1,14 @@
+name = "Serde"
+uuid = "db9b398d-9517-45f8-9a95-92af99003e0e"
+version = "1.0.0"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+
+[compat]
+CSV = "0.10"
+JSON = "0.21"
+julia = "1.8"
