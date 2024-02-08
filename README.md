@@ -16,7 +16,7 @@ Serde is a Julia library for (de)serializing data to/from various formats. The l
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
-        <td><div align=center>(planned)</div></td>
+        <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
       </tr>
@@ -105,6 +105,18 @@ title,start_date,end_date
 julia> juliacon = deser_csv(JuliaCon, csv)
  1-element Vector{JuliaCon}:
   JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+
+# YAML deserialization example
+yaml = """
+---
+title: JuliaCon 2024
+start_date: 2024-07-09
+end_date: 2024-07-13
+"""
+
+# Deserialize YAML to a JuliaCon object
+julia> juliacon = deser_yaml(JuliaCon, yaml)
+ JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
 # XML deserialization example
 xml = """

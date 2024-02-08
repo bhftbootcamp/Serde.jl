@@ -17,6 +17,7 @@ export deser_json,
     deser_query,
     deser_toml,
     deser_csv,
+    deser_yaml,
     deser_xml
 
 # Par
@@ -24,6 +25,7 @@ export parse_json,
     parse_query,
     parse_toml,
     parse_csv,
+    parse_yaml,
     parse_xml
 
 # Utl
