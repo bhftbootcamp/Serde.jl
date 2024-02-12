@@ -10,6 +10,7 @@ This approach is supported by the following serialization methods:
 - [`to_toml`](@ref) (`SerToml` submodule).
 - [`to_query`](@ref) (`SerQuery` submodule).
 - [`to_xml`](@ref) (`SerXml` submodule).
+- [`to_yaml`](@ref) (`SerYaml` submodule).
 
 The return value of your method must be of type `Symbol` or `String`.
 The default signature is:
@@ -52,6 +53,7 @@ This approach is supported by such serialization methods:
 - [`to_toml`](@ref) (`SerToml` submodule).
 - [`to_query`](@ref) (`SerQuery` submodule).
 - [`to_xml`](@ref) (`SerXml` submodule).
+- [`to_yaml`](@ref) (`SerYaml` submodule).
 
 The method can return a value of any type.
 The default signature is:
@@ -95,6 +97,7 @@ This approach is supported by the following serialization methods:
 - [`to_toml`](@ref) (`SerToml` submodule).
 - [`to_query`](@ref) (`SerQuery` submodule).
 - [`to_xml`](@ref) (`SerXml` submodule).
+- [`to_yaml`](@ref) (`SerYaml` submodule).
 
 The method can return a value of any type.
 The default signature is:

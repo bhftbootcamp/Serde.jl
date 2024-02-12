@@ -9,7 +9,8 @@ export to_json,
     to_query,
     to_toml,
     to_xml,
-    to_csv
+    to_csv,
+    to_yaml
 
 # De
 export deser_json,

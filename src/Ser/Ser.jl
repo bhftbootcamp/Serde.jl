@@ -14,3 +14,6 @@ using .SerXml
 
 include("SerCsv.jl")
 using .SerCsv
+
+include("SerYaml.jl")
+using .SerYaml
