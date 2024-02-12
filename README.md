@@ -25,7 +25,7 @@ Serde is a Julia library for (de)serializing data to/from various formats. The l
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
-        <td><div align=center>(planned)</div></td>
+        <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
       </tr>
@@ -169,6 +169,18 @@ end
 # Serialize the JuliaCon instance to XML and print it
 julia> to_xml(juliacon) |> print
  <xml title="JuliaCon 2024" start_date="2024-07-09" end_date="2024-07-13"/>
+
+# Define serialization for JuliaCon struct to YAML format
+function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
+    return Dates.format(v, "U d, yyyy")
+end
+
+# Serialize the JuliaCon instance to YAML and print it
+julia> to_yaml(juliacon) |> print
+title: "JuliaCon 2024"
+start_date: "2024-07-09"
+end_date: "2024-07-13"
+
 ```
 
 If you want to see more serialization options, then take a look at the corresponding [section](https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/) of the documentation

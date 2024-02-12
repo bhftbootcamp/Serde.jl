@@ -2,10 +2,10 @@
 
 Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types.  It supports the following data formats:
 
-|     Format      | JSON | TOML | XML |    YAML   | CSV | Query |
-|-----------------|------|------|-----|-----------|-----|-------|
-| Deserialization |   ✓  |   ✓  |  ✓  |     ✓     |  ✓  |   ✓   |
-| Serialization   |   ✓  |   ✓  |  ✓  | (planned) |  ✓  |   ✓   |
+|     Format      | JSON | TOML | XML | YAML | CSV | Query |
+|-----------------|------|------|-----|------|-----|-------|
+| Deserialization |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   |
+| Serialization   |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   |
 
 ## Quickstart
 
