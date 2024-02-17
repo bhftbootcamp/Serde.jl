@@ -15,13 +15,15 @@ export to_json,
 export deser_json,
     deser_query,
     deser_toml,
-    deser_csv
+    deser_csv,
+    deser_xml
 
 # Par
 export parse_json,
     parse_query,
     parse_toml,
-    parse_csv
+    parse_csv,
+    parse_xml
 
 # Utl
 export @serde,

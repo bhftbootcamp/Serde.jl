@@ -11,3 +11,6 @@ using .ParToml
 
 include("ParCsv.jl")
 using .ParCsv
+
+include("ParXml.jl")
+using .ParXml
