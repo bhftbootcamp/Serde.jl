@@ -94,3 +94,6 @@ using .DeQuery
 
 include("DeCsv.jl")
 using .DeCsv
+
+include("DeXml.jl")
+using .DeXml
