@@ -156,11 +156,7 @@ function deser(
     return deser(ElType, data)
 end
 
-function deser(
-    ::Type{StructType},
-    ::Type{Nothing},
-    data::D,
-) where {StructType<:Any,D<:Any}
+function deser(::Type{StructType}, ::Type{Nothing}, data::D) where {StructType<:Any,D<:Any}
     return deser(Nothing, data)
 end
 
@@ -228,7 +224,11 @@ end
 
 # to String
 
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractString, D<:AbstractString}
+function deser(
+    ::PrimitiveType,
+    ::Type{T},
+    data::D,
+)::T where {T<:AbstractString,D<:AbstractString}
     return T(data)
 end
 
@@ -284,11 +284,7 @@ function deser(
     return T(deser(Vector{N}, data))
 end
 
-function deser(
-    ::DictType,
-    ::Type{T},
-    data::Tuple,
-)::T where {T<:AbstractSet}
+function deser(::DictType, ::Type{T}, data::Tuple)::T where {T<:AbstractSet}
     return T(data)
 end
 
@@ -438,7 +434,7 @@ end
 
 """
     Serde.nulltype(::Type{T}) -> nothing
-    
+
 Defines behavior when the value for a field of type `T` is empty (according to [`Serde.isempty`](@ref)) or not specified.
 Supports user overriding for custom types.
 Initially, for all types, it is set to `nothing` (in case of type `Missing`, it returns the `missing` value).
@@ -482,11 +478,7 @@ Computer("N/A", "N/A")
 
 _field_types(::Type{T}) where {T} = Tuple(fieldtype(T, x) for x in fieldnames(T))
 
-function deser(
-    ::CustomType,
-    ::Type{D},
-    data::AbstractVector{A},
-)::D where {D<:Any,A<:Any}
+function deser(::CustomType, ::Type{D}, data::AbstractVector{A})::D where {D<:Any,A<:Any}
     vals = Union{_field_types(D)...}[]
 
     for (index, type) in enumerate(_field_types(D))
@@ -540,11 +532,7 @@ function deser(
     return D(vals...)
 end
 
-function deser(
-    ::CustomType,
-    ::Type{D},
-    data::N
-)::D where {D<:Any,N<:NamedTuple}
+function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
     vals = Union{_field_types(D)...}[]
 
     for (type, name) in zip(_field_types(D), fieldnames(D))

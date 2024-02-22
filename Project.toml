@@ -1,6 +1,6 @@
 name = "Serde"
 uuid = "db9b398d-9517-45f8-9a95-92af99003e0e"
-version = "1.0.0"
+version = "2.0.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -15,4 +15,5 @@ CSV = "0.10"
 JSON = "0.21"
 TOML = "1"
 YAML = "0.4.9"
+EzXML = "1.2.0"
 julia = "1.8"

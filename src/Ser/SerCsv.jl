@@ -8,7 +8,7 @@ import ..to_flatten
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
 function wrap_value(s::AbstractString)
-    for i in 1:length(s)
+    for i in eachindex(s)
         if s[i] in WRAPPED
             escaped_s = replace(s, "\"" => "\"\"")
             return "\"$escaped_s\""
@@ -17,7 +17,6 @@ function wrap_value(s::AbstractString)
     return s
 end
 
-
 """
     to_csv(data::Vector{T}; kw...) -> String
 
@@ -25,12 +24,12 @@ Uses `data` element values to make csv rows with fieldnames as columns headers. 
 In case of nested `data`, names of resulting headers will be concatenate by "_" symbol using dictionary key-names or structure field names.
 
 ## Keyword arguments
-- `separator::String = ","`: The delimiter that will be used in the returned csv string.
+- `delimiter::String = ","`: The delimiter that will be used in the returned csv string.
 - `headers::Vector{String} = String[]`: Specifies which column headers will be used and in what order.
 
 ## Examples
 
-Converting a vector of regular dictionaries with fixed headers order. 
+Converting a vector of regular dictionaries with fixed headers order.
 
 ```julia-repl
 julia> data = [
@@ -87,7 +86,7 @@ b,2
 """
 function to_csv(
     data::Vector{T};
-    separator::String = ",",
+    delimiter::String = ",",
     headers::Vector{String} = String[],
 )::String where {T}
     cols = Set{String}()
@@ -97,6 +96,7 @@ function to_csv(
         push!(cols, keys(val)...)
         vals[index+1] = val
     end
+
     vals[1] = Dict{String,String}(cols .=> string.(cols))
     t_cols = isempty(headers) ? sort([cols...]) : headers
     l_cols = t_cols[end]
@@ -105,9 +105,10 @@ function to_csv(
         for col in t_cols
             val = get(csv_item, col, nothing)
             str = val === nothing ? "" : wrap_value(string(val))
-            print(buf, str, col != l_cols ? separator : "\n")
+            print(buf, str, col != l_cols ? delimiter : "\n")
         end
     end
+
     return String(take!(buf))
 end
 

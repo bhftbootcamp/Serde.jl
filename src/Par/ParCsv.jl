@@ -5,18 +5,6 @@ export parse_csv
 
 using CSV
 
-const NEW_LINE = Vector{UInt8}("\n")
-const QUOTATION = Vector{UInt8}("\"")
-const COMMA = Vector{UInt8}(",")
-const ESCAPE_CHARACTER = UInt8('"')
-
-@enum DelimiterType begin
-    empty
-    separator
-    new_line
-    quotation
-end
-
 """
     CSVSyntaxError <: Exception
 
@@ -64,13 +52,9 @@ function parse_csv(x::Vector{UInt8}; delimiter::AbstractString = ",", kw...)
     return parse_csv(unsafe_string(pointer(x), length(x)); delimiter = delimiter, kw...)
 end
 
-function parse_csv(
-    x::S;
-    delimiter::AbstractString = ",",
-    kw...,
-) where {S<:AbstractString}
+function parse_csv(x::S; delimiter::AbstractString = ",", kw...) where {S<:AbstractString}
     try
-        return CSV.File(IOBuffer(x); delim = delimiter, types = String, strict = true, kw...)|> CSV.rowtable
+        return CSV.File(IOBuffer(x); delim = delimiter, types = String, strict = true, kw...) |> CSV.rowtable
     catch e
         throw(CSVSyntaxError("invalid CSV syntax", e))
     end

@@ -10,8 +10,7 @@ const INDENT_TYPES = [Pair, AbstractDict, AbstractVector, Tuple, NamedTuple, Abs
 
 # escaped string
 
-const NEEDESCAPE =
-    Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
+const NEEDESCAPE = Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
 
 function escape_char(b)
     b == UInt8('"')  && return UInt8('"')
@@ -38,11 +37,9 @@ function escaped(b)
     end
 end
 
-const ESCAPECHARS =
-    Vector{UInt8}[escaped(b) for b = 0x00:0xff]
+const ESCAPECHARS = Vector{UInt8}[escaped(b) for b = 0x00:0xff]
 
-const ESCAPELENS =
-    Int64[length(x) for x in ESCAPECHARS]
+const ESCAPELENS = Int64[length(x) for x in ESCAPECHARS]
 
 function escape_length(str)
     x = 0
@@ -56,7 +53,7 @@ end
 
 indent(l::Int64)::String = "\n" * (INDENT^l)
 
-function yaml_value!(buf::IOBuffer, f::Function, val::AbstractString; is_key::Bool=false, kw...)::Nothing
+function yaml_value!(buf::IOBuffer, f::Function, val::AbstractString; is_key::Bool = false, kw...)::Nothing
     if escape_length(val) == ncodeunits(val)
         return is_key ? print(buf, val) : print(buf, "\"", val, "\"")
     else
@@ -112,7 +109,7 @@ end
 
 function yaml_value!(buf::IOBuffer, f::Function, val::Pair; l::Int64, skip_lf::Bool = false, kw...)::Nothing
     print(buf, skip_lf ? "" : indent(l))
-    yaml_value!(buf, f, first(val); l = l + 1, is_key=true, kw...)
+    yaml_value!(buf, f, first(val); l = l + 1, is_key = true, kw...)
     print(buf, ": ")
     yaml_value!(buf, f, last(val); l = l + 1, kw...)
     return print(buf)
@@ -123,8 +120,8 @@ function yaml_value!(buf::IOBuffer, f::Function, val::AbstractDict; l::Int64, sk
     print(buf, skip_lf ? "" : indent(l))
     while next !== nothing
         (k, v), index = next
-        yaml_value!(buf, f, k; l = l + 1, is_key=true, kw...)
-        print(buf, any(map(t -> isa(v,t), INDENT_TYPES)) ? ":" : ": ")
+        yaml_value!(buf, f, k; l = l + 1, is_key = true, kw...)
+        print(buf, any(map(t -> isa(v, t), INDENT_TYPES)) ? ":" : ": ")
         yaml_value!(buf, f, v; l = l + 1, kw...)
         next = iterate(val, index)
         next === nothing || print(buf, indent(l))
@@ -138,7 +135,7 @@ function yaml_value!(buf::IOBuffer, f::Function, val::AbstractVector; l::Int64, 
     while next !== nothing
         item, index = next
         print(buf, "- ")
-        yaml_value!(buf, f, item; l = l + 1, skip_lf=true, kw...)
+        yaml_value!(buf, f, item; l = l + 1, skip_lf = true, kw...)
         next = iterate(val, index)
         next === nothing || print(buf, indent(l))
     end
@@ -151,7 +148,7 @@ function yaml_value!(buf::IOBuffer, f::Function, val::Tuple; l::Int64, skip_lf::
     while next !== nothing
         item, index = next
         print(buf, "- ")
-        yaml_value!(buf, f, item; l = l + 1, skip_lf=true, kw...)
+        yaml_value!(buf, f, item; l = l + 1, skip_lf = true, kw...)
         next = iterate(val, index)
         next === nothing || print(buf, indent(l))
     end
@@ -166,9 +163,9 @@ function yaml_value!(buf::IOBuffer, f::Function, val::NamedTuple; l::Int64, skip
     while next !== nothing
         item, index = next
         item_value, index_value = next_value
-        yaml_value!(buf, f, item; l = l + 1, is_key=true, kw...)
+        yaml_value!(buf, f, item; l = l + 1, is_key = true, kw...)
         print(buf, ": ")
-        yaml_value!(buf, f, item_value; l = l + 1, skip_lf=true, kw...)
+        yaml_value!(buf, f, item_value; l = l + 1, skip_lf = true, kw...)
         next = iterate(names, index)
         next_value = iterate(val, index_value)
         next === nothing || print(buf, indent(l))
@@ -182,7 +179,7 @@ function yaml_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, ski
     while next !== nothing
         item, index = next
         print(buf, "- ")
-        yaml_value!(buf, f, item; l = l + 1, skip_lf=true, kw...)
+        yaml_value!(buf, f, item; l = l + 1, skip_lf = true, kw...)
         next = iterate(val, index)
         next === nothing || print(buf, indent(l))
     end
@@ -217,8 +214,8 @@ function yaml_value!(buf::IOBuffer, f::Function, val::T; l::Int64, skip_lf::Bool
             continue
         end
         (index - ignore_count) == 2 || print(buf, indent(l))
-        yaml_value!(buf, f, k; l = l + 1, is_key=true, kw...)
-        print(buf, any(map(t -> isa(v,t), INDENT_TYPES)) ? ":" : ": ")
+        yaml_value!(buf, f, k; l = l + 1, is_key = true, kw...)
+        print(buf, any(map(t -> isa(v, t), INDENT_TYPES)) ? ":" : ": ")
         yaml_value!(buf, f, v; l = l + 1, kw...)
         next = iterate(f(T), index)
     end
@@ -249,7 +246,7 @@ You can also define multiple methods of `f` for nested custom data types, e.g:
 
 ```julia
 # Custom type 'Foo' containing fields of other custom types 'bar::Bar' and 'baz::Baz'
-custom_field_names(::Type{Foo}) = (:bar, :baz, ...) 
+custom_field_names(::Type{Foo}) = (:bar, :baz, ...)
 
 # Another custom types
 custom_field_names(::Type{Bar}) = (:data, ...)
@@ -278,7 +275,7 @@ info:
     - "B"
     - "A"
   id: 42
-pet: 
+pet:
   name: "Buddy"
   age: 5
 
@@ -309,7 +306,7 @@ simple_field: "a"
 """
 function to_yaml(x...; kw...)::String
     buf = IOBuffer()
-    yaml_value!(buf, x...; l = 0, skip_lf=true, kw...)
+    yaml_value!(buf, x...; l = 0, skip_lf = true, kw...)
     print(buf, "\n")
     return String(take!(buf))
 end

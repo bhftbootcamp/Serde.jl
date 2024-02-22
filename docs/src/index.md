@@ -2,10 +2,10 @@
 
 Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types.  It supports the following data formats:
 
-|     Format      | JSON | TOML | XML | YAML | CSV | Query |
-|-----------------|------|------|-----|------|-----|-------|
-| Deserialization |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   |
-| Serialization   |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   |
+|     Format      | JSON | TOML | XML | YAML | CSV | Query |  MsgPack  |   BSON    |
+|-----------------|------|------|-----|------|-----|-------|-----------|-----------|
+| Deserialization |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   | (planned) | (planned) |
+| Serialization   |   ✓  |   ✓  |  ✓  |   ✓  |  ✓  |   ✓   | (planned) | (planned) |
 
 ## Quickstart
 
@@ -52,4 +52,12 @@ end
 
 # Serialize the JuliaCon instance to XML and print it
 to_xml(juliacon) |> print
+
+# Define serialization for JuliaCon struct to YAML format
+function Serde.SerYaml.ser_type(::Type{JuliaCon}, v::Date)
+    return Dates.format(v, "yyyy-mm-dd")
+end
+
+#  Serialize the JuliaCon instance to YAML and print it
+to_yaml(juliacon) |> print
 ```

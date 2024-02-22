@@ -51,7 +51,7 @@ julia> yaml = \"\"\"
             this text will be considered on a
             single line
           toMultiline: |
-            this text will be considered 
+            this text will be considered
             on multiple lines
         aliasTest: *myAnchor
         \"\"\";
@@ -68,15 +68,15 @@ Dict{String, Any} with 6 entries:
 """
 function parse_yaml end
 
-function parse_yaml(x::S; kw...) where {S<:AbstractString}
+function parse_yaml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
-        YAML.load(x; dicttype=Dict{String,Any}, kw...)
+        YAML.load(x; dicttype = dict_type, kw...)
     catch e
         throw(YamlSyntaxError("invalid YAML syntax", e))
     end
 end
 
-function parse_yaml(x::Vector{UInt8}; kw...)  
+function parse_yaml(x::Vector{UInt8}; kw...)
     return parse_yaml(unsafe_string(pointer(x), length(x)); kw...)
 end
 

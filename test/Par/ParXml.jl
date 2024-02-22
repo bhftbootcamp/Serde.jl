@@ -1,181 +1,222 @@
 # Par/ParXml
 
 @testset verbose = true "ParXml" begin
-    @testset "Case №1: Normal XML" begin
-        xml = """
-          <computers description="Office Computers">
-              <computer name="Dell" cpu="Intel" ram="16" storage="512" release_year="2020" has_ssd="true">
-                  <operating_systems type="Desktop">
-                      <os name="Windows" version="10"/>
-                      <os name="Ubuntu" version="20.04"/>
-                  </operating_systems>
-                  <ports>
-                      <port type="USB" version="3.0"/>
-                      <port type="HDMI" version="2.0"/>
-                  </ports>
-              </computer>
-              <computer name="Asus" cpu="AMD" ram="8" storage="256" release_year="2021" has_ssd="false">
-                  <operating_systems type="Gaming">
-                      <os name="Windows" version="11"/>
-                      <os name="Fedora" version="33"/>
-                  </operating_systems>
-                  <ports>
-                      <port type="USB" version="3.1"/>
-                      <port type="DisplayPort" version="1.4"/>
-                  </ports>
-              </computer>
-              <tag name="Dell">2000</tag>
-          </computers>
-        """
-        exp = Dict{String,Any}(
-            "tag" => Dict{String,Any}("name" => "Dell", "_" => "2000"),
-            "computer" => Dict{String,Any}[
-                Dict(
-                    "name" => "Dell",
-                    "operating_systems" => Dict{String,Any}(
-                        "type" => "Desktop",
-                        "os" => Dict{String,Any}[
-                            Dict("name" => "Windows", "version" => "10"),
-                            Dict("name" => "Ubuntu", "version" => "20.04"),
-                        ],
-                    ),
-                    "cpu" => "Intel",
-                    "ram" => "16",
-                    "storage" => "512",
-                    "has_ssd" => "true",
-                    "release_year" => "2020",
-                    "ports" => Dict{String,Any}(
-                        "port" => Dict{String,Any}[
-                            Dict("type" => "USB", "version" => "3.0"),
-                            Dict("type" => "HDMI", "version" => "2.0"),
-                        ],
-                    ),
-                ),
-                Dict(
-                    "name" => "Asus",
-                    "operating_systems" => Dict{String,Any}(
-                        "type" => "Gaming",
-                        "os" => Dict{String,Any}[
-                            Dict("name" => "Windows", "version" => "11"),
-                            Dict("name" => "Fedora", "version" => "33"),
-                        ],
-                    ),
-                    "cpu" => "AMD",
-                    "ram" => "8",
-                    "storage" => "256",
-                    "has_ssd" => "false",
-                    "release_year" => "2021",
-                    "ports" => Dict{String,Any}(
-                        "port" => Dict{String,Any}[
-                            Dict("type" => "USB", "version" => "3.1"),
-                            Dict("type" => "DisplayPort", "version" => "1.4"),
-                        ],
-                    ),
-                ),
-            ],
-            "description" => "Office Computers",
-        )
-        @test Serde.parse_xml(xml) == exp
-    end
-
-    @testset "Case №2: Array XML" begin
-        xml = """
+    @testset "Case №1: XML parse" begin
+        exp_str = """
         <?xml version="1.0" encoding="UTF-8"?>
-        <root>
-          <level category="string">
-            <single>Single string</single>
-          </level>
-          <level category="array">
-            <string>there are</string>
-            <string>three identical</string>
-            <string>tags here</string>
-          </level>
-        </root>
+        <bookstore>
+          <book category="one">
+            <title lang="en">Julia for Beginners</title>
+            <author>Erik Engheim</author>
+            <year>2021</year>
+          </book>
+          <book category="two">
+            <title lang="en">Algorithms for Decision Making</title>
+            <author>Mykel J. Kochenderfer</author>
+            <author>Tim A. Wheeler</author>
+            <author>Kyle H. Wray</author>
+            <year>2020</year>
+          </book>
+        </bookstore>
         """
-        exp = Dict{String,Any}(
-            "level" => Any[
-                Dict{String,Any}("category" => "string", "single" => "Single string"),
-                Dict{String,Any}(
-                    "string" => Any["there are", "three identical", "tags here"],
-                    "category" => "array",
+        exp_obj = Dict(
+            "book" => Dict[
+                Dict(
+                    "author" => Dict("_" => "Erik Engheim"),
+                    "year" => Dict("_" => "2021"),
+                    "title" => Dict("lang" => "en", "_" => "Julia for Beginners"),
+                    "category" => "one",
+                ),
+                Dict(
+                    "author" => Dict[
+                        Dict("_" => "Mykel J. Kochenderfer"),
+                        Dict("_" => "Tim A. Wheeler"),
+                        Dict("_" => "Kyle H. Wray"),
+                    ],
+                    "year" => Dict("_" => "2020"),
+                    "title" => Dict(
+                        "lang" => "en",
+                        "_" => "Algorithms for Decision Making",
+                    ),
+                    "category" => "two",
                 ),
             ],
         )
-        @test Serde.parse_xml(xml) == exp
+        @test Serde.parse_xml(exp_str) == exp_obj
+        @test Serde.parse_xml(Vector{UInt8}(exp_str)) == exp_obj
+        @test Serde.parse_xml(SubString(exp_str, 1)) == exp_obj
     end
 
-    @testset "Case №3: Escape characters" begin
-        xml = """<valid>"'></valid>"""
-        exp = "\"'>"
-        @test Serde.parse_xml(xml) == exp
+    @testset "Case №2: Escaping tests" begin
+        exp_str = """<valid>"'></valid>"""
+        exp_obj = Dict("_" => "\"'>")
+        @test Serde.parse_xml(exp_str) == exp_obj
 
-        xml = """<valid attribute=">"/>"""
-        exp = Dict{String,Any}("attribute" => ">")
-        @test Serde.parse_xml(xml) == exp
+        exp_str = """<valid attribute=">"/>"""
+        exp_obj = Dict("attribute" => ">")
+        @test Serde.parse_xml(exp_str) == exp_obj
 
-        xml = """<valid attribute="'"/>"""
-        exp = Dict{String,Any}("attribute" => "'")
-        @test Serde.parse_xml(xml) == exp
+        exp_str = """<valid attribute="'"/>"""
+        exp_obj = Dict("attribute" => "'")
+        @test Serde.parse_xml(exp_str) == exp_obj
 
-        xml = """<valid attribute='"'/>"""
-        exp = Dict{String,Any}("attribute" => "\"")
-        @test Serde.parse_xml(xml) == exp
+        exp_str = """<valid attribute='"'/>"""
+        exp_obj = Dict("attribute" => "\"")
+        @test Serde.parse_xml(exp_str) == exp_obj
 
-        xml = """
+        exp_str = """
         <valid>
           <!-- "'<>& comment -->
         </valid>
         """
-        exp = Dict{String,Any}()
-        @test Serde.parse_xml(xml) == exp
+        exp_obj = Dict()
+        @test Serde.parse_xml(exp_str) == exp_obj
 
-        xml = "<valid><![CDATA[<sender>John Smith</sender>]]></valid>"
-        exp = "<sender>John Smith</sender>"
-        @test Serde.parse_xml(xml) == exp
+        exp_str = """<valid><![CDATA[<sender>John Smith</sender>]]></valid>"""
+        exp_obj = Dict("_" => "<sender>John Smith</sender>")
+        @test Serde.parse_xml(exp_str) == exp_obj
     end
 
-    @testset "Case №4: Exception testing" begin
-        xml = """
+    @testset "Case №3: Exceptions tests" begin
+        exp_str = """
         <wrong_order>
           <?xml version="1.0" encoding="UTF-8"?>
         </wrong_order>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(xml)
+        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
 
-        xml = """
+        exp_str = """
         <root>
           <base>qwerty</base>
           <unclosed_tag>
         </root>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(xml)
+        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
 
-        xml = """
+        exp_str = """
         <wrong_order>
           <tag>
           </wrong_order>
         </tag>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(xml)
+        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
     end
 
-    @testset "Case №5: Parse with root level" begin
-        xml = """
-        <?xml version="1.0" encoding="UTF-8"?>
+    @testset "Case №4: Attributes tests" begin
+        exp_str = """
         <root>
-          <first attr="attr_value">
-            <second>qwerty</second>
-          </first>
+          <tag attribute="value"></tag>
+          <tag attribute="value" attribute2="value2"></tag>
+          <tag attribute="value" attribute2="value2" attribute3="value3"></tag>
         </root>
         """
-        exp = Dict{String,Any}(
-            "root" => Dict{String,Any}(
-                "first" =>
-                    Dict{String,Any}("second" => "qwerty", "attr" => "attr_value"),
-            ),
-            "encoding" => "UTF-8",
-            "version" => "1.0",
+        exp_obj = Dict(
+            "tag" => Dict[
+                Dict("attribute" => "value"),
+                Dict("attribute" => "value", "attribute2" => "value2"),
+                Dict(
+                    "attribute" => "value",
+                    "attribute2" => "value2",
+                    "attribute3" => "value3",
+                ),
+            ],
         )
-        @test Serde.parse_xml(xml; decl_struct = true) == exp
+        @test Serde.parse_xml(exp_str) == exp_obj
+    end
+
+    @testset "Case №5: Mixed tests" begin
+        exp_str = """
+        <root>
+          <tag attribute="value">text</tag>
+          <tag attribute="value" attribute2="value2">text</tag>
+          <tag attribute="value" attribute2="value2" attribute3="value3">text</tag>
+        </root>
+        """
+        exp_obj = Dict(
+            "tag" => Dict[
+                Dict("attribute" => "value", "_" => "text"),
+                Dict("attribute" => "value", "attribute2" => "value2", "_" => "text"),
+                Dict(
+                    "attribute" => "value",
+                    "attribute2" => "value2",
+                    "attribute3" => "value3",
+                    "_" => "text",
+                ),
+            ],
+        )
+        @test Serde.parse_xml(exp_str) == exp_obj
+    end
+
+    @testset "Case №6: HTML tests" begin
+        exp_str = """
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>HTML</title>
+          </head>
+          <body>
+            <h1>HTML</h1>
+            <p>HTML is a markup language.</p>
+          </body>
+        </html>
+        """
+        exp_obj = Dict(
+            "head" => Dict("title" => Dict("_" => "HTML")),
+            "body" => Dict(
+                "h1" => Dict("_" => "HTML"),
+                "p" => Dict("_" => "HTML is a markup language."),
+            ),
+        )
+        @test Serde.parse_xml(exp_str) == exp_obj
+    end
+
+    @testset "Case №7: HTML with links tests" begin
+        exp_str = """
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>HTML</title>
+          </head>
+          <body>
+            <h1>Julia</h1>
+            <p>Julia is a high-level, high-performance dynamic programming language.</p>
+            <a href="https://julialang.org">Julia</a>
+            </body>
+        </html>
+        """
+        exp_obj = Dict(
+            "head" => Dict("title" => Dict("_" => "HTML")),
+            "body" => Dict(
+                "h1" => Dict("_" => "Julia"),
+                "p" => Dict(
+                    "_" => "Julia is a high-level, high-performance dynamic programming language.",
+                ),
+                "a" => Dict("href" => "https://julialang.org", "_" => "Julia"),
+            ),
+        )
+        @test Serde.parse_xml(exp_str) == exp_obj
+    end
+
+    @testset "Case №8: Parse XML with other Dict types" begin
+        exp_str = """
+        <root>
+          <tag attribute="value">text</tag>
+          <tag attribute="value" attribute2="value2">text</tag>
+          <tag attribute="value" attribute2="value2" attribute3="value3">text</tag>
+        </root>
+        """
+        exp_obj = IdDict(
+            "tag" => IdDict[
+                IdDict("attribute" => "value", "_" => "text"),
+                IdDict("attribute" => "value", "attribute2" => "value2", "_" => "text"),
+                IdDict(
+                    "attribute" => "value",
+                    "attribute2" => "value2",
+                    "attribute3" => "value3",
+                    "_" => "text",
+                ),
+            ],
+        )
+        @test Serde.parse_xml(exp_str, dict_type = IdDict) == exp_obj
     end
 end

@@ -14,44 +14,33 @@ Keyword arguments `kw` is the same as in [`parse_xml`](@ref).
 
 ## Examples
 ```julia-repl
-julia> struct Person
-           attr::String
+
+julia> struct Record
+           count::Float64
+       end
+
+julia> struct Data
+           id::Int64
            name::String
-           age::Int64
+           body::Record
        end
 
-julia> struct Content
-           person::Person
-           cars::Vector
-       end
-
-julia> struct Root
-           root::Content
-           version::String
-       end
 
 julia> xml = \"\"\"
-       <?xml version="1.0"?>
-       <root>
-       <person attr="human">
-           <name>John</name>
-           <age>30</age>
-       </person>
-       <cars>Audi</cars>
-       <cars>VW</cars>
-       <cars>Skoda</cars>
-       </root>
-       \"\"\";
+<root>
+    <id>100</id>
+    <name>xml</name>
+    <body>
+        <count>100.0</count>
+    </body>
+</root>
+\"\"\";
 
-julia> deser_xml(Content, xml)
-Content(Person("human", "John", 30), Any["Audi", "VW", "Skoda"])
-
-Adding the ground key argument allows to get XML declaration.  An appropriate structure must be provided for correct deserialization procedure.
-
-julia> deser_xml(Root, xml; decl_struct=true)
-Root(Content(Person("human", "John", 30), Any["Audi", "VW", "Skoda"]), "1.0")
+julia> deser_xml(Data, xml)
+Data(100, "xml", Record(100.0))
 ```
 """
+
 function deser_xml(::Type{T}, x; kw...) where {T}
     return to_deser(T, parse_xml(x; kw...))
 end

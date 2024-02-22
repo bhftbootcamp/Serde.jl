@@ -7,7 +7,10 @@ struct ParamError <: DeserError
 end
 
 function Base.show(io::IO, e::ParamError)
-    return print(io, "ParamError: parameter '$(e.key)' was not passed or has the value 'null'")
+    return print(
+        io,
+        "ParamError: parameter '$(e.key)' was not passed or has the value 'null'",
+    )
 end
 
 struct TagError <: DeserError
@@ -27,7 +30,10 @@ struct WrongType <: DeserError
 end
 
 function Base.show(io::IO, e::WrongType)
-    return print(io, "WrongType: for '$(e.maintype)' value '$(e.value)' has wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'")
+    return print(
+        io,
+        "WrongType: for '$(e.maintype)' value '$(e.value)' has wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'",
+    )
 end
 
 include("Deser.jl")
@@ -95,8 +101,8 @@ using .DeQuery
 include("DeCsv.jl")
 using .DeCsv
 
-include("DeYaml.jl")
-using .DeYaml
-
 include("DeXml.jl")
 using .DeXml
+
+include("DeYaml.jl")
+using .DeYaml
