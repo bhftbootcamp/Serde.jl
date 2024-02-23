@@ -14,36 +14,36 @@ Keyword arguments `kw` is the same as in [`parse_yaml`](@ref).
 
 ## Examples
 ```julia-repl
-julia> struct Numeric
-           i::Int64
-           f::Float64
+julia> struct Status
+           id::Int64
+           value::Float64
        end
 
-julia> struct Data
-           s::String
-           n::Numeric
-           v::AbstractVector
-           b::Bool
-           d::AbstractDict
+julia> struct Server
+           name::String
+           status::Status
+           data::Vector
+           online::Bool
+           users::Dict{String,Int64}
        end
 
 julia> yaml = \"\"\"
-        s: foobar
-        n:
-          i: 163
-          f: 1.63
-        v:
-          - a
-          - b
-          - c
-        b: True
-        d:
-          d1: foo
-          d2: bar
+        name: cloud_server
+        status:
+          id: 42
+          value: 12.34
+        data:
+          - 1
+          - 2
+          - 3
+        online: True
+        users:
+          Kevin: 1
+          George: 2
         \"\"\";
 
-julia> deser_yaml(Data, yaml)
-Data("foobar", Numeric(163, 1.63), ["a", "b", "c"], true, Dict{String, Any}("d1" => "foo", "d2" => "bar"))
+julia> deser_yaml(Server, yaml)
+Data("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict{String, Int64}("Kevin" => 1, "George" => 2))
 ```
 """
 function deser_yaml(::Type{T}, x; kw...) where {T}
