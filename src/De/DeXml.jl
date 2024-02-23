@@ -24,7 +24,6 @@ julia> struct Data
            body::Record
        end
 
-
 julia> xml = \"\"\"
        <root>
            <id>100</id>
