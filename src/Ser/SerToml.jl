@@ -8,30 +8,23 @@ struct TomlSerializationError <: Exception
     message::String
 end
 
-Base.show(io::IO, e::TomlSerializationError) = print(io, "TomlSerializationError: " * e.message)
+function Base.show(io::IO, e::TomlSerializationError)
+    return print(io, "TomlSerializationError: " * e.message)
+end
 
 function toml_value(val::AbstractString; _...)::String
     return string('"', escape_string(val), '"')
 end
 
 toml_value(val::Symbol; kw...)::String = toml_value(string(val); kw...)
-
 toml_value(val::AbstractChar; kw...)::String = toml_value(string(val); kw...)
-
 toml_value(val::Bool; _...)::String = val ? "true" : "false"
-
 toml_value(val::Number; _...)::String = string(isnan(val) ? "nan" : val)
-
 toml_value(val::Enum; kw...)::String = toml_value(string(val); kw...)
-
 toml_value(val::Type; kw...)::String = toml_value(string(val); kw...)
-
 toml_value(val::Dates.TimeType; kw...)::String = toml_value(string(val); kw...)
-
 toml_value(val::Dates.DateTime; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
-
 toml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
-
 toml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
 
 function isnumber(c::Char)::Bool
@@ -77,7 +70,7 @@ function issimple(vec::AbstractVector{T})::Bool where {T}
 end
 
 function indent(level::Int64)::String
-    return "  " ^ (level > 0 ? level - 1 : 0)
+    return "  "^(level > 0 ? level - 1 : 0)
 end
 
 function toml_pair(key, val::AbstractString; level::Int64 = 0, kw...)::String
@@ -102,7 +95,7 @@ function toml_pair(key, val::T; parent_key::String = "", level::Int64 = 0, kw...
 end
 
 function create_simple_vector(key, val::AbstractVector{T}; level::Int64 = 0, kw...) where {T}
-    buf = String[indent(level) * toml_key(key; kw...) * " = ["]
+    buf = String[indent(level)*toml_key(key; kw...)*" = ["]
     for v in val
         if issimple(v)
             push!(buf, toml_value(v; kw...))
@@ -120,8 +113,10 @@ function create_complex_vector(key, val::AbstractVector{T}; parent_key::String =
     key = isempty(parent_key) ? toml_key(key) : parent_key * "." * toml_key(key; kw...)
     for v in val
         if !issimple(v)
-            push!(buf, "\n" * indent(level + 1) * "[[" * key * "]]" * "\n" *
-                join([toml_pair(k1, v1; parent_key = key, level = level + 1, kw...) for (k1, v1) in toml_pairs(v; kw...)])
+            push!(
+                buf,
+                "\n" * indent(level + 1) * "[[" * key * "]]" * "\n" *
+                join([toml_pair(k1, v1; parent_key = key, level = level + 1, kw...) for (k1, v1) in toml_pairs(v; kw...)]),
             )
         else
             throw(TomlSerializationError("mix simple and complex types"))

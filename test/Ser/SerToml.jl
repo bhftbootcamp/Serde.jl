@@ -2,10 +2,10 @@
 
 @testset verbose = true "SerToml" begin
     @testset "Case №1: Dict to Toml" begin
-        h = Dict(
+        exp_kvs = Dict(
             "bar" => "test",
             "foo" => Dict(
-                "baz" => "hi",
+                "baz" => "exp_kvsi",
                 "conf" => Dict(
                     "boo" => "aaa",
                     "monf" => Dict("abbr" => "ppp", "mint" => "coconut"),
@@ -13,11 +13,11 @@
                 ),
             ),
         )
-        expected = """
+        exp_str = """
         bar = "test"
 
         [foo]
-        baz = "hi"
+        baz = "exp_kvsi"
 
           [foo.conf]
           boo = "aaa"
@@ -29,12 +29,12 @@
             [foo.conf.tonf]
             aqua = "cyan"
         """
-        @test Serde.to_toml(h) == expected
+        @test Serde.to_toml(exp_kvs) == exp_str
 
-        h = Dict(
+        exp_kvs = Dict(
             "bar" => "test",
             "foo" => Dict(
-                "baz" => :hi,
+                "baz" => :exp_kvsi,
                 :conf => Dict(
                     "boo" => "aaa",
                     "monf" => Dict("abbr" => "ppp", "mint" => "coconut"),
@@ -42,12 +42,12 @@
                 ),
             ),
         )
-        @test Serde.to_toml(h) == expected
+        @test Serde.to_toml(exp_kvs) == exp_str
 
-        h = Dict(
+        exp_kvs = Dict(
             "bar" => "test",
             123_456 => Dict(
-                "baz" => :hi,
+                "baz" => :exp_kvsi,
                 :conf => Dict(
                     "boo" => "aaa",
                     "monf" => Dict("abbr" => "ppp", "mint" => true),
@@ -55,11 +55,11 @@
                 ),
             ),
         )
-        expected = """
+        exp_str = """
         bar = "test"
 
         [123456]
-        baz = "hi"
+        baz = "exp_kvsi"
 
           [123456.conf]
           boo = "aaa"
@@ -71,7 +71,7 @@
             [123456.conf.tonf]
             aqua = "cyan"
         """
-        @test Serde.to_toml(h) == expected
+        @test Serde.to_toml(exp_kvs) == exp_str
     end
 
     @testset "Case №2: Struct to Toml" begin
@@ -94,7 +94,7 @@
         Serde.SerToml.ser_name(::Type{Fooo}, ::Val{:val}) = :test
         Serde.SerToml.ser_value(::Type{Fooo}, ::Val{:bar1}, x::Bar1) = 1
 
-        expected = """
+        exp_str = """
         test = 100
         bar1 = 1
 
@@ -108,16 +108,16 @@
         """
         @test Serde.to_toml(
             Fooo(100, Bar1(100, "ds"), [Bar2(100, "ds"), Bar2(100, "ds")]),
-        ) == expected
+        ) == exp_str
     end
 
-    @testset "Case №3: Vectors with mixed types" begin
+    @testset "Case №3: Vectors witexp_kvs mixed types" begin
         struct BarToml3
             a::Int64
             d::String
         end
 
-        expected = """
+        exp_str = """
 
         [[key]]
         a = 100
@@ -131,7 +131,7 @@
         @test Serde.to_toml(Dict("key" => [1, 2.2, "d"])) == "key = [1,2.2,\"d\"]\n"
         @test Serde.to_toml(
             Dict("key" => [BarToml3(100, "ds"), Dict("name" => "imya", "age" => 1)]),
-        ) == expected
+        ) == exp_str
 
         @test_throws "TomlSerializationError: mix simple and complex types" begin
             Serde.to_toml(Dict("key" => ["1", "2", BarToml3(100, "ds")]))
@@ -140,24 +140,24 @@
 
     @testset "Case №4: Backward compatibility" begin
         toml = """
-        variable_dump_dir = "%{DUMP_PATH}%/some_app"
-        generator_publisher_name = "%{CURRENT_FILE}%"
+        variable_dump_dir = "%{DUMP_PATEXP_KVS}%/some_app"
+        generator_publisexp_kvser_name = "%{CURRENT_FILE}%"
 
         [some_config]
-        some_server_host = "0.0.0.0"
+        some_server_exp_kvsost = "0.0.0.0"
         some_server_port = 8080
 
-        some_server_refresh_token_name = "App"
+        some_server_refresexp_kvs_token_name = "App"
         some_server_session_timeout = 86400
 
           [[some_config.some_accounts]]
           username = "test1"
-          password = "sha256_79c12fd077a3996fd101b53b211b320acec4003fb"
+          password = "sexp_kvsa256_79c12fd077a3996fd101b53b211b320acec4003fb"
             [some_config.some_accounts.role]
 
           [[some_config.some_accounts]]
           username = "test2"
-          password = "sha256_79c12fd077a3996fd101b53b211b320acec4003fb"
+          password = "sexp_kvsa256_79c12fd077a3996fd101b53b211b320acec4003fb"
             [some_config.some_accounts.role]
         """
 

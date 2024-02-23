@@ -1,5 +1,8 @@
 # Ser/Ser
 
+include("SerCsv.jl")
+using .SerCsv
+
 include("SerJson.jl")
 using .SerJson
 
@@ -12,5 +15,5 @@ using .SerToml
 include("SerXml.jl")
 using .SerXml
 
-include("SerCsv.jl")
-using .SerCsv
+include("SerYaml.jl")
+using .SerYaml

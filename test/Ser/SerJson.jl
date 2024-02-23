@@ -11,9 +11,9 @@
             _nothing::Nothing
         end
 
-        bar = JsonBar(true, 101.101, NaN, Inf, missing, nothing)
-
-        @test Serde.to_json(bar) === """{"bool":true,"number":101.101,"nan":null,"inf":null,"_missing":null,"_nothing":null}"""
+        exp_obj = JsonBar(true, 101.101, NaN, Inf, missing, nothing)
+        exp_str = """{"bool":true,"number":101.101,"nan":null,"inf":null,"_missing":null,"_nothing":null}"""
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №2: Custom value" begin
@@ -23,19 +23,21 @@
             bytes::Vector{UInt8}
         end
 
-        Serde.SerJson.ser_value(h::JsonFoo, ::Val{:bytes})::String =
-            String(view(h.bytes, 1:length(h.bytes)))
+        Serde.SerJson.ser_value(h::JsonFoo, ::Val{:bytes})::String = String(view(h.bytes, 1:length(h.bytes)))
 
-        fields1(::Type{JsonFoo}) = (:name,)
-        fields2(::Type{JsonFoo}) = (:name, :date)
+        fields_1(::Type{JsonFoo}) = (:name,)
+        fields_2(::Type{JsonFoo}) = (:name, :date)
 
-        foo = JsonFoo("test", Date("2022-01-01"), UInt8['t', 'e', 's', 't'])
+        exp_obj = JsonFoo("test", Date("2022-01-01"), UInt8['t', 'e', 's', 't'])
 
-        @test Serde.to_json(fields1, foo) === "{\"name\":\"test\"}"
+        exp_str = "{\"name\":\"test\"}"
+        @test Serde.to_json(fields_1, exp_obj) === exp_str
 
-        @test Serde.to_json(fields2, foo) === "{\"name\":\"test\",\"date\":\"2022-01-01\"}"
+        exp_str = "{\"name\":\"test\",\"date\":\"2022-01-01\"}"
+        @test Serde.to_json(fields_2, exp_obj) === exp_str
 
-        @test Serde.to_json(foo) === "{\"name\":\"test\",\"date\":\"2022-01-01\",\"bytes\":[116,101,115,116]}"
+        exp_str = "{\"name\":\"test\",\"date\":\"2022-01-01\",\"bytes\":[116,101,115,116]}"
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №3: Annotation" begin
@@ -45,17 +47,21 @@
             bar::JsonBar
         end
 
-        fields1(::Type{JsonFoo2}) = (:foo, :bar)
-        fields1(::Type{JsonFoo}) = (:date,)
-        fields1(::Type{JsonBar}) = (:bool,)
+        fields_1(::Type{JsonFoo2}) = (:foo, :bar)
+        fields_1(::Type{JsonFoo}) = (:date,)
+        fields_1(::Type{JsonBar}) = (:bool,)
 
-        foo2 = JsonFoo2(
+        exp_obj = JsonFoo2(
             "Custom",
             JsonFoo("test", Date("2022-01-01"), UInt8['t', 'e', 's', 't']),
             JsonBar(true, 101.101, NaN, Inf, missing, nothing),
         )
+        exp_str = "{\"foo\":{\"date\":\"2022-01-01\"},\"bar\":{\"bool\":true}}"
+        @test Serde.to_json(fields_1, exp_obj) === exp_str
 
-        @test Serde.to_json(fields1, foo2) === "{\"foo\":{\"date\":\"2022-01-01\"},\"bar\":{\"bool\":true}}"
+        exp_obj = (a = 1, b = "asdf", c = [3, 2, 1])
+        exp_str = "{\"b\":\"asdf\"}"
+        @test Serde.to_json(x -> (:b,), exp_obj) === exp_str
     end
 
     @testset "Case №4: All basic types" begin
@@ -71,9 +77,9 @@
             char::Char
         end
 
-        foo4 = JsonFoo4("str", 42, 24.6, true, missing, nothing, :symb, Float64, 'e')
-
-        @test Serde.to_json(foo4) === "{\"string\":\"str\",\"int\":42,\"float\":24.6,\"bool\":true,\"miss\":null,\"noth\":null,\"symbol\":\"symb\",\"type\":\"Float64\",\"char\":\"e\"}"
+        exp_obj = JsonFoo4("str", 42, 24.6, true, missing, nothing, :symb, Float64, 'e')
+        exp_str = """{"string":"str","int":42,"float":24.6,"bool":true,"miss":null,"noth":null,"symbol":"symb","type":"Float64","char":"e"}"""
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №5: All hard types" begin
@@ -93,7 +99,7 @@
             set::Set
         end
 
-        foo5 = JsonFoo5(
+        exp_obj = JsonFoo5(
             [1, "one", 3.0],
             Dict{Any,Any}(:a => 1, "b" => 2.0),
             (4, :b, "6"),
@@ -103,8 +109,9 @@
             num1,
             Set([1, 2]),
         )
-
-        @test Serde.to_json(foo5) === """{"vector":[1,"one",3.0],"dict":{"a":1,"b":2.0},"tuple":[4,"b","6"],"ntuple":{"a":1,"b":2},"pair":{"e":5},"timetype":"2022-01-01","enm":"num1","set":[2,1]}"""
+        exp_str = """{"vector":[1,"one",3.0],"dict":{"a":1,"b":2.0},"tuple":[4,"b","6"],\
+        "ntuple":{"a":1,"b":2},"pair":{"e":5},"timetype":"2022-01-01","enm":"num1","set":[2,1]}"""
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №6: Ignore null" begin
@@ -123,13 +130,17 @@
 
         (Serde.SerJson.ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_6} = true
 
-        foo1 = JsonFoo6_1(x = "test")
-        foo2 = JsonFoo6_2(x = "test", c = 100)
-        foo3 = JsonFoo6_2(x = nothing, c = 100)
+        exp_obj = JsonFoo6_1(x = "test")
+        exp_str = "{\"x\":\"test\"}"
+        @test Serde.to_json(exp_obj) === exp_str
 
-        @test Serde.to_json(foo1) == "{\"x\":\"test\"}"
-        @test Serde.to_json(foo2) == "{\"x\":\"test\",\"c\":100}"
-        @test Serde.to_json(foo3) == "{\"c\":100}"
+        exp_obj = JsonFoo6_2(x = "test", c = 100)
+        exp_str = "{\"x\":\"test\",\"c\":100}"
+        @test Serde.to_json(exp_obj) === exp_str
+
+        exp_obj = JsonFoo6_2(x = nothing, c = 100)
+        exp_str = "{\"c\":100}"
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №7: Сustom type" begin
@@ -139,7 +150,9 @@
 
         Serde.SerJson.ser_type(::Type{JsonFoo7}, x::DateTime) = string(datetime2unix(x))
 
-        @test Serde.to_json(JsonFoo7(DateTime("2023-02-27T23:01:37.248"))) === "{\"dt\":\"1.677538897248e9\"}"
+        exp_obj = JsonFoo7(DateTime("2023-02-27T23:01:37.248"))
+        exp_str = "{\"dt\":\"1.677538897248e9\"}"
+        @test Serde.to_json(exp_obj) === exp_str
     end
 
     @testset "Case №8: PrettyJson" begin
@@ -165,12 +178,7 @@
         obj = SerJsonFoo1(
             34,
             "sertupe",
-            SerJsonObject(
-                Set(["a", "b"]),
-                :a => 2,
-                SerJsonFoo1,
-                OneMoreObject(true, nothing),
-            ),
+            SerJsonObject(Set(["a", "b"]), :a => 2, SerJsonFoo1, OneMoreObject(true, nothing)),
             [1, 2, 3],
         )
 
@@ -204,29 +212,29 @@
             x::String
         end
 
-        @test Serde.to_json(JsonFooLineBreak("""
+        exp_obj = Dict{String,Any}("x" => "dsds\ndsds\ndssd")
+        exp_str = """
             dsds
             dsds
-            dssd"""),
-        ) |> Serde.parse_json == Dict{String,Any}("x" => "dsds\ndsds\ndssd")
+            dssd"""
+        @test Serde.to_json(JsonFooLineBreak(exp_str)) |> Serde.parse_json == exp_obj
 
         struct JsonFooLineBreakSymbol
             x::Symbol
         end
 
-        @test Serde.to_json(JsonFooLineBreakSymbol(Symbol("""
+        exp_obj = Dict{String,Any}("x" => "dsds\ndsds\ndssd")
+        exp_str = """
             dsds
             dsds
-            dssd"""),
-            ),
-        ) |> Serde.parse_json == Dict{String,Any}("x" => "dsds\ndsds\ndssd")
+            dssd"""
+        @test Serde.to_json(JsonFooLineBreakSymbol(Symbol(exp_str))) |> Serde.parse_json == exp_obj
     end
 
     @testset "Case №10: Long NamedTuple" begin
-        @test Serde.to_json([
-            (A = 10, B = "Hi", C = true, D = nothing),
-            (A = 10, B = "Hi", C = true, D = nothing),
-        ]) == "[{\"A\":10,\"B\":\"Hi\",\"C\":true,\"D\":null},{\"A\":10,\"B\":\"Hi\",\"C\":true,\"D\":null}]"
+        exp_obj = [(A = 10, B = "Hi", C = true, D = nothing), (A = 10, B = "Hi", C = true, D = nothing)]
+        exp_str = "[{\"A\":10,\"B\":\"Hi\",\"C\":true,\"D\":null},{\"A\":10,\"B\":\"Hi\",\"C\":true,\"D\":null}]"
+        @test Serde.to_json(exp_obj) == exp_str
     end
 
     @testset "Case №11: Ignore field" begin
@@ -237,7 +245,9 @@
 
         Serde.SerJson.ignore_field(::Type{IgnoreField}, ::Val{:str}) = true
 
-        @test Serde.to_json(IgnoreField("test", 10)) == """{"num":10}"""
+        exp_obj = IgnoreField("test", 10)
+        exp_str = """{"num":10}"""
+        @test Serde.to_json(exp_obj) == exp_str
 
         struct IgnoreField2
             str::String
@@ -246,7 +256,12 @@
 
         Serde.SerJson.ignore_field(::Type{IgnoreField2}, ::Val{:num}, v) = v == 0
 
-        @test Serde.to_json(IgnoreField2("test", 0)) == """{"str":"test"}"""
-        @test Serde.to_json(IgnoreField2("test", 1)) == """{"str":"test","num":1}"""
+        exp_obj = IgnoreField2("test", 0)
+        exp_str = """{"str":"test"}"""
+        @test Serde.to_json(exp_obj) == exp_str
+
+        exp_obj = IgnoreField2("test", 1)
+        exp_str = """{"str":"test","num":1}"""
+        @test Serde.to_json(exp_obj) == exp_str
     end
 end

@@ -1,20 +1,20 @@
-# XML
+# YAML
 
 ## Parsing
 
 ```@docs
-Serde.parse_xml
-Serde.XmlSyntaxError
+Serde.parse_yaml
+Serde.YamlSyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_xml
+Serde.deser_yaml
 ```
 
 ## Serialization
 
 ```@docs
-Serde.to_xml
+Serde.to_yaml
 ```
