@@ -40,7 +40,6 @@ julia> deser_xml(Data, xml)
 Data(100, "xml", Record(100.0))
 ```
 """
-
 function deser_xml(::Type{T}, x; kw...) where {T}
     return to_deser(T, parse_xml(x; kw...))
 end

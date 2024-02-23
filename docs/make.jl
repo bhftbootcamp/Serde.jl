@@ -22,6 +22,7 @@ makedocs(;
             "pages/csv.md",
             "pages/query.md",
             "pages/xml.md",
+            "pages/yaml.md",
             "pages/utils.md",
         ],
         "For Developers" => ["pages/extended_ser.md", "pages/extended_de.md"],
