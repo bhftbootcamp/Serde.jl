@@ -61,8 +61,8 @@ Dict{String, Any} with 6 entries:
   "dict"       => Dict{String, Any}("dict_key_2"=>"dict_value_2", "dict_key_1"=>"dict_value_1")
   "string"     => "qwerty"
   "list"       => Dict{String, Any}[Dict("int"=>63, "string"=>"foo", "quoted"=>"bar", "float"=>1.63), Dict("string"=>"baz", "braces"=>"{{ dd }}")]
-  "anchorTest" => Dict{String, Any}("toMultiline"=>"this text will be considered \non multiple lines\n", "toSingleLine"=>"this text will be considered on a single line\n")
-  "aliasTest"  => Dict{String, Any}("toMultiline"=>"this text will be considered \non multiple lines\n", "toSingleLine"=>"this text will be considered on a single line\n")
+  "anchorTest" => Dict{String, Any}("toMultiline"=>"this text will be considered \\non multiple lines\\n", "toSingleLine"=>"this text will be considered on a single line\\n")
+  "aliasTest"  => Dict{String, Any}("toMultiline"=>"this text will be considered \\non multiple lines\\n", "toSingleLine"=>"this text will be considered on a single line\\n")
   "date"       => Date("2024-01-01")
 ```
 """
