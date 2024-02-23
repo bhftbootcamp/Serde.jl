@@ -14,7 +14,6 @@ Keyword arguments `kw` is the same as in [`parse_xml`](@ref).
 
 ## Examples
 ```julia-repl
-
 julia> struct Record
            count::Float64
        end
@@ -27,14 +26,14 @@ julia> struct Data
 
 
 julia> xml = \"\"\"
-<root>
-    <id>100</id>
-    <name>xml</name>
-    <body>
-        <count>100.0</count>
-    </body>
-</root>
-\"\"\";
+       <root>
+           <id>100</id>
+           <name>xml</name>
+           <body>
+               <count>100.0</count>
+           </body>
+       </root>
+       \"\"\";
 
 julia> deser_xml(Data, xml)
 Data(100, "xml", Record(100.0))

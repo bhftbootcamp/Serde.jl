@@ -13,6 +13,7 @@ Creates a new object of type `T` and fill it with values from YAML formated stri
 Keyword arguments `kw` is the same as in [`parse_yaml`](@ref).
 
 ## Examples
+
 ```julia-repl
 julia> struct Status
            id::Int64
@@ -28,22 +29,22 @@ julia> struct Server
        end
 
 julia> yaml = \"\"\"
-        name: cloud_server
-        status:
-          id: 42
-          value: 12.34
-        data:
-          - 1
-          - 2
-          - 3
-        online: True
-        users:
-          Kevin: 1
-          George: 2
-        \"\"\";
+       name: cloud_server
+       status:
+         id: 42
+         value: 12.34
+       data:
+         - 1
+         - 2
+         - 3
+       online: True
+       users:
+         Kevin: 1
+         George: 2
+       \"\"\";
 
 julia> deser_yaml(Server, yaml)
-Data("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict{String, Int64}("Kevin" => 1, "George" => 2))
+Server("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict("Kevin" => 1, "George" => 2))
 ```
 """
 function deser_yaml(::Type{T}, x; kw...) where {T}
