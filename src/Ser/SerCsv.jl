@@ -26,7 +26,7 @@ In case of nested `data`, names of resulting headers will be concatenate by "_" 
 ## Keyword arguments
 - `delimiter::String = ","`: The delimiter that will be used in the returned csv string.
 - `headers::Vector{String} = String[]`: Specifies which column headers will be used and in what order.
-
+- `with_names::Bool = true`: Determines if column headers are included in the CSV output (true to include, false to exclude).
 ## Examples
 
 Converting a vector of regular dictionaries with fixed headers order.
@@ -88,19 +88,22 @@ function to_csv(
     data::Vector{T};
     delimiter::String = ",",
     headers::Vector{String} = String[],
+    with_names::Bool = true,
 )::String where {T}
     cols = Set{String}()
-    vals = Vector{Dict{String,Any}}(undef, length(data) + 1)
+    vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
+
     for (index, item) in enumerate(data)
         val = to_flatten(item)
         push!(cols, keys(val)...)
-        vals[index+1] = val
+        vals[index + with_names] = val
     end
 
-    vals[1] = Dict{String,String}(cols .=> string.(cols))
+    with_names && (vals[1] = Dict{String,String}(cols .=> string.(cols)))
     t_cols = isempty(headers) ? sort([cols...]) : headers
     l_cols = t_cols[end]
     buf = IOBuffer()
+
     for csv_item in vals
         for col in t_cols
             val = get(csv_item, col, nothing)
