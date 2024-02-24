@@ -1,8 +1,5 @@
 # Ser/SerXml
 
-using Serde
-using Test, Dates
-
 @testset verbose = true "SerXml" begin
     @testset "Case №1: SerXml" begin
         struct BarXml1
@@ -19,36 +16,28 @@ using Test, Dates
             bar::BarXml1
         end
 
-        data = Serde.SerXml.to_xml(
-            FooXml1(
-                Date("2023-07-30"),
-                BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"),
-            )
-        )
-
-        res = """
+        exp_obj = FooXml1(Date("2023-07-30"), BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"))
+        exp_str = """
         <xml date="2023-07-30">
-          <bar str="text" symb="ok" char="g" type="Int64" num="3.14">
-            CONTENT
-          </bar>
+          <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
         </xml>
         """
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
 
-        @test data == res
+        exp_obj = FooXml1(Date("2023-07-30"), BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"))
+        exp_str = """
+        <dexamel date="2023-07-30">
+          <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
+        </dexamel>
+        """
+        @test Serde.SerXml.to_xml(exp_obj; key = "dexamel") == exp_str
     end
 
     @testset "Case №2: XmlVector" begin
-        data = Serde.SerXml.to_xml(
-            Dict(
-                "vector_elems" => [
-                    1,
-                    "text",
-                    Dict("Name" => "Ivan"),
-                ],
-            ),
-        )
+        exp_obj =
+            Dict("vector_elems" => [Dict("_" => 1), Dict("_" => "text"), Dict("Name" => Dict("_" => "Ivan"))])
 
-        res = """
+        exp_str = """
         <xml>
           <vector_elems>1</vector_elems>
           <vector_elems>text</vector_elems>
@@ -58,27 +47,25 @@ using Test, Dates
         </xml>
         """
 
-        @test data == res
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №3: SerXml" begin
-        data = Serde.SerXml.to_xml(
-            Dict(
-                "Node1" => "text",
-                :attribute1 => 12,
-                "Node2" => "bottom text",
-                :attribute2 => :str,
-            ),
+        exp_obj = Dict(
+            "Node1" => Dict("_" => "text"),
+            "Node2" => Dict("_" => "bottom text"),
+            "attribute1" => 12,
+            "attribute2" => "str",
         )
 
-        res = """
-        <xml attribute1="12" attribute2="str">
+        exp_str = """
+        <xml attribute2="str" attribute1="12">
           <Node2>bottom text</Node2>
           <Node1>text</Node1>
         </xml>
         """
 
-        @test data == res
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №4: EmptyTag" begin
@@ -90,24 +77,21 @@ using Test, Dates
             bar::BarXml4
         end
 
-        data_struct = Serde.SerXml.to_xml(
-            FooXml4(
-                BarXml4("bottom text"),
-            ),
-        )
-
-        data_dict = Serde.SerXml.to_xml(
-            Dict("bar" => Dict(:str => "bottom text")),
-        )
-
-        res = """
+        exp_obj = FooXml4(BarXml4("bottom text"))
+        exp_str = """
         <xml>
           <bar str="bottom text"/>
         </xml>
         """
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
 
-        @test data_struct == res
-        @test data_dict == res
+        exp_obj = Dict("bar" => Dict("_" => "bottom text"))
+        exp_str = """
+        <xml>
+          <bar>bottom text</bar>
+        </xml>
+        """
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №5: Content" begin
@@ -119,54 +103,44 @@ using Test, Dates
             bar::BarXml5
         end
 
-        data_struct = Serde.SerXml.to_xml(
-            FooXml5(
-                BarXml5("CONTENT"),
-            ),
-        )
-
-        data_dict = Serde.SerXml.to_xml(
-            Dict("bar" => Dict("" => "CONTENT")),
-        )
-
-        res = """
+        exp_obj = FooXml5(BarXml5("CONTENT"))
+        exp_str = """
         <xml>
-          <bar>
-            CONTENT
-          </bar>
+          <bar>CONTENT</bar>
         </xml>
         """
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
 
-        @test data_struct == res
-        @test data_dict == res
+        exp_obj = Dict("bar" => Dict("_" => "CONTENT"))
+        exp_str = """
+        <xml>
+          <bar>CONTENT</bar>
+        </xml>
+        """
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №6: Vector again" begin
-        data = Serde.SerXml.to_xml(
-            Dict(
-                "a" => [
-                    Dict(:a => 10, :b => 40),
-                    Dict(:a => 10, :b => 40),
-                    Dict(:a => 10, :b => 40),
-                    Dict(:a => 10, :b => 40),
-                ],
-                "c" => 20,
-                :a => 30,
-                "" => "hello",
-            ),
+        exp_obj = Dict(
+            "c" => Dict("_" => "20"),
+            "a" => Any[
+                "30",
+                Dict("b" => "40", "a" => "10"),
+                Dict("b" => "40", "a" => "10"),
+                Dict("b" => "40", "a" => "10"),
+                Dict("b" => "40", "a" => "10"),
+            ],
         )
-
-        res = """
-        <xml a="30">
-          hello
+        exp_str = """
+        <xml>
           <c>20</c>
-          <a a="10" b="40"/>
-          <a a="10" b="40"/>
-          <a a="10" b="40"/>
-          <a a="10" b="40"/>
+          <a>30</a>
+          <a b="40" a="10"/>
+          <a b="40" a="10"/>
+          <a b="40" a="10"/>
+          <a b="40" a="10"/>
         </xml>
         """
-
-        @test data == res
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 end

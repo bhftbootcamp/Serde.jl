@@ -74,8 +74,7 @@ function decode_key(k::AbstractString)::AbstractString
 end
 
 function validate_key(k::AbstractString)::Nothing
-    contains(k, ';') &&
-        throw(QueryParsingError("invalid semicolon separator in query key"))
+    contains(k, ';') && throw(QueryParsingError("invalid semicolon separator in query key"))
     return nothing
 end
 
@@ -90,7 +89,7 @@ end
 function parse_value(
     ::Type{StructType},
     ::Type{Union{Nothing,FieldType}},
-    value::D
+    value::D,
 ) where {StructType<:Any,FieldType<:Any,D<:Any}
     return parse_value(StructType, FieldType, value)
 end
@@ -98,16 +97,12 @@ end
 function parse_value(
     ::Type{StructType},
     ::Type{Union{Missing,FieldType}},
-    value::D
+    value::D,
 ) where {StructType<:Any,FieldType<:Any,D<:Any}
     return parse_value(StructType, FieldType, value)
 end
 
-function parse_value(
-    ::Type{StructType},
-    ::Type{FieldType},
-    value::D,
-) where {StructType<:Any,FieldType<:Any,D<:Any}
+function parse_value(::Type{StructType}, ::Type{FieldType}, value::D) where {StructType<:Any,FieldType<:Any,D<:Any}
     return value
 end
 
@@ -130,9 +125,10 @@ end
 function parse(
     query::AbstractString;
     delimiter::AbstractString = "&",
-)::Dict{String,Union{String,Vector{String}}}
+    dict_type::Type{D} = Dict{String,Any},
+) where {D<:AbstractDict}
     parts = split(query, delimiter)
-    parsed = Dict{String,Union{String,Vector{String}}}()
+    parsed = D()
     for part in parts
         key, value = cut(part, "=")
         if isempty(key)
@@ -159,6 +155,7 @@ Parses a query string `x` (or vector of UInt8) into a dictionary.
 ## Keyword arguments
 - `backbone::Type = Nothing`: The custom type that describes types of query elements.
 - `delimiter::AbstractString = "&"`: The delimiter of query string.
+- `dict_type::Type{<:AbstractDict} = Dict`: The type of the dictionary to be returned.
 
 ## Examples
 ```julia-repl
@@ -182,12 +179,17 @@ Dict{String, Union{String, Vector{String}}} with 2 entries:
 """
 function parse_query end
 
-function parse_query(x::S; backbone::Type = Nothing, kw...) where {S<:AbstractString}
+function parse_query(
+    x::S;
+    backbone::Type = Nothing,
+    dict_type::Type{D} = Dict{String,Any},
+    kw...,
+) where {S<:AbstractString,D<:AbstractDict}
     return try
-        parsed = ParQuery.parse(x; kw...)
+        parsed = ParQuery.parse(x; dict_type = dict_type, kw...)
         for (key, value) in parsed
             value = length(value) == 1 ? value[begin] : value
-            if !(backbone <: Nothing)
+            if backbone != Nothing
                 value = parse_value(backbone, fieldtype(backbone, Symbol(key)), value)
             end
             parsed[key] = value
@@ -198,10 +200,7 @@ function parse_query(x::S; backbone::Type = Nothing, kw...) where {S<:AbstractSt
     end
 end
 
-function parse_query(
-    x::Vector{UInt8};
-    kw...
-)
+function parse_query(x::Vector{UInt8}; kw...)
     return parse_query(unsafe_string(pointer(x), length(x)); kw...)
 end
 

@@ -1,115 +1,111 @@
 # Ser/SerCsv
 
-@testset verbose = true "SerCsv" begin
-    @testset "Case №1: Simple" begin
-        struct CsvFoo1
-            a::Int64
-            b::String
-            c::Int64
-            d::Union{String,Float64}
+@testset verbose = true "Serialization to CSV Test Suite" begin
+    @testset "Case 1: Simple Serialization" begin
+        struct SimpleRecord
+            a_id::Int64
+            b_category::String
+            c_quantity::Int64
+            d_value::Union{String,Float64}
         end
 
-        foo1 = [
-            CsvFoo1(1, "a", 11, 11.1),
-            CsvFoo1(2, "b", 22, "bb"),
-            CsvFoo1(2, "b", 22, "bb"),
+        exp_obj = [
+            SimpleRecord(1, "a", 11, 11.1),
+            SimpleRecord(2, "b", 22, "bb"),
+            SimpleRecord(2, "b", 22, "bb"),
         ]
-
-        csv = """
-        a,b,c,d
+        exp_str = """
+        a_id,b_category,c_quantity,d_value
         1,a,11,11.1
         2,b,22,bb
         2,b,22,bb
         """
-
-        @test Serde.to_csv(foo1) |> strip == csv |> strip
+        @test Serde.to_csv(exp_obj) |> strip == exp_str |> strip
     end
 
-    @testset "Case №2: Normalize" begin
-        struct CsvBoo2
-            g::String
+    @testset "Case 2: Normalization with Nested Structures" begin
+        struct NestedDetail
+            detail::String
         end
 
-        struct CsvBar2
-            e::Int64
-            f::CsvBoo2
+        struct SubRecord
+            code::Int64
+            nested::NestedDetail
         end
 
-        struct CsvFoo2
-            a::Int64
-            b::String
-            c::Int64
-            d::Union{String,Float64,CsvBar2}
+        struct ComplexRecord
+            id::Int64
+            name::String
+            count::Int64
+            data::Union{String,Float64,SubRecord}
         end
 
-        foo2 = [
-            CsvFoo2(1, "Hello", 3, "World"),                                   # String in d field
-            CsvFoo2(2, "Julia", 5, 3.14),                                      # Float64 in d field
-            CsvFoo2(3, "Coconut", 7, CsvBar2(42, CsvBoo2("Nested object"))),   # CsvBar2 in d field
+        exp_obj = [
+            ComplexRecord(1, "Hello", 3, "World"),
+            ComplexRecord(2, "Julia", 5, 3.14),
+            ComplexRecord(3, "Coconut", 7, SubRecord(42, NestedDetail("Nested object"))),
         ]
-
-        csv = """
-        a,b,c,d,d_e,d_f_g
+        exp_str = """
+        id,name,count,data,data_code,data_nested_detail
         1,Hello,3,World,,
         2,Julia,5,3.14,,
         3,Coconut,7,,42,Nested object
         """
-
-        @test Serde.to_csv(foo2) |> strip == csv |> strip
+        @test Serde.to_csv(
+            exp_obj,
+            headers = ["id", "name", "count", "data", "data_code", "data_nested_detail"],
+        ) |> strip == exp_str |> strip
     end
 
-    @testset "Case №3: Wrap Value" begin
-        struct CsvFoo6
-            a::Int64
-            b::String
-            c::Int64
-            d::Union{String,Float64}
+    @testset "Case 3: Wrapping Values with Special Characters" begin
+        struct SpecialCharRecord
+            id::Int64
+            text::String
+            count::Int64
+            value::Union{String,Float64}
         end
 
-        foo3 = [
-            CsvFoo6(1, "a,,,,;", 11, 11.1),
-            CsvFoo6(2, "b\nl", 22, "bb\"\""),
-            CsvFoo6(1, "a,,,,;", 12, 11.1),
+        exp_obj = [
+            SpecialCharRecord(1, "a,,,,;", 11, 11.1),
+            SpecialCharRecord(2, "b\nl", 22, "bb\"\""),
+            SpecialCharRecord(1, "a,,,,;", 12, 11.1),
         ]
-
-        csv = """
-        a,b,c,d
+        exp_str = """
+        id,text,count,value
         1,"a,,,,;",11,11.1
         2,"b
         l",22,"bb\"\"\"\""
         1,"a,,,,;",12,11.1
         """
-
-        @test Serde.to_csv(foo3) |> strip == csv |> strip
+        @test Serde.to_csv(exp_obj, headers = ["id", "text", "count", "value"]) |> strip ==
+              exp_str |> strip
     end
 
-    @testset "Case №4: Dict" begin
-        foo_dict = [
+    @testset "Case 4: Serializing Dictionaries" begin
+        exp_obj = [
             IdDict("a" => 10, "B" => 20),
             Dict("a" => 15, "B" => 32),
             WeakKeyDict("a" => 10, "B" => 35),
         ]
-
-        csv = """
+        expected_csv_with_delimiter = """
         B;a
         20;10
         32;15
         35;10
         """
+        @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
+              expected_csv_with_delimiter |> strip
 
-        @test Serde.to_csv(foo_dict, separator = ";") |> strip == csv |> strip
-
-        foo_dict = [
+        exp_obj = [
             Dict("a" => 10, "B" => 20, "C" => Dict("cfoo" => "foo", "cbaz" => "baz")),
             Dict(:a => 10, :B => 20),
         ]
-
-        csv = """
+        exp_str = """
         a,B,C_cbaz,C_cfoo
         10,20,baz,foo
         10,20,,
         """
-
-        @test Serde.to_csv(foo_dict, headers = ["a", "B", "C_cbaz", "C_cfoo"]) |> strip == csv |> strip
+        @test Serde.to_csv(exp_obj, headers = ["a", "B", "C_cbaz", "C_cfoo"]) |> strip ==
+              exp_str |> strip
     end
 end

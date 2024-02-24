@@ -53,9 +53,9 @@ Dict{String, Any} with 3 entries:
 """
 function parse_json end
 
-function parse_json(x::S; kw...) where {S<:AbstractString}
+function parse_json(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
-        JSON.parse(x; kw...)
+        JSON.parse(x; dicttype = dict_type, kw...)
     catch e
         throw(JsonSyntaxError("invalid JSON syntax", e))
     end

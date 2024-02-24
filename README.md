@@ -5,35 +5,40 @@
 [![Build Status](https://github.com/bhftbootcamp/Serde.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/bhftbootcamp/Serde.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/bhftbootcamp/Serde.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/bhftbootcamp/Serde.jl)
 
-Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types. It supports the following data formats:
+Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types. Inspired by the [serde.rs](https://serde.rs/) Rust library, it supports the following data formats:
 
 <html>
   <body>
     <table>
-      <tr><th>Format</th><th><div align=center>JSON</div></th><th><div align=center>TOML</div></th><th><div align=center>XML</div></th><th><div align=center>YAML</div></th><th><div align=center>CSV</div></th><th><div align=center>Query</div></th></tr>
+      <tr><th>Format</th><th><div align=center>JSON</div></th><th><div align=center>TOML</div></th><th><div align=center>XML</div></th><th><div align=center>YAML</div></th><th><div align=center>CSV</div><th><div align=center>Query</div></th><th><div align=center>MsgPack</div></th><th><div align=center>BSON</div></th></tr>
       <tr>
         <td>Deserialization</td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
-        <td><div align=center>(planned)</div></td>
-        <td><div align=center>(planned)</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
+        <td><div align=center>✓</div></td>
+        <td><div align=center>✓</div></td>
+        <td><div align=center>(planned)</div></td>
+        <td><div align=center>(planned)</div></td>
       </tr>
       <tr>
         <td>Serialization</td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
         <td><div align=center>✓</div></td>
+        <td><div align=center>✓</div></td>
+        <td><div align=center>✓</div></td>
+        <td><div align=center>✓</div></td>
         <td><div align=center>(planned)</div></td>
-        <td><div align=center>✓</div></td>
-        <td><div align=center>✓</div></td>
+        <td><div align=center>(planned)</div></td>
       </tr>
     </table>
   </body>
 </html>
 
 ## Installation
+
 To install Serde, simply use the Julia package manager:
 
 ```julia
@@ -75,7 +80,7 @@ json = """
 
 # Deserialize JSON to a JuliaCon object
 julia> juliacon = deser_json(JuliaCon, json)
- JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
 # TOML deserialization example
 toml = """
@@ -86,14 +91,14 @@ end_date = "July 13, 2024"
 
 # Deserialize TOML to a JuliaCon object
 julia> juliacon = deser_toml(JuliaCon, toml)
- JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
 # URL query string deserialization example
 query = "title=JuliaCon 2024&start_date=July 9, 2024&end_date=July 13, 2024"
 
 # Deserialize query string to a JuliaCon object
 julia> juliacon = deser_query(JuliaCon, query)
- JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
 # CSV deserialization example
 csv = """
@@ -103,8 +108,29 @@ title,start_date,end_date
 
 # Deserialize CSV to a vector of JuliaCon objects
 julia> juliacon = deser_csv(JuliaCon, csv)
- 1-element Vector{JuliaCon}:
-  JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+1-element Vector{JuliaCon}:
+ JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+
+# YAML deserialization example
+yaml = """
+---
+title: JuliaCon 2024
+start_date: 2024-07-09
+end_date: 2024-07-13
+"""
+
+# Deserialize YAML to a JuliaCon object
+julia> juliacon = deser_yaml(JuliaCon, yaml)
+JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
+
+# XML deserialization example
+xml = """
+<xml title="JuliaCon 2024" start_date="July 9, 2024" end_date="July 13, 2024" />
+"""
+
+# Deserialize XML to a JuliaCon object
+julia> juliacon = deser_xml(JuliaCon, xml)
+JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 ```
 
 If you want to see more deserialization options, then take a look at the corresponding [section](https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_de/) of the documentation
@@ -134,7 +160,7 @@ end
 
 # Serialize the JuliaCon instance to JSON and print it
 julia> to_json(juliacon) |> print
- {"title":"JuliaCon 2024","start_date":"July 9, 2024","end_date":"July 13, 2024"}
+{"title":"JuliaCon 2024","start_date":"July 9, 2024","end_date":"July 13, 2024"}
 
 # Define serialization for JuliaCon struct to TOML format
 function Serde.SerToml.ser_type(::Type{JuliaCon}, v::Date)
@@ -143,9 +169,9 @@ end
 
 # Serialize the JuliaCon instance to TOML and print it
 julia> to_toml(juliacon) |> print
- title = "JuliaCon 2024"
- start_date = "2024-07-09"
- end_date = "2024-07-13"
+title = "JuliaCon 2024"
+start_date = "2024-07-09"
+end_date = "2024-07-13"
 
 # Define serialization for JuliaCon struct to XML format
 function Serde.SerXml.ser_type(::Type{JuliaCon}, v::Date)
@@ -154,7 +180,19 @@ end
 
 # Serialize the JuliaCon instance to XML and print it
 julia> to_xml(juliacon) |> print
- <xml title="JuliaCon 2024" start_date="2024-07-09" end_date="2024-07-13"/>
+<xml title="JuliaCon 2024" start_date="2024-07-09" end_date="2024-07-13"/>
+
+# Define serialization for JuliaCon struct to YAML format
+function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
+    return Dates.format(v, "U d, yyyy")
+end
+
+# Serialize the JuliaCon instance to YAML and print it
+julia> to_yaml(juliacon) |> print
+title: "JuliaCon 2024"
+start_date: "2024-07-09"
+end_date: "2024-07-13"
+
 ```
 
 If you want to see more serialization options, then take a look at the corresponding [section](https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/) of the documentation
@@ -183,11 +221,12 @@ end
 json = """{"title": "JuliaCon 2024", "start": "2024-07-22"}"""
 
 julia> juliacon = deser_json(JuliaCon, json)
- JuliaCon("JuliaCon 2024", Date("2024-07-22"), Date("2024-07-24"))
+JuliaCon("JuliaCon 2024", Date("2024-07-22"), Date("2024-07-24"))
 
 julia> to_json(juliacon)
- "{\"title\":\"JuliaCon 2024\",\"start_date\":\"2024-07-22\",\"end_date\":\"2024-07-24\"}"
+"{\"title\":\"JuliaCon 2024\",\"start_date\":\"2024-07-22\",\"end_date\":\"2024-07-24\"}"
 ```
 
 ## Contributing
+
 Contributions to Serde are welcome! If you encounter a bug, have a feature request, or would like to contribute code, please open an issue or a pull request on GitHub.

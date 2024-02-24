@@ -10,8 +10,7 @@ const INDENT = "  "
 
 # escaped string
 
-const NEEDESCAPE =
-    Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
+const NEEDESCAPE = Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
 
 function escape_char(b)
     b == UInt8('"')  && return UInt8('"')
@@ -38,11 +37,9 @@ function escaped(b)
     end
 end
 
-const ESCAPECHARS =
-    Vector{UInt8}[escaped(b) for b = 0x00:0xff]
+const ESCAPECHARS = Vector{UInt8}[escaped(b) for b = 0x00:0xff]
 
-const ESCAPELENS =
-    Int64[length(x) for x in ESCAPECHARS]
+const ESCAPELENS = Int64[length(x) for x in ESCAPECHARS]
 
 function escape_length(str)
     x = 0
@@ -146,24 +143,6 @@ function json_value!(buf::IOBuffer, f::Function, val::Tuple; l::Int64, kw...)::N
     return print(buf, indent(l - 1), "]")
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::NamedTuple; l::Int64, kw...)::Nothing
-    names = keys(val)
-    print(buf, "{", indent(l))
-    next = iterate(names)
-    next_value = iterate(val)
-    while next !== nothing
-        item, index = next
-        item_value, index_value = next_value
-        json_value!(buf, f, item; l = l + (l != -1), kw...)
-        print(buf, ":")
-        json_value!(buf, f, item_value; l = l + (l != -1), kw...)
-        next = iterate(names, index)
-        next_value = iterate(val, index_value)
-        next === nothing || print(buf, ",", indent(l))
-    end
-    return print(buf, indent(l - 1), "}")
-end
-
 function json_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, kw...)::Nothing
     next = iterate(val)
     print(buf, "[", indent(l))
@@ -236,7 +215,7 @@ You can also define multiple methods of `f` for nested custom data types, e.g:
 
 ```julia
 # Custom type 'Foo' containing fields of other custom types 'bar::Bar' and 'baz::Baz'
-custom_field_names(::Type{Foo}) = (:bar, :baz, ...) 
+custom_field_names(::Type{Foo}) = (:bar, :baz, ...)
 
 # Another custom types
 custom_field_names(::Type{Bar}) = (:data, ...)
