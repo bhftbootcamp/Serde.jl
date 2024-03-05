@@ -10,9 +10,6 @@
 include("SerCsv.jl")
 using .SerCsv
 
-include("SerJson.jl")
-using .SerJson
-
 include("SerQuery.jl")
 using .SerQuery
 

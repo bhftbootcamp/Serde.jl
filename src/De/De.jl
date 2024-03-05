@@ -89,9 +89,6 @@ to_deser(::Type{T}, x) where {T} = deser(deser_type(T, x), deser_value(T, x))
 to_deser(::Type{Nothing}, x) = nothing
 to_deser(::Type{Missing}, x) = missing
 
-include("DeJson.jl")
-using .DeJson
-
 include("DeToml.jl")
 using .DeToml
 
