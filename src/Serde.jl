@@ -5,8 +5,6 @@ function parse_value end
 
 # Ser
 export to_csv,
-    to_json,
-    to_pretty_json,
     to_query,
     to_toml,
     to_xml,
@@ -14,7 +12,6 @@ export to_csv,
 
 # De
 export deser_csv,
-    deser_json,
     deser_query,
     deser_toml,
     deser_xml,
@@ -22,7 +19,6 @@ export deser_csv,
 
 # Par
 export parse_csv,
-    parse_json,
     parse_query,
     parse_toml,
     parse_xml,
@@ -39,5 +35,6 @@ include("Utl/Utl.jl")
 include("Par/Par.jl")
 include("Ser/Ser.jl")
 include("De/De.jl")
+include("JSON.jl")
 
 end
