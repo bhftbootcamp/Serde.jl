@@ -37,5 +37,6 @@ include("Ser/Ser.jl")
 include("De/De.jl")
 include("Ext.jl")
 include("JSON.jl")
+include("CSV.jl")
 
 end
