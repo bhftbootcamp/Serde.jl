@@ -19,6 +19,8 @@ function get_ext(ext::Symbol)::Module
     ext_symbol = nothing
     if ext === :JSON
         ext_symbol = :SerdeJSONExt
+    elseif ext === :CSV
+        ext_symbol = :SerdeCSVExt
     else
         error("cannot retrieve unknown extension '$ext'")
     end
@@ -33,5 +35,6 @@ function get_ext(ext::Symbol)::Module
 end
 
 JSON() = get_ext(:JSON)
+CSV() = get_ext(:CSV)
 
 end

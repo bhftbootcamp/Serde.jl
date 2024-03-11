@@ -3,7 +3,7 @@ module DeCsv
 export deser_csv
 
 using ..ParCsv
-import ..to_deser
+import Serde.to_deser
 
 """
     deser_csv(::Type{T}, x; kw...) -> Vector{T}

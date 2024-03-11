@@ -2,7 +2,7 @@ module SerCsv
 
 export to_csv
 
-import ..to_flatten
+import Serde.to_flatten
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
