@@ -1,4 +1,5 @@
 # Ser/SerCsv
+import CSV
 
 @testset verbose = true "Serialization to CSV Test Suite" begin
     @testset "Case 1: Simple Serialization" begin
