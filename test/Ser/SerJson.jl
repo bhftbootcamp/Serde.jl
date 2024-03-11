@@ -1,4 +1,11 @@
 # Ser/SerJson
+import JSON
+import Serde
+
+ext = Base.get_extension(Serde, :SerdeJSONExt)
+if ext === nothing
+    error("cannot run tests for 'JSON', extension isn't loaded")
+end
 
 @testset verbose = true "SerJson" begin
     @testset "Case №1: SerJson" begin
@@ -23,7 +30,7 @@
             bytes::Vector{UInt8}
         end
 
-        Serde.SerJson.ser_value(::Type{JsonFoo}, ::Val{:bytes}, v::Vector{UInt8})::String = String(view(v, 1:length(v)))
+        ext.SerJson.ser_value(::Type{JsonFoo}, ::Val{:bytes}, v::Vector{UInt8})::String = String(view(v, 1:length(v)))
 
         fields_1(::Type{JsonFoo}) = (:name,)
         fields_2(::Type{JsonFoo}) = (:name, :date)
@@ -131,7 +138,7 @@
             c::Union{Int64,Nothing} = nothing
         end
 
-        (Serde.SerJson.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_6} = true
+        (ext.SerJson.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_6} = true
 
         exp_obj = JsonFoo6_1(x = "test")
         exp_str = "{\"x\":\"test\"}"
@@ -151,7 +158,7 @@
             dt::DateTime
         end
 
-        Serde.SerJson.ser_type(::Type{JsonFoo7}, x::DateTime) = string(datetime2unix(x))
+        ext.SerJson.ser_type(::Type{JsonFoo7}, x::DateTime) = string(datetime2unix(x))
 
         exp_obj = JsonFoo7(DateTime("2023-02-27T23:01:37.248"))
         exp_str = "{\"dt\":\"1.677538897248e9\"}"
@@ -246,7 +253,7 @@
             num::Int64
         end
 
-        Serde.SerJson.ser_ignore_field(::Type{IgnoreField}, ::Val{:str}) = true
+        ext.SerJson.ser_ignore_field(::Type{IgnoreField}, ::Val{:str}) = true
 
         exp_obj = IgnoreField("test", 10)
         exp_str = """{"num":10}"""
@@ -257,7 +264,7 @@
             num::Int64
         end
 
-        Serde.SerJson.ser_ignore_field(::Type{IgnoreField2}, ::Val{:num}, v) = v == 0
+        ext.SerJson.ser_ignore_field(::Type{IgnoreField2}, ::Val{:num}, v) = v == 0
 
         exp_obj = IgnoreField2("test", 0)
         exp_str = """{"str":"test"}"""
