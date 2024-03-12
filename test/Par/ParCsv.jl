@@ -1,5 +1,4 @@
 # Par/ParCsv
-import CSV
 
 ext = Serde.Ext.CSV()
 
