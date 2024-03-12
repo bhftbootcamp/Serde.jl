@@ -91,6 +91,3 @@ to_deser(::Type{Missing}, x) = missing
 
 include("DeQuery.jl")
 using .DeQuery
-
-include("DeXml.jl")
-using .DeXml

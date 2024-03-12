@@ -11,6 +11,7 @@ module Ext
 export JSON,
     CSV,
     TOML,
+    XML,
     YAML
 
 """
@@ -26,6 +27,8 @@ function get_ext(ext::Symbol)::Module
         ext_symbol = :SerdeCSVExt
     elseif ext === :TOML
         ext_symbol = :SerdeTOMLExt
+    elseif ext === :XML
+        ext_symbol = :SerdeXMLExt
     elseif ext === :YAML
         ext_symbol = :SerdeYAMLExt
     else
@@ -44,6 +47,7 @@ end
 JSON() = get_ext(:JSON)
 CSV() = get_ext(:CSV)
 TOML() = get_ext(:TOML)
+XML() = get_ext(:XML)
 YAML() = get_ext(:YAML)
 
 end

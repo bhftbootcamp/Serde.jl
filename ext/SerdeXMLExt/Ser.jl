@@ -207,46 +207,6 @@ function _to_xml(val::T; level::Int64 = 0, kw...)::String where {T}
     return join([xml_pair(k, v; level, kw...) for (k, v) in xml_pairs(val; level, kw...)])
 end
 
-"""
-    to_xml(val; key::String = "xml") -> String
-
-Serializes any nested data `val` into an XML string that follows the next rules:
-
-- Values of **primitive types** are used as an element of the current tag.
-- Vector elements will be used as sub-tag elements.
-- Dictionaries are processed using the following rules:
-    - Key names must be a string or a symbol types.
-    - A key with a **non-empty string** value will be interpreted as a new sub-tag.
-    - A key with an **empty string** value will be interpreted as an element of the current tag.
-- Custom types are handled as follows:
-    - The field name containing the **primitive type** will be used as an attribute for the current tag.
-    - A field name containing a **composite type** (dictionary or other custom type) will be used as the name for the next sub-tag.
-    - A primitive type field with **a special name "_"** will be used as an element for the current tag.
-
-Thus, this method can serialize all basic data types and can work with any nesting level of a combination of dictionaries and custom data types.
-The `key` keyword specifies the name of the root tag.
-
-## Examples
-```julia-repl
-julia> struct Image
-           dpi::Int64
-           _::String
-       end
-
-julia> struct Data
-           info::Dict
-           image::Image
-       end
-
-julia> data_info = Dict("id" => "451", "status" => "OK", "_" => "employee");
-
-julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
-<xml>
-  <image dpi="200">profile.png</image>
-  <info status="OK" id="451">employee</info>
-</xml>
-```
-"""
 function to_xml(val::T; key::String = "xml", kw...)::String where {T}
     return _to_xml(Dict{String,Any}(key => val))
 end
