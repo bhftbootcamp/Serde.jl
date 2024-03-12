@@ -1,11 +1,7 @@
 # Ser/SerJson
-import JSON
 import Serde
 
-ext = Base.get_extension(Serde, :SerdeJSONExt)
-if ext === nothing
-    error("cannot run tests for 'JSON', extension isn't loaded")
-end
+ext = Serde.Ext.JSON()
 
 @testset verbose = true "SerJson" begin
     @testset "Case №1: SerJson" begin
