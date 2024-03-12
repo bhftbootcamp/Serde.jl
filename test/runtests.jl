@@ -3,7 +3,7 @@
 using Serde
 using Test, Dates, NanoDates, UUIDs
 # To ensure that all extensions are loaded
-import JSON, CSV, TOML, YAML
+import JSON, CSV, TOML, YAML, EzXML
 
 include("Par/Par.jl")
 include("Ser/Ser.jl")
