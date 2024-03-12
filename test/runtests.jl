@@ -2,6 +2,7 @@
 
 using Serde
 using Test, Dates, NanoDates, UUIDs
+import YAML
 
 include("Par/Par.jl")
 include("Ser/Ser.jl")
