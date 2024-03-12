@@ -3,9 +3,6 @@
 include("ParQuery.jl")
 using .ParQuery
 
-include("ParToml.jl")
-using .ParToml
-
 include("ParXml.jl")
 using .ParXml
 

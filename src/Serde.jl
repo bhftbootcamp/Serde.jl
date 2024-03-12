@@ -42,5 +42,6 @@ include("De/De.jl")
 include("Ext.jl")
 include("JSON.jl")
 include("CSV.jl")
+include("TOML.jl")
 
 end
