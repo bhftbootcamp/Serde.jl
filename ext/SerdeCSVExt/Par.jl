@@ -21,33 +21,6 @@ end
 
 Base.show(io::IO, e::CSVSyntaxError) = print(io, e.message)
 
-"""
-    parse_csv(x::AbstractString; kw...) -> Vector{NamedTuple}
-    parse_csv(x::Vector{UInt8}; kw...) -> Vector{NamedTuple}
-
-Parse a CSV string `x` (or vector of UInt8) into a vector of dictionaries, where keys are column names and values are corresponding cell values.
-
-## Keyword arguments
-- `delimiter::AbstractString = ","`: The delimiter that will be used in the parsed csv string.
-- Other keyword arguments can be found in [`CSV.File`](https://csv.juliadata.org/stable/reading.html#CSV.File)
-
-## Examples
-
-```julia-repl
-julia> csv = \"\"\"
-       "id","name","grade"
-       1,"Fred",78.2
-       2,"Benny",82.0
-       \"\"\";
-
-julia> parse_csv(csv)
-2-element Vector{NamedTuple{(:id, :name, :grade), Tuple{String, String, String}}}:
- (id = "1", name = "Fred", grade = "78.2")
- (id = "2", name = "Benny", grade = "82.0")
-```
-"""
-function parse_csv end
-
 function parse_csv(x::Vector{UInt8}; delimiter::AbstractString = ",", kw...)
     return parse_csv(unsafe_string(pointer(x), length(x)); delimiter = delimiter, kw...)
 end
