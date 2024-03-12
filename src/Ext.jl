@@ -10,7 +10,8 @@ module Ext
 
 export JSON,
     CSV,
-    TOML
+    TOML,
+    YAML
 
 """
     get_ext(ext)
@@ -25,6 +26,8 @@ function get_ext(ext::Symbol)::Module
         ext_symbol = :SerdeCSVExt
     elseif ext === :TOML
         ext_symbol = :SerdeTOMLExt
+    elseif ext === :YAML
+        ext_symbol = :SerdeYAMLExt
     else
         error("cannot retrieve unknown extension '$ext'")
     end
@@ -41,5 +44,6 @@ end
 JSON() = get_ext(:JSON)
 CSV() = get_ext(:CSV)
 TOML() = get_ext(:TOML)
+YAML() = get_ext(:YAML)
 
 end

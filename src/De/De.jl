@@ -94,6 +94,3 @@ using .DeQuery
 
 include("DeXml.jl")
 using .DeXml
-
-include("DeYaml.jl")
-using .DeYaml

@@ -12,6 +12,3 @@ using .SerQuery
 
 include("SerXml.jl")
 using .SerXml
-
-include("SerYaml.jl")
-using .SerYaml
