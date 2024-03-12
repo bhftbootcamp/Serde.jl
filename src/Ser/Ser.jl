@@ -10,9 +10,6 @@
 include("SerQuery.jl")
 using .SerQuery
 
-include("SerToml.jl")
-using .SerToml
-
 include("SerXml.jl")
 using .SerXml
 

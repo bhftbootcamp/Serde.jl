@@ -8,7 +8,9 @@ See also [`JSON`](@ref Ext.JSON).
 """
 module Ext
 
-export JSON
+export JSON,
+    CSV,
+    TOML
 
 """
     get_ext(ext)
@@ -21,6 +23,8 @@ function get_ext(ext::Symbol)::Module
         ext_symbol = :SerdeJSONExt
     elseif ext === :CSV
         ext_symbol = :SerdeCSVExt
+    elseif ext === :TOML
+        ext_symbol = :SerdeTOMLExt
     else
         error("cannot retrieve unknown extension '$ext'")
     end
@@ -36,5 +40,6 @@ end
 
 JSON() = get_ext(:JSON)
 CSV() = get_ext(:CSV)
+TOML() = get_ext(:TOML)
 
 end

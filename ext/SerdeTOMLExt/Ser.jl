@@ -173,68 +173,6 @@ function toml_pairs(val::T; kw...) where {T}
     return sort(kv, by = x -> !issimple(x[2]))
 end
 
-"""
-    to_toml(data) -> String
-
-Passes a dictionary `data` (or custom data structure) for making TOML string.
-
-## Examples
-
-Make TOML string from nested dictionaries.
-
-```julia-repl
-julia> data = Dict(
-           "points" => [
-               Dict("x" => "100", "y" => 200),
-               Dict("x" => 300, "y" => 400),
-           ],
-           "data" => Dict("id" => 321, "price" => 600),
-           "answer" => 42,
-       );
-
-julia> to_toml(data) |> println
-answer = 42
-
-[data]
-price = 600
-id = 321
-
-[[points]]
-y = 200
-x = "100"
-
-[[points]]
-y = 400
-x = 300
-```
-
-Make TOML string from custom data structures.
-
-```julia-repl
-julia> struct Point
-           x::Int64
-           y::Int64
-       end
-
-julia> struct MyPlot
-           tag::String
-           points::Vector{Point}
-       end
-
-julia> myline = MyPlot("line", Point[Point(1, 0), Point(2, 3)]);
-
-julia> to_toml(myline) |> println
-tag = "line"
-
-[[points]]
-x = 1
-y = 0
-
-[[points]]
-x = 2
-y = 3
-```
-"""
 function to_toml(data::T; kw...)::String where {T}
     return join([toml_pair(k, v; kw...) for (k, v) in toml_pairs(data; kw...)])
 end
