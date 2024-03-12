@@ -4,21 +4,25 @@ function deser end
 function parse_value end
 
 # Ser
-export to_csv,
+export to_json,
+    to_pretty_json,
+    to_csv,
     to_query,
     to_toml,
     to_xml,
     to_yaml
 
 # De
-export deser_csv,
+export deser_json,
+    deser_csv,
     deser_query,
     deser_toml,
     deser_xml,
     deser_yaml
 
 # Par
-export parse_csv,
+export parse_json,
+    parse_csv,
     parse_query,
     parse_toml,
     parse_xml,
