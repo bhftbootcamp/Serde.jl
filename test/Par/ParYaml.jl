@@ -1,5 +1,7 @@
 # Par/ParYaml
 
+ext = Serde.Ext.YAML()
+
 @testset verbose = true "ParYaml" begin
     @testset "Case №1: Simple YAML" begin
         exp_str = """
@@ -78,7 +80,7 @@
 
     @testset "Case №4: Exceptions tests" begin
         exp_str = "vector: [3,,4]"
-        @test_throws Serde.ParYaml.YamlSyntaxError Serde.parse_yaml(exp_str)
+        @test_throws ext.ParYaml.YamlSyntaxError Serde.parse_yaml(exp_str)
     end
 
     @testset "Case №5: Different Dict type" begin
@@ -87,6 +89,6 @@
         bar: true
         """
         exp_obj = IdDict("foo" => 163, "bar" => true)
-        @test Serde.ParYaml.parse_yaml(exp_str; dict_type = IdDict) == exp_obj
+        @test ext.ParYaml.parse_yaml(exp_str; dict_type = IdDict) == exp_obj
     end
 end
