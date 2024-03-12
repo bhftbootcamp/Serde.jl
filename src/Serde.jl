@@ -43,6 +43,7 @@ include("Ext.jl")
 include("JSON.jl")
 include("CSV.jl")
 include("TOML.jl")
+include("XML.jl")
 include("YAML.jl")
 
 end
