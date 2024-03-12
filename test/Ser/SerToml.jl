@@ -1,5 +1,7 @@
 # Ser/SerToml
 
+ext = Serde.Ext.TOML()
+
 @testset verbose = true "SerToml" begin
     @testset "Case №1: Dict to Toml" begin
         exp_kvs = Dict(
@@ -92,8 +94,8 @@
             uuid::UUID
         end
 
-        Serde.SerToml.ser_name(::Type{Fooo}, ::Val{:val}) = :test
-        Serde.SerToml.ser_value(::Type{Fooo}, ::Val{:bar1}, x::Bar1) = 1
+        ext.SerToml.ser_name(::Type{Fooo}, ::Val{:val}) = :test
+        ext.SerToml.ser_value(::Type{Fooo}, ::Val{:bar1}, x::Bar1) = 1
 
         exp_str = """
         test = 100
