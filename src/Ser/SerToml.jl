@@ -3,6 +3,11 @@ module SerToml
 export to_toml
 
 using Dates
+import ..ser_name,
+    ..ser_value,
+    ..ser_type,
+    ..ignore_null,
+    ..ignore_field
 
 struct TomlSerializationError <: Exception
     message::String
@@ -139,15 +144,9 @@ function toml_pairs(val::AbstractDict; kw...)
     return sort([(k, v) for (k, v) in val], by = x -> !issimple(x[2]))
 end
 
-(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
-(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
-(ser_type(::Type{T}, v::V)::V) where {T,V} = v
-
 isnull(::Any) = false
 isnull(v::Missing)::Bool = true
 isnull(v::Nothing)::Bool = true
-
-(ignore_null(::Type{T})::Bool) where {T} = true
 
 function toml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
@@ -155,7 +154,7 @@ function toml_pairs(val::T; kw...) where {T}
     for field in fieldnames(T)
         k = ser_name(T, Val(field))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if ignore_null(T) && isnull(v)
+        if (isnull(v) || ignore_field(T, Val(field), v))
             continue
         end
         push!(kv, (k, v))

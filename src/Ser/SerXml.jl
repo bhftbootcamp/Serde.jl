@@ -3,6 +3,11 @@ module SerXml
 export to_xml
 
 using Dates
+import ..ser_name,
+    ..ser_value,
+    ..ser_type,
+    ..ignore_null,
+    ..ignore_field
 
 const CONTENT_WORD = "_"
 
@@ -74,23 +79,23 @@ xml_key(val::Symbol; kw...)::String = xml_key(string(val); kw...)
 # pair
 
 function xml_pair(key, val::AbstractString; level::Int64, kw...)::String
-    return shift(level) * 
-            "<" * xml_key(key; kw...) * ">" * 
-                xml_value(val) * 
+    return shift(level) *
+            "<" * xml_key(key; kw...) * ">" *
+                xml_value(val) *
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
 function xml_pair(key, val::Symbol; level::Int64, kw...)::String
     return shift(level) *
-            "<" * xml_key(key; kw...) * ">" * 
-                xml_value(val) * 
+            "<" * xml_key(key; kw...) * ">" *
+                xml_value(val) *
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
 function xml_pair(key, val::Number; level::Int64, kw...)::String
-    return shift(level) * 
-            "<" * xml_key(key; kw...) * ">" * 
-                xml_value(val) * 
+    return shift(level) *
+            "<" * xml_key(key; kw...) * ">" *
+                xml_value(val) *
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
@@ -99,10 +104,10 @@ function xml_pair(key, val::AbstractVector{T}; level::Int64, kw...)::String wher
     for el in val
         if issimple(el)
             push!(
-                buf, 
-                shift(level) * 
-                "<" * xml_key(key; kw...) * ">" * 
-                    xml_value(el) * 
+                buf,
+                shift(level) *
+                "<" * xml_key(key; kw...) * ">" *
+                    xml_value(el) *
                 "</" * xml_key(key; kw...) * ">" * "\n",
             )
         else
@@ -116,10 +121,10 @@ function xml_pair(key, val::AbstractDict; level::Int64, kw...)::String
     tags, cont = nodes(val), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
-    elseif isempty(cont) 
-        shift(level) * 
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * 
-            "\n" * _to_xml(tags; level = level + 1) * shift(level) * 
+    elseif isempty(cont)
+        shift(level) *
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
+            "\n" * _to_xml(tags; level = level + 1) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
@@ -133,29 +138,23 @@ function xml_pairs(val::AbstractDict; kw...)
     return [(k, v) for (k, v) in val]
 end
 
-(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
-(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
-(ser_type(::Type{T}, v::V)::V) where {T,V} = v
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
-
-(ignore_null(::Type{T})::Bool) where {T} = true
 
 function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
     tags, cont = nodes(val), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
     elseif isempty(cont)
-        shift(level) * 
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" * 
-            _to_xml(tags; level = level + 1) * shift(level) * 
+        shift(level) *
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" *
+            _to_xml(tags; level = level + 1) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
-        shift(level) * 
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * 
-            cont * _to_xml(tags; level = level + 1) * 
+        shift(level) *
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
+            cont * _to_xml(tags; level = level + 1) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end

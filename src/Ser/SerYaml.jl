@@ -3,6 +3,11 @@ module SerYaml
 export to_yaml
 
 using Dates
+import ..ser_name,
+    ..ser_value,
+    ..ser_type,
+    ..ignore_null,
+    ..ignore_field
 
 const YAML_NULL = "null"
 const INDENT = "  "
@@ -186,19 +191,10 @@ function yaml_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, ski
     return print(buf)
 end
 
-(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
-(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
-(ser_type(::Type{T}, v::V)::V) where {T,V} = v
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
 (isnull(v::Float64)::Bool) = isnan(v) || isinf(v)
-
-(ignore_null(::Type{T})::Bool) where {T} = false
-
-(ignore_field(::Type{T}, ::Val{x})::Bool) where {T,x} = false
-(ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ignore_field(T, k)
 
 function yaml_value!(buf::IOBuffer, f::Function, val::T; l::Int64, skip_lf::Bool = false, kw...)::Nothing where {T}
     next = iterate(f(T))

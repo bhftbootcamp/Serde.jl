@@ -16,9 +16,9 @@ function chain(::Val{Symbol("@de_name")}, struct_name::Symbol, field_key::String
     end
 end
 
-function chain(::Val{Symbol("@ser_json_name")}, struct_name::Symbol, field_key::String, ser_custom_name::Any)::Expr
+function chain(::Val{Symbol("@ser_name")}, struct_name::Symbol, field_key::String, ser_custom_name::Any)::Expr
     return quote
-        function Serde.SerJson.ser_name(::Type{T}, ::Val{Symbol($field_key)}) where {T<:$struct_name}
+        function Serde.ser_name(::Type{T}, ::Val{Symbol($field_key)}) where {T<:$struct_name}
             return $ser_custom_name
         end
     end
@@ -31,7 +31,7 @@ Helper macro that implements user friendly configuration of the (de)serializatio
 Available `decorators`:
 - `@default_value`: Used to define default values for fields of declared type (see [`Serde.default_value`](@ref)).
 - `@de_name`: Used to defines an alias names for fields of declared type (see [`Serde.custom_name`](@ref)).
-- `@ser_json_name`: Used to define custom output name for fields of declared type (see [`Serde.ser_name`](@ref ser_name)).
+- `@ser_name`: Used to define custom output name for fields of declared type (see [`Serde.ser_name`](@ref ser_name)).
 Next, the syntax template looks like this:
 ```julia
 @serde @decor_1 @decor_2 ... struct
@@ -46,7 +46,7 @@ Decorator values belonging to a certain field must be separated by the `|` symbo
 
 ## Examples
 ```julia
-@serde @default_value @de_name @ser_json_name mutable struct Foo
+@serde @default_value @de_name @ser_name mutable struct Foo
     bar::Int64 | 1 | "first" | "bar"
     baz::Int64 | 2 | "baz"   | "second"
 end
@@ -62,7 +62,7 @@ Also, now names from the `@de_name` column will be used for deserialization.
 julia> deser_json(Foo, \"\"\"{"first": 30}\"\"\")
 Foo(30, 2)
 ```
-Names from the `@ser_json_name` column will be used as output names for serialization.
+Names from the `@ser_name` column will be used as output names for serialization.
 ```julia-repl
 julia> to_json(Foo(40, 50)) |> print
 {"bar":40,"second":50}

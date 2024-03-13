@@ -2,12 +2,14 @@ module SerQuery
 
 export to_query
 
+import ..ser_name,
+    ..ser_value,
+    ..ser_type,
+    ..ignore_null,
+    ..ignore_field
+
 function _bytes end
 function escape_query end
-
-(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
-(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
-(ser_type(::Type{T}, v::V)::V) where {T,V} = v
 
 (ignore_null(::Type{T})::Bool) where {T} = true
 
@@ -94,7 +96,7 @@ end
 function iter_query(f::Function, query::Q)::Nothing where {Q}
     for field in fieldnames(Q)
         v = ser_type(Q, ser_value(Q, Val(field), getfield(query, field)))
-        if ignore_null(Q) && isnull(v)
+        if ignore_null(Q) && isnull(v) || ignore_field(Q, Val(field), v)
             continue
         end
         field = string(ser_name(Q, Val(field)))
