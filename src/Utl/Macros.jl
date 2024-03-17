@@ -169,7 +169,7 @@ function to_pascal_case(field::String)::String
     return join(titlecase(w) for w in split(field, "_"))
 end
 
-macro pascal_case(T)
+macro serde_pascal_case(T)
     return serde_custom_names(T, field -> Symbol(to_pascal_case(string(field))))
 end
 
@@ -177,7 +177,7 @@ function to_camel_case(field::String)::String
     return split(field, "_")[1] * join(titlecase(w) for w in split(field, "_")[2:end])
 end
 
-macro camel_case(T)
+macro serde_camel_case(T)
     return serde_custom_names(T, field -> Symbol(to_camel_case(string(field))))
 end
 
@@ -185,6 +185,6 @@ function to_kebab_case(field::String)::String
     return join([lowercase(w) for w in split(field, "_")], "-")
 end
 
-macro kebab_case(T)
+macro serde_kebab_case(T)
     return serde_custom_names(T, field -> Symbol(to_kebab_case(string(field))))
 end

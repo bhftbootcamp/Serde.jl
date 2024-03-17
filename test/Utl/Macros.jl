@@ -135,7 +135,7 @@
             is_active::Bool
         end
 
-        Serde.@pascal_case(PascalCase)
+        @serde_pascal_case(PascalCase)
 
         deserialized = Serde.deser_json(
             PascalCase,
@@ -152,7 +152,7 @@
             subscription_date::Date
         end
 
-        Serde.@camel_case(CamelCase)
+        @serde_camel_case(CamelCase)
         Serde.deser(::Type{CamelCase}, ::Type{Date}, v::String) = Date(v)
 
         deserialized = Serde.deser_json(
@@ -170,7 +170,7 @@
             category_name::String
         end
 
-        Serde.@kebab_case(KebabCase)
+        @serde_kebab_case(KebabCase)
 
         deserialized = Serde.deser_json(
             KebabCase,
