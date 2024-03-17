@@ -6,8 +6,8 @@ using Dates
 import ..ser_name,
     ..ser_value,
     ..ser_type,
-    ..ignore_null,
-    ..ignore_field
+    ..ser_ignore_null,
+    ..ser_ignore_field
 
 struct TomlSerializationError <: Exception
     message::String
@@ -154,7 +154,7 @@ function toml_pairs(val::T; kw...) where {T}
     for field in fieldnames(T)
         k = ser_name(T, Val(field))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if (isnull(v) || ignore_field(T, Val(field), v))
+        if (isnull(v) || ser_ignore_field(T, Val(field), v))
             continue
         end
         push!(kv, (k, v))

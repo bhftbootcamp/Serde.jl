@@ -1,24 +1,24 @@
 # Utl/Macros
 
-function chain(::Val{Symbol("@default_value")}, struct_name::Symbol, field_key::String, default_value::Any)::Expr
+function chain(::Val{Symbol("@default_value")}, struct_name::Symbol, field_name::String, default_value::Any)::Expr
     return quote
-        function Serde.default_value(::Type{T}, ::Val{Symbol($field_key)}) where {T<:$struct_name}
+        function Serde.default_value(::Type{T}, ::Val{Symbol($field_name)}) where {T<:$struct_name}
             return $default_value
         end
     end
 end
 
-function chain(::Val{Symbol("@de_name")}, struct_name::Symbol, field_key::String, de_custom_name::Any)::Expr
+function chain(::Val{Symbol("@de_name")}, struct_name::Symbol, field_name::String, de_custom_name::Any)::Expr
     return quote
-        function Serde.custom_name(::Type{T}, ::Val{Symbol($field_key)}) where {T<:$struct_name}
+        function Serde.custom_name(::Type{T}, ::Val{Symbol($field_name)}) where {T<:$struct_name}
             return $de_custom_name
         end
     end
 end
 
-function chain(::Val{Symbol("@ser_name")}, struct_name::Symbol, field_key::String, ser_custom_name::Any)::Expr
+function chain(::Val{Symbol("@ser_name")}, struct_name::Symbol, field_name::String, ser_custom_name::Any)::Expr
     return quote
-        function Serde.ser_name(::Type{T}, ::Val{Symbol($field_key)}) where {T<:$struct_name}
+        function Serde.ser_name(::Type{T}, ::Val{Symbol($field_name)}) where {T<:$struct_name}
             return $ser_custom_name
         end
     end
@@ -146,4 +146,45 @@ function extract_field_symbols(field_expr::Expr)::Expr
         field_expr = field_expr.args[2]
     end
     return field_expr
+end
+
+function serde_custom_names(T, name_case)
+    esc(quote
+        if !isa($T, DataType)
+            error("Transformation expects a ::Type")
+        end
+        struct_name = $T
+        for field_name in fieldnames($T)
+            custom_name = $name_case(field_name)
+            eval(:(
+                function Serde.custom_name(::Type{T}, ::Val{$(QuoteNode(field_name))}) where {T<:$(struct_name)}
+                    return $(QuoteNode(custom_name))
+                end
+            ))
+        end
+    end)
+end
+
+function to_pascal_case(field::String)::String
+    return join(titlecase(w) for w in split(field, "_"))
+end
+
+macro pascal_case(T)
+    return serde_custom_names(T, field -> Symbol(to_pascal_case(string(field))))
+end
+
+function to_camel_case(field::String)::String
+    return split(field, "_")[1] * join(titlecase(w) for w in split(field, "_")[2:end])
+end
+
+macro camel_case(T)
+    return serde_custom_names(T, field -> Symbol(to_camel_case(string(field))))
+end
+
+function to_kebab_case(field::String)::String
+    return join([lowercase(w) for w in split(field, "_")], "-")
+end
+
+macro kebab_case(T)
+    return serde_custom_names(T, field -> Symbol(to_kebab_case(string(field))))
 end

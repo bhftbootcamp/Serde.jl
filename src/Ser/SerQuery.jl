@@ -5,13 +5,11 @@ export to_query
 import ..ser_name,
     ..ser_value,
     ..ser_type,
-    ..ignore_null,
-    ..ignore_field
+    ..ser_ignore_null,
+    ..ser_ignore_field
 
 function _bytes end
 function escape_query end
-
-(ignore_null(::Type{T})::Bool) where {T} = true
 
 isnull(::Any)::Bool = false
 isnull(v::Missing)::Bool = true
@@ -96,7 +94,7 @@ end
 function iter_query(f::Function, query::Q)::Nothing where {Q}
     for field in fieldnames(Q)
         v = ser_type(Q, ser_value(Q, Val(field), getfield(query, field)))
-        if ignore_null(Q) && isnull(v) || ignore_field(Q, Val(field), v)
+        if ser_ignore_null(Q) && isnull(v) || ser_ignore_field(Q, Val(field), v)
             continue
         end
         field = string(ser_name(Q, Val(field)))

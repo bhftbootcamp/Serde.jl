@@ -6,8 +6,8 @@ using Dates
 import ..ser_name,
     ..ser_value,
     ..ser_type,
-    ..ignore_null,
-    ..ignore_field
+    ..ser_ignore_null,
+    ..ser_ignore_field
 
 const YAML_NULL = "null"
 const INDENT = "  "
@@ -204,7 +204,7 @@ function yaml_value!(buf::IOBuffer, f::Function, val::T; l::Int64, skip_lf::Bool
         field, index = next
         k = ser_name(T, Val(field))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if ignore_null(T) && isnull(v) || ignore_field(T, Val(field), v)
+        if ser_ignore_null(T) && isnull(v) || ser_ignore_field(T, Val(field), v)
             next = iterate(f(T), index)
             ignore_count += 1
             continue

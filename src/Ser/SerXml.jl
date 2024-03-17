@@ -6,8 +6,8 @@ using Dates
 import ..ser_name,
     ..ser_value,
     ..ser_type,
-    ..ignore_null,
-    ..ignore_field
+    ..ser_ignore_null,
+    ..ser_ignore_field
 
 const CONTENT_WORD = "_"
 
@@ -164,7 +164,7 @@ function xml_pairs(val::T; kw...) where {T}
     for field in fieldnames(T)
         k = String(ser_name(T, Val(field)))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if (ignore_null(T) && isnull(v)) || k == CONTENT_WORD
+        if (ser_ignore_null(T) && isnull(v)) || k == CONTENT_WORD
             continue
         end
         push!(kv, (k, v))
