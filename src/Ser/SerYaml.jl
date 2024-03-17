@@ -3,6 +3,7 @@ module SerYaml
 export to_yaml
 
 using Dates
+using ..Serde
 
 const YAML_NULL = "null"
 const INDENT = "  "
@@ -197,7 +198,7 @@ end
 
 (ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = Serde.ser_ignore_null(T)
+(ser_ignore_null(::Type{T})::Bool) where {T} = false
 
 function yaml_value!(buf::IOBuffer, f::Function, val::T; l::Int64, skip_lf::Bool = false, kw...)::Nothing where {T}
     next = iterate(f(T))

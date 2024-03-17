@@ -6,7 +6,6 @@
 
 (ser_ignore_field(::Type{T}, ::Val{x})::Bool) where {T,x} = false
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = true
 
 include("SerCsv.jl")
 using .SerCsv

@@ -125,7 +125,7 @@ end
     @testset "Case №3: Ignore null" begin
         abstract type AbstractQuery_3 <: Comparable end
 
-        (Serde.SerQuery.ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_3} = true
+        (Serde.SerQuery.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_3} = true
 
         Base.@kwdef struct QueryFoo3_1 <: AbstractQuery_3
             x::String

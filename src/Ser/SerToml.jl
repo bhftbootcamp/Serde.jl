@@ -3,6 +3,7 @@ module SerToml
 export to_toml
 
 using Dates
+using ..Serde
 
 struct TomlSerializationError <: Exception
     message::String

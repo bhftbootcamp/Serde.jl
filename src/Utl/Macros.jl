@@ -8,18 +8,18 @@ function chain(::Val{Symbol("@default_value")}, struct_name::Symbol, field_name:
     end
 end
 
-function chain(::Val{Symbol("@de_name")}, struct_name::Symbol, field_name::String, de_custom_name::Any)::Expr
+function chain(::Val{Symbol("@de_name")}, struct_name::Symbol, field_name::String, de_custom_name::String)::Expr
     return quote
         function Serde.custom_name(::Type{T}, ::Val{Symbol($field_name)}) where {T<:$struct_name}
-            return $de_custom_name
+            return Symbol($de_custom_name)
         end
     end
 end
 
-function chain(::Val{Symbol("@ser_name")}, struct_name::Symbol, field_name::String, ser_custom_name::Any)::Expr
+function chain(::Val{Symbol("@ser_name")}, struct_name::Symbol, field_name::String, ser_custom_name::String)::Expr
     return quote
         function Serde.ser_name(::Type{T}, ::Val{Symbol($field_name)}) where {T<:$struct_name}
-            return $ser_custom_name
+            return Symbol($ser_custom_name)
         end
     end
 end

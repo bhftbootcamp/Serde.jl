@@ -2,6 +2,8 @@ module SerQuery
 
 export to_query
 
+using ..Serde
+
 function _bytes end
 function escape_query end
 
@@ -91,7 +93,7 @@ end
 
 (ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = Serde.ser_ignore_null(T)
+(ser_ignore_null(::Type{T})::Bool) where {T} = true
 
 function iter_query(f::Function, query::Q)::Nothing where {Q}
     for field in fieldnames(Q)

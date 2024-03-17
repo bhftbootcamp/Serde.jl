@@ -3,6 +3,7 @@ module SerXml
 export to_xml
 
 using Dates
+using ..Serde
 
 const CONTENT_WORD = "_"
 
@@ -160,6 +161,7 @@ end
 
 (ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = true
 
 function xml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
