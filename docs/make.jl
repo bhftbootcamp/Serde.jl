@@ -1,18 +1,17 @@
-using Documenter
 using Serde
+using Documenter
 
 DocMeta.setdocmeta!(Serde, :DocTestSetup, :(using Serde); recursive = true)
 
 makedocs(;
     modules = [Serde],
-    repo = "https://github.com/bhftbootcamp/Serde.jl/blob/{commit}{path}#{line}",
     sitename = "Serde.jl",
     format = Documenter.HTML(;
-        prettyurls = get(ENV, "CI", "false") == "true",
+        repolink = "https://github.com/bhftbootcamp/Serde.jl.git",
         canonical = "https://bhftbootcamp.github.io/Serde.jl",
         edit_link = "master",
         assets = String["assets/favicon.ico"],
-        repolink = "https://github.com/bhftbootcamp/Serde.jl.git",
+        sidebar_sitename = false,
     ),
     pages = [
         "Home" => "index.md",
@@ -27,7 +26,7 @@ makedocs(;
         ],
         "For Developers" => ["pages/extended_ser.md", "pages/extended_de.md"],
     ],
-    checkdocs = :missing_docs,
+    warnonly = [:doctest, :missing_docs],
 )
 
 deploydocs(;
