@@ -30,4 +30,8 @@ makedocs(;
     checkdocs = :missing_docs,
 )
 
-deploydocs(; repo = "github.com/bhftbootcamp/Serde.jl", devbranch = "master")
+deploydocs(;
+    repo = "github.com/bhftbootcamp/Serde.jl",
+    devbranch = "master",
+    push_preview = true,
+)
