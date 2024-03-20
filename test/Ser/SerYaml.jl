@@ -72,7 +72,7 @@
             num::Int64
         end
 
-        Serde.SerYaml.ser_ignore_field(::Type{YamlFoo4_1}, ::Val{:str}) = true
+        Serde.SerYaml.ignore_field(::Type{YamlFoo4_1}, ::Val{:str}) = true
 
         exp_obj = YamlFoo4_1("test", 10)
         exp_str = "num: 10\n"
@@ -83,7 +83,7 @@
             num::Int64
         end
 
-        Serde.SerYaml.ser_ignore_field(::Type{YamlFoo4_2}, ::Val{:num}, v) = v == 0
+        Serde.SerYaml.ignore_field(::Type{YamlFoo4_2}, ::Val{:num}, v) = v == 0
 
         exp_obj = YamlFoo4_2("test", 0)
         exp_str = "str: \"test\"\n"
@@ -189,7 +189,7 @@
             c::Union{Int64,Nothing}
         end
 
-        (Serde.SerYaml.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_7} = true
+        (Serde.SerYaml.ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_7} = true
 
         exp_obj = YamlFoo7_1("test", nothing, nothing)
         exp_str = "x: \"test\"\n"

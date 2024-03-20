@@ -3,7 +3,6 @@ module SerXml
 export to_xml
 
 using Dates
-using ..Serde
 
 const CONTENT_WORD = "_"
 
@@ -75,23 +74,23 @@ xml_key(val::Symbol; kw...)::String = xml_key(string(val); kw...)
 # pair
 
 function xml_pair(key, val::AbstractString; level::Int64, kw...)::String
-    return shift(level) *
-            "<" * xml_key(key; kw...) * ">" *
-                xml_value(val) *
+    return shift(level) * 
+            "<" * xml_key(key; kw...) * ">" * 
+                xml_value(val) * 
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
 function xml_pair(key, val::Symbol; level::Int64, kw...)::String
     return shift(level) *
-            "<" * xml_key(key; kw...) * ">" *
-                xml_value(val) *
+            "<" * xml_key(key; kw...) * ">" * 
+                xml_value(val) * 
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
 function xml_pair(key, val::Number; level::Int64, kw...)::String
-    return shift(level) *
-            "<" * xml_key(key; kw...) * ">" *
-                xml_value(val) *
+    return shift(level) * 
+            "<" * xml_key(key; kw...) * ">" * 
+                xml_value(val) * 
             "</" * xml_key(key; kw...) * ">" * "\n"
 end
 
@@ -100,10 +99,10 @@ function xml_pair(key, val::AbstractVector{T}; level::Int64, kw...)::String wher
     for el in val
         if issimple(el)
             push!(
-                buf,
-                shift(level) *
-                "<" * xml_key(key; kw...) * ">" *
-                    xml_value(el) *
+                buf, 
+                shift(level) * 
+                "<" * xml_key(key; kw...) * ">" * 
+                    xml_value(el) * 
                 "</" * xml_key(key; kw...) * ">" * "\n",
             )
         else
@@ -117,10 +116,10 @@ function xml_pair(key, val::AbstractDict; level::Int64, kw...)::String
     tags, cont = nodes(val), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
-    elseif isempty(cont)
-        shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            "\n" * _to_xml(tags; level = level + 1) * shift(level) *
+    elseif isempty(cont) 
+        shift(level) * 
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * 
+            "\n" * _to_xml(tags; level = level + 1) * shift(level) * 
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
@@ -134,41 +133,39 @@ function xml_pairs(val::AbstractDict; kw...)
     return [(k, v) for (k, v) in val]
 end
 
+(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
+(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
+(ser_type(::Type{T}, v::V)::V) where {T,V} = v
+
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
+
+(ignore_null(::Type{T})::Bool) where {T} = true
 
 function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
     tags, cont = nodes(val), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
     elseif isempty(cont)
-        shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" *
-            _to_xml(tags; level = level + 1) * shift(level) *
+        shift(level) * 
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" * 
+            _to_xml(tags; level = level + 1) * shift(level) * 
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
-        shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            cont * _to_xml(tags; level = level + 1) *
+        shift(level) * 
+        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * 
+            cont * _to_xml(tags; level = level + 1) * 
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
-
-(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
-(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
-
-(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
-(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = true
 
 function xml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
     for field in fieldnames(T)
         k = String(ser_name(T, Val(field)))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if k == CONTENT_WORD || ser_ignore_null(T) && isnull(v) || ser_ignore_field(T, Val(field), v)
+        if (ignore_null(T) && isnull(v)) || k == CONTENT_WORD
             continue
         end
         push!(kv, (k, v))

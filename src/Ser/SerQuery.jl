@@ -2,10 +2,14 @@ module SerQuery
 
 export to_query
 
-using ..Serde
-
 function _bytes end
 function escape_query end
+
+(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
+(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
+(ser_type(::Type{T}, v::V)::V) where {T,V} = v
+
+(ignore_null(::Type{T})::Bool) where {T} = true
 
 isnull(::Any)::Bool = false
 isnull(v::Missing)::Bool = true
@@ -87,18 +91,10 @@ function iter_query(f::Function, query::AbstractDict)::Nothing
     return nothing
 end
 
-(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
-(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
-
-(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
-(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = true
-
 function iter_query(f::Function, query::Q)::Nothing where {Q}
     for field in fieldnames(Q)
         v = ser_type(Q, ser_value(Q, Val(field), getfield(query, field)))
-        if ser_ignore_null(Q) && isnull(v) || ser_ignore_field(Q, Val(field), v)
+        if ignore_null(Q) && isnull(v)
             continue
         end
         field = string(ser_name(Q, Val(field)))

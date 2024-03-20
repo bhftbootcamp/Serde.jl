@@ -2,5 +2,8 @@
 /docs/ @gryumov
 /src/ @gryumov
 /test/ @gryumov
+/.JuliaFormatter.toml @gryumov
+/.gitignore @gryumov
 /LICENSE @gryumov
 /Project.toml @gryumov
+/README.md @gryumov

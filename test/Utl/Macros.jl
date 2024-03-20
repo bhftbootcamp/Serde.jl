@@ -2,12 +2,12 @@
 
 @testset verbose = true "Macros" begin
     @testset "Case №1: All decorators" begin
-        @serde @default_value @de_name @ser_name mutable struct Foo_def_ser
+        @serde @default_value @de_name @ser_json_name mutable struct Foo_def_ser
             a::Int64 | 1 | "first"  | "a"
             b::Int64 | 2 | "b"      | "second"
         end
 
-        Base.:(==)(l::Foo_def_ser, r::Foo_def_ser) = l.a == r.a && l.b == r.b
+        Base.:(==)(l::Foo_def_ser, r::Foo_def_ser) = l.a == r.a && l.b == r.b 
 
         exp_kvs = Dict{String,Any}()
         exp_obj = Foo_def_ser(1, 2)
@@ -27,12 +27,12 @@
         @test sered == exp_str
     end
 
-    @testset "Case №2: @ser_name @de_name" begin
-        @serde @ser_name @de_name struct Foo_ser_de
+    @testset "Case №2: @ser_json_name @de_name" begin
+        @serde @ser_json_name @de_name struct Foo_ser_de
             a::Int64 | "ser-name" | "a"
             b::Int64 | "b"        | "de-name"
         end
-
+        
         Base.:(==)(l::Foo_ser_de, r::Foo_ser_de) = l.a == r.a && l.b == r.b
 
         exp_kvs = Dict{String,Any}("a" => 11, "de-name" => 12)
@@ -62,8 +62,8 @@
         @test Serde.deser(Foo_de_def, exp_kvs) == exp_obj
     end
 
-    @testset "Case №4: @ser_name @default_value" begin
-        @serde @ser_name @default_value mutable struct Foo_ser_def
+    @testset "Case №4: @ser_json_name @default_value" begin
+        @serde @ser_json_name @default_value mutable struct Foo_ser_def
             a::Int64 | "a"      | 1
             b::Int64 | "second" | 2
         end
@@ -110,8 +110,8 @@
         @test Serde.deser(Foo_de, exp_kvs) == exp_obj
     end
 
-    @testset "Case №7: @ser_name" begin
-        @serde @ser_name mutable struct Foo_ser
+    @testset "Case №7: @ser_json_name" begin
+        @serde @ser_json_name mutable struct Foo_ser
             a::Int64 | "a"
             b::Int64 | "second"
         end
@@ -126,57 +126,5 @@
         exp_str = "{\"a\":19,\"second\":2}"
         sered = Serde.to_json(desered)
         @test sered == exp_str
-    end
-
-    @testset "Case №8: @pascal_case" begin
-        struct PascalCase
-            id::Int64
-            title::String
-            is_active::Bool
-        end
-
-        @serde_pascal_case(PascalCase)
-
-        deserialized = Serde.deser_json(
-            PascalCase,
-            "{\"Id\":42,\"Title\":\"A New Beginning\",\"IsActive\":true}",
-        )
-        expected_obj = PascalCase(42, "A New Beginning", true)
-        @test deserialized == expected_obj
-    end
-
-    @testset "Case №9: @camel_case" begin
-        struct CamelCase
-            user_id::Int64
-            email_address::String
-            subscription_date::Date
-        end
-
-        @serde_camel_case(CamelCase)
-        Serde.deser(::Type{CamelCase}, ::Type{Date}, v::String) = Date(v)
-
-        deserialized = Serde.deser_json(
-            CamelCase,
-            "{\"userId\":85,\"emailAddress\":\"user@example.com\",\"subscriptionDate\":\"2023-09-15\"}",
-        )
-        expected_obj = CamelCase(85, "user@example.com", Date(2023, 9, 15))
-        @test deserialized == expected_obj
-    end
-
-    @testset "Case №10: @kebab_case" begin
-        struct KebabCase
-            product_count::Int64
-            last_purchase_price::Float64
-            category_name::String
-        end
-
-        @serde_kebab_case(KebabCase)
-
-        deserialized = Serde.deser_json(
-            KebabCase,
-            "{\"product-count\":150,\"last-purchase-price\":79.99,\"category-name\":\"Electronics\"}",
-        )
-        expected_obj = KebabCase(150, 79.99, "Electronics")
-        @test deserialized == expected_obj
     end
 end
