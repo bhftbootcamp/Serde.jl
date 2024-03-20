@@ -157,7 +157,7 @@ end
 
 (ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
 (ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)::V) where {T,V} = Serde.ser_type(T, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
 
 (ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
