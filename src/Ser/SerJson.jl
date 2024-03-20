@@ -4,6 +4,7 @@ export to_json
 export to_pretty_json
 
 using Dates
+using ..Serde
 
 const JSON_NULL = "null"
 const INDENT = "  "
@@ -155,19 +156,18 @@ function json_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, kw.
     return print(buf, indent(l - 1), "]")
 end
 
-(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
-(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
-(ser_type(::Type{T}, v::V)::V) where {T,V} = v
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
 (isnull(v::Float64)::Bool) = isnan(v) || isinf(v)
 
-(ignore_null(::Type{T})::Bool) where {T} = false
+(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
+(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
 
-(ignore_field(::Type{T}, ::Val{x})::Bool) where {T,x} = false
-(ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = false
 
 function json_value!(buf::IOBuffer, f::Function, val::T; l::Int64, kw...)::Nothing where {T}
     next = iterate(f(T))
@@ -177,7 +177,7 @@ function json_value!(buf::IOBuffer, f::Function, val::T; l::Int64, kw...)::Nothi
         field, index = next
         k = ser_name(T, Val(field))
         v = ser_type(T, ser_value(T, Val(field), getfield(val, field)))
-        if ignore_null(T) && isnull(v) || ignore_field(T, Val(field), v)
+        if ser_ignore_null(T) && isnull(v) || ser_ignore_field(T, Val(field), v)
             next = iterate(f(T), index)
             ignore_count += 1
             continue

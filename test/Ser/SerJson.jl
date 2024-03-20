@@ -23,7 +23,7 @@
             bytes::Vector{UInt8}
         end
 
-        Serde.SerJson.ser_value(h::JsonFoo, ::Val{:bytes})::String = String(view(h.bytes, 1:length(h.bytes)))
+        Serde.SerJson.ser_value(::Type{JsonFoo}, ::Val{:bytes}, v::Vector{UInt8})::String = String(view(v, 1:length(v)))
 
         fields_1(::Type{JsonFoo}) = (:name,)
         fields_2(::Type{JsonFoo}) = (:name, :date)
@@ -36,7 +36,7 @@
         exp_str = "{\"name\":\"test\",\"date\":\"2022-01-01\"}"
         @test Serde.to_json(fields_2, exp_obj) === exp_str
 
-        exp_str = "{\"name\":\"test\",\"date\":\"2022-01-01\",\"bytes\":[116,101,115,116]}"
+        exp_str = "{\"name\":\"test\",\"date\":\"2022-01-01\",\"bytes\":\"test\"}"
         @test Serde.to_json(exp_obj) === exp_str
     end
 
@@ -128,7 +128,7 @@
             c::Union{Int64,Nothing} = nothing
         end
 
-        (Serde.SerJson.ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_6} = true
+        (Serde.SerJson.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_6} = true
 
         exp_obj = JsonFoo6_1(x = "test")
         exp_str = "{\"x\":\"test\"}"
@@ -243,7 +243,7 @@
             num::Int64
         end
 
-        Serde.SerJson.ignore_field(::Type{IgnoreField}, ::Val{:str}) = true
+        Serde.SerJson.ser_ignore_field(::Type{IgnoreField}, ::Val{:str}) = true
 
         exp_obj = IgnoreField("test", 10)
         exp_str = """{"num":10}"""
@@ -254,7 +254,7 @@
             num::Int64
         end
 
-        Serde.SerJson.ignore_field(::Type{IgnoreField2}, ::Val{:num}, v) = v == 0
+        Serde.SerJson.ser_ignore_field(::Type{IgnoreField2}, ::Val{:num}, v) = v == 0
 
         exp_obj = IgnoreField2("test", 0)
         exp_str = """{"str":"test"}"""
