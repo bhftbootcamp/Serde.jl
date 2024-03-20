@@ -11,7 +11,7 @@ makedocs(;
         prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://bhftbootcamp.github.io/Serde.jl",
         edit_link = "master",
-        assets = String[],
+        assets = String["assets/favicon.ico"],
         repolink = "https://github.com/bhftbootcamp/Serde.jl.git",
     ),
     pages = [
