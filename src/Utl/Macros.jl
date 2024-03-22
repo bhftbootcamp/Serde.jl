@@ -172,10 +172,10 @@ end
 """
     @serde_pascal_case T
 
-Marks all fields of type `T` with custom names corresponding to the Pascal case.
+Marks all fields of type `T` with custom names corresponding to Pascal case.
 
 !!! note
-    Initial field names must match the Snake case.
+    Field names of type `T` must match Snake case.
 
 See also [`Serde.custom_name`](@ref)
 
@@ -202,10 +202,10 @@ end
 """
    @serde_camel_case T
 
-Marks all fields of type `T` with custom names corresponding to the Camel case.
+Marks all fields of type `T` with custom names corresponding to Camel case.
 
 !!! note
-    Initial field names must match the Snake case.
+    Field names of type `T` must match Snake case.
 
 See also [`Serde.custom_name`](@ref)
 
@@ -232,10 +232,10 @@ end
 """
     @serde_kebab_case T
 
-Marks all fields of type `T` with custom names corresponding to the Kebab case.
+Marks all fields of type `T` with custom names corresponding to Kebab case.
 
 !!! note
-    Initial field names must match the Snake case.
+    Field names of type `T` must match Snake case.
 
 See also [`Serde.custom_name`](@ref)
 
