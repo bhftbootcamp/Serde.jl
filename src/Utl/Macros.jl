@@ -169,6 +169,28 @@ function to_pascal_case(field::String)::String
     return join(titlecase(w) for w in split(field, "_"))
 end
 
+"""
+    @serde_pascal_case T
+
+Marks all fields of type `T` with custom names corresponding to the Pascal case.
+
+!!! note
+    Initial field names must match the Snake case.
+
+See also [`Serde.custom_name`](@ref)
+
+## Examples
+```julia-repl
+julia> struct MySnakes
+           red_snake::Int64
+       end
+
+julia> @serde_pascal_case MySnakes
+
+julia> Serde.deser(MySnakes, Dict("RedSnake" => 1))
+MySnakes(1)
+```
+"""
 macro serde_pascal_case(T)
     return serde_custom_names(T, field -> Symbol(to_pascal_case(string(field))))
 end
@@ -177,6 +199,28 @@ function to_camel_case(field::String)::String
     return split(field, "_")[1] * join(titlecase(w) for w in split(field, "_")[2:end])
 end
 
+"""
+   @serde_camel_case T
+
+Marks all fields of type `T` with custom names corresponding to the Camel case.
+
+!!! note
+    Initial field names must match the Snake case.
+
+See also [`Serde.custom_name`](@ref)
+
+## Examples
+```julia-repl
+julia> struct MySnakes
+           forest_snake::Int64
+       end
+
+julia> @serde_camel_case MySnakes
+
+julia> Serde.deser(MySnakes, Dict("forestSnake" => 2))
+MySnakes(2)
+```
+"""
 macro serde_camel_case(T)
     return serde_custom_names(T, field -> Symbol(to_camel_case(string(field))))
 end
@@ -185,6 +229,28 @@ function to_kebab_case(field::String)::String
     return join([lowercase(w) for w in split(field, "_")], "-")
 end
 
+"""
+    @serde_kebab_case T
+
+Marks all fields of type `T` with custom names corresponding to the Kebab case.
+
+!!! note
+    Initial field names must match the Snake case.
+
+See also [`Serde.custom_name`](@ref)
+
+## Examples
+```julia-repl
+julia> struct MySnakes
+           pretty_snake::Int64
+       end
+
+julia> @serde_kebab_case MySnakes
+
+julia> Serde.deser(MySnakes, Dict("pretty-snake" => 3))
+MySnakes(3)
+```
+"""
 macro serde_kebab_case(T)
     return serde_custom_names(T, field -> Symbol(to_kebab_case(string(field))))
 end
