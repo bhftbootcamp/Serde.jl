@@ -11,7 +11,7 @@ makedocs(;
         canonical = "https://bhftbootcamp.github.io/Serde.jl",
         edit_link = "master",
         assets = String["assets/favicon.ico"],
-        sidebar_sitename = false,
+        sidebar_sitename = true,
     ),
     pages = [
         "Home" => "index.md",
