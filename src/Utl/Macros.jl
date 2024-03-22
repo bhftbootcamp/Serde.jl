@@ -200,7 +200,7 @@ function to_camel_case(field::String)::String
 end
 
 """
-   @serde_camel_case T
+    @serde_camel_case T
 
 Marks all fields of type `T` with custom names corresponding to `camelCase`.
 
