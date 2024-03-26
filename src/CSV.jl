@@ -1,4 +1,29 @@
-import ..Ext
+module CSV
+
+import ..Serde
+
+export to_csv,
+       deser_csv,
+       parse_csv
+
+function err()
+    error("""CSV extension isn't loaded, please ensure that the 'CSV' package is imported
+          into your environment""")
+end
+
+"""
+    CSVSyntaxError <: Exception
+
+Exception thrown when a [`parse_csv`](@ref) fails due to incorrect CSV syntax or any underlying error that occurs during parsing.
+
+## Fields
+- `message::String`: The error message.
+- `exception::Exception`: The catched exception.
+"""
+struct CSVSyntaxError <: Exception
+    message::String
+    exception::Exception
+end
 
 """
     to_csv(data::Vector{T}; kw...) -> String
@@ -67,8 +92,8 @@ a,1
 b,2
 ```
 """
-function to_csv(args...; kwargs...)
-    Ext.CSV().to_csv(args...; kwargs...)
+function to_csv()
+    err()
 end
 
 """
@@ -98,8 +123,8 @@ julia> deser_csv(Data, csv)
  Data(2, "Benny", 82.0)
 ```
 """
-function deser_csv(args...; kwargs...)
-    Ext.CSV().deser_csv(args...; kwargs...)
+function deser_csv()
+    err()
 end
 
 """
@@ -127,6 +152,8 @@ julia> parse_csv(csv)
  (id = "2", name = "Benny", grade = "82.0")
 ```
 """
-function parse_csv(args...; kwargs...) 
-    Ext.CSV().parse_csv(args...; kwargs...)
+function parse_csv() 
+    err()
+end
+
 end

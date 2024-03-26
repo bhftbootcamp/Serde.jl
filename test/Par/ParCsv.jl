@@ -1,7 +1,5 @@
 # Par/ParCsv
 
-ext = Serde.Ext.CSV()
-
 @testset verbose = true "ParCsv" begin
     @testset "Case №1: Normal CSV Parsing" begin
         exp_str = """
@@ -141,6 +139,6 @@ ext = Serde.Ext.CSV()
         "Gerty",     "Gramma",     "567-89-0123", 41.0,    80.0,    60.0,    40.0,    44.0,   "C"
         "Heffalump", "Harvey",     "632-79-9439", 30.0,     1.0,    20.0,    30.0,    40.0,   "C"\
         """ * "&/%"
-        @test_throws ext.ParCsv.CSVSyntaxError Serde.parse_csv(exp_str)
+        @test_throws Serde.CSV.CSVSyntaxError Serde.parse_csv(exp_str)
     end
 end

@@ -1,8 +1,8 @@
 module SerCsv
 
-export to_csv
-
+using Dates
 import Serde.to_flatten
+import Serde.CSV.to_csv
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
