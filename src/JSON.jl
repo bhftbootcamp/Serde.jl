@@ -1,4 +1,43 @@
-import ..Ext
+module JSON
+
+import ..Serde
+
+export to_json,
+       to_pretty_json,
+       deser_json,
+       parse_json
+
+function err_JSON()
+    error("""JSON extension isn't loaded, please ensure that the 'JSON' package is imported
+          into your environment""")
+end
+
+(isnull(::Any)::Bool) = false
+(isnull(v::Missing)::Bool) = true
+(isnull(v::Nothing)::Bool) = true
+(isnull(v::Float64)::Bool) = isnan(v) || isinf(v)
+
+(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
+(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
+
+(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = false
+
+"""
+    JsonSyntaxError <: Exception
+
+Exception thrown when a [`parse_json`](@ref) fails due to incorrect JSON syntax or any underlying error that occurs during parsing.
+
+## Fields
+- `message::String`: The error message.
+- `exception::Exception`: The catched exception.
+"""
+struct JsonSyntaxError <: Exception
+    message::String
+    exception::Exception
+end
 
 """
     to_json([f::Function], data) -> String
@@ -69,8 +108,8 @@ julia> to_json(x -> (:field, :simple_field), ManyFields(1, 2.0, "a", [true, fals
 {"field":1,"simple_field":"a"}
 ```
 """
-function to_json(args...; kwargs...)
-    Ext.JSON().to_json(args...; kwargs...)
+function to_json()
+    err_JSON()
 end
 
 """
@@ -108,8 +147,8 @@ julia> to_pretty_json(Person(person_info, Pet("Buddy", 5))) |> print
 }
 ```
 """
-function to_pretty_json(args...; kwargs...)
-    Ext.JSON().to_pretty_json(args...; kwargs...)
+function to_pretty_json()
+    err_JSON()
 end
 
 """
@@ -137,8 +176,8 @@ julia> deser_json(Data, json)
 Data(100, "json", Record(100.0))
 ```
 """
-function deser_json(args...; kwargs...)
-    Ext.JSON().deser_json(args...; kwargs...)
+function deser_json()
+    err_JSON()
 end
 
 """
@@ -171,6 +210,8 @@ Dict{String, Any} with 3 entries:
   "dictionary" => Dict{String, Any}("string"=>"123")
 ```
 """
-function parse_json(args...; kwargs...)
-    Ext.JSON().parse_json(args...; kwargs...)
+function parse_json()
+    err_JSON()
+end
+
 end
