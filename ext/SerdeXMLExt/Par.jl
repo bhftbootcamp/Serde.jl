@@ -1,27 +1,7 @@
 module ParXml
 
-export XmlSyntaxError
-export parse_xml
-
 using EzXML
-
-"""
-    XmlSyntaxError <: Exception
-
-Exception thrown when a [`parse_xml`](@ref) fails due to incorrect XML syntax or any underlying error that occurs during parsing.
-
-## Fields
-- `message::String`: The error message.
-- `exception::Exception`: The exception that was caught.
-"""
-struct XmlSyntaxError <: Exception
-    message::String
-    exception::Union{Exception,EzXML.XMLError}
-end
-
-function Base.show(io::IO, e::XmlSyntaxError)
-    return print(io, e.message, ", caused by: ", e.exception)
-end
+import Serde
 
 function _xml2dict(xml::AbstractString; kw...)
     doc = EzXML.parsexml(xml)
@@ -63,16 +43,16 @@ function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
     return xml_dict
 end
 
-function parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
+function Serde.XML.parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
         _xml2dict(x; dict_type = dict_type, kw...)
     catch e
-        throw(XmlSyntaxError("invalid XML syntax", e))
+        throw(Serde.XML.XmlSyntaxError("invalid XML syntax", e))
     end
 end
 
-function parse_xml(x::Vector{UInt8}; kw...)
-    return parse_xml(unsafe_string(pointer(x), length(x)); kw...)
+function Serde.XML.parse_xml(x::Vector{UInt8}; kw...)
+    return Serde.XML.parse_xml(unsafe_string(pointer(x), length(x)); kw...)
 end
 
 end

@@ -1,4 +1,46 @@
-import ..Ext
+module XML
+
+import ..Serde
+
+export to_xml,
+       deser_xml,
+       parse_xml
+
+function err()
+    error("""XML extension isn't loaded, please ensure that the 'EzXML' package is imported
+          into your environment""")
+end
+
+(isnull(::Any)::Bool) = false
+(isnull(v::Missing)::Bool) = true
+(isnull(v::Nothing)::Bool) = true
+
+(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
+(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
+
+(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = true
+
+
+"""
+    XmlSyntaxError <: Exception
+
+Exception thrown when a [`parse_xml`](@ref) fails due to incorrect XML syntax or any underlying error that occurs during parsing.
+
+## Fields
+- `message::String`: The error message.
+- `exception::Exception`: The exception that was caught.
+"""
+struct XmlSyntaxError <: Exception
+    message::String
+    exception::Any
+end
+
+function Base.show(io::IO, e::XmlSyntaxError)
+    return print(io, e.message, ", caused by: ", e.exception)
+end
 
 """
     deser_xml(::Type{T}, x; kw...) -> T
@@ -116,4 +158,6 @@ julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
 """
 function to_xml(args...; kwargs...)
     Ext.XML().to_xml(args...; kwargs...)
+end
+
 end

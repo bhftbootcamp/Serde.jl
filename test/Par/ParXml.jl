@@ -1,7 +1,5 @@
 # Par/ParXml
 
-ext = Serde.Ext.XML()
-
 @testset verbose = true "ParXml" begin
     @testset "Case №1: XML parse" begin
         exp_str = """
@@ -85,7 +83,7 @@ ext = Serde.Ext.XML()
           <?xml version="1.0" encoding="UTF-8"?>
         </wrong_order>
         """
-        @test_throws ext.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
 
         exp_str = """
         <root>
@@ -93,7 +91,7 @@ ext = Serde.Ext.XML()
           <unclosed_tag>
         </root>
         """
-        @test_throws ext.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
 
         exp_str = """
         <wrong_order>
@@ -101,7 +99,7 @@ ext = Serde.Ext.XML()
           </wrong_order>
         </tag>
         """
-        @test_throws ext.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
     end
 
     @testset "Case №4: Attributes tests" begin
