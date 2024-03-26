@@ -45,5 +45,6 @@ include("CSV.jl")
 include("TOML.jl")
 include("XML.jl")
 include("YAML.jl")
+using .JSON
 
 end
