@@ -75,8 +75,8 @@ julia> deser_xml(Data, xml)
 Data(100, "xml", Record(100.0))
 ```
 """
-function deser_xml(args...; kwargs...)
-    Ext.XML().deser_xml(args...; kwargs...)
+function deser_xml()
+    err()
 end
 
 """
@@ -112,8 +112,8 @@ Dict{String, Any} with 5 entries:
   "authors" => Dict{String, Any}("author"=>Dict{String, Any}[Dict("lang"=>"en", "_"=>"John Doe"), Dict("lang"=>"es", "_"=>"Juan Pérez")])
 ```
 """
-function parse_xml(args...; kwargs...)
-    Ext.XML().parse_xml(args...; kwargs...)
+function parse_xml()
+    err()
 end
 
 """
@@ -156,8 +156,8 @@ julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
 </xml>
 ```
 """
-function to_xml(args...; kwargs...)
-    Ext.XML().to_xml(args...; kwargs...)
+function to_xml()
+    err()
 end
 
 end
