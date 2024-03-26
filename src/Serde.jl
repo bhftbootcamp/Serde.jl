@@ -44,7 +44,8 @@ include("JSON.jl")
 include("CSV.jl")
 include("TOML.jl")
 include("XML.jl")
-include("YAML.jl")
 using .JSON
+include("YAML.jl")
+using .YAML
 
 end
