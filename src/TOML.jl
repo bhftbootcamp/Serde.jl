@@ -1,4 +1,42 @@
-import ..Ext
+module TOML
+
+import ..Serde
+
+export to_toml,
+       deser_toml,
+       parse_toml
+
+function err()
+    error("""TOML extension isn't loaded, please ensure that the 'TOML' package is imported
+          into your environment""")
+end
+
+isnull(::Any) = false
+isnull(v::Missing)::Bool = true
+isnull(v::Nothing)::Bool = true
+
+(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
+(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
+
+(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+
+"""
+    TomlSyntaxError <: Exception
+
+Exception thrown when a [`parse_toml`](@ref) fails due to incorrect TOML syntax or any underlying error that occurs during parsing.
+
+## Fields
+- `message::String`: The error message.
+- `exception::Exception`: The catched exception.
+"""
+struct TomlSyntaxError <: Exception
+    message::String
+    exception::Exception
+end
+
+Base.show(io::IO, e::TomlSyntaxError) = print(io, e.message)
 
 """
     deser_toml(::Type{T}, x) -> T
@@ -33,8 +71,8 @@ julia> deser_toml(MyPlot, toml)
 MyPlot("line", Point[Point(1, 0), Point(2, 3)])
 ```
 """
-function deser_toml(args...; kwargs...)
-    Ext.TOML().deser_toml(args...; kwargs...)
+function deser_toml()
+    err()
 end
 
 """
@@ -62,8 +100,8 @@ Dict{String, Any} with 3 entries:
   "points" => Any[Dict{String, Any}("y"=>0, "x"=>1), Dict{String, Any}("y"=>3, "x"=>2)]
 ```
 """
-function parse_toml(args...; kwargs...)
-    Ext.TOML().parse_toml(args...; kwargs...)
+function parse_toml()
+    err()
 end
 
 """
@@ -128,6 +166,8 @@ x = 2
 y = 3
 ```
 """
-function to_toml(args...; kwargs...)
-    Ext.TOML().to_toml(args...; kwargs...)
+function to_toml()
+    err()
+end
+
 end
