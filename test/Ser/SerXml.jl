@@ -1,7 +1,5 @@
 # Ser/SerXml
 
-ext = Serde.Ext.XML()
-
 @testset verbose = true "SerXml" begin
     @testset "Case №1: SerXml" begin
         struct BarXml1

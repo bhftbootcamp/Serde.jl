@@ -1,10 +1,10 @@
 module SerXml
 
-export to_xml
-
 using Dates
 using UUIDs
-using ..Serde
+import Serde
+import Serde.XML: isnull, ser_name, ser_type, ser_type, ser_ignore_field, ser_ignore_null,
+    ser_value
 
 const CONTENT_WORD = "_"
 
@@ -137,10 +137,6 @@ function xml_pairs(val::AbstractDict; kw...)
     return [(k, v) for (k, v) in val]
 end
 
-(isnull(::Any)::Bool) = false
-(isnull(v::Missing)::Bool) = true
-(isnull(v::Nothing)::Bool) = true
-
 function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
     tags, cont = nodes(val), content(val)
     return if isempty(tags) && isempty(cont)
@@ -157,14 +153,6 @@ function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
-
-(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
-(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
-
-(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
-(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-(ser_ignore_null(::Type{T})::Bool) where {T} = true
 
 function xml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
@@ -207,7 +195,7 @@ function _to_xml(val::T; level::Int64 = 0, kw...)::String where {T}
     return join([xml_pair(k, v; level, kw...) for (k, v) in xml_pairs(val; level, kw...)])
 end
 
-function to_xml(val::T; key::String = "xml", kw...)::String where {T}
+function Serde.XML.to_xml(val::T; key::String = "xml", kw...)::String where {T}
     return _to_xml(Dict{String,Any}(key => val))
 end
 
