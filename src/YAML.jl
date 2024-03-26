@@ -1,4 +1,43 @@
-import ..Ext
+module YAML
+
+import ..Serde
+
+export to_yaml,
+       deser_yaml,
+       parse_yaml
+
+function err()
+    error("""YAML extension isn't loaded, please ensure that the 'YAML' package is imported
+          into your environment""")
+end
+
+(isnull(::Any)::Bool) = false
+(isnull(v::Missing)::Bool) = true
+(isnull(v::Nothing)::Bool) = true
+(isnull(v::Float64)::Bool) = isnan(v) || isinf(v)
+
+(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
+(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
+(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
+
+(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = false
+
+"""
+    YamlSyntaxError <: Exception
+
+Exception thrown when a [`parse_yaml`](@ref) fails due to incorrect YAML syntax or any underlying error that occurs during parsing.
+
+## Fields
+- `message::String`: The error message.
+- `exception::Exception`: The catched exception.
+"""
+struct YamlSyntaxError <: Exception
+    message::String
+    # This cannot be a `YAML.ParserError`, since that would pull in YAML as dependency...
+    exception::Any
+end
 
 """
     deser_yaml(::Type{T}, x) -> T
@@ -42,8 +81,8 @@ julia> deser_yaml(Server, yaml)
 Server("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict("Kevin" => 1, "George" => 2))
 ```
 """
-function deser_yaml(args...; kwargs...)
-    Ext.YAML().deser_yaml(args...; kwargs...)
+function deser_yaml()
+    err()
 end
 
 """
@@ -91,8 +130,8 @@ Dict{String, Any} with 6 entries:
   "date"       => Date("2024-01-01")
 ```
 """
-function parse_yaml(args...; kwargs...)
-    Ext.YAML().parse_yaml(args...; kwargs...)
+function parse_yaml()
+    err()
 end
 
 """
@@ -173,6 +212,8 @@ field: 1
 simple_field: "a"
 ```
 """
-function to_yaml(args...; kwargs...)
-    Ext.YAML().to_yaml(args...; kwargs...)
+function to_yaml()
+    err()
+end
+
 end
