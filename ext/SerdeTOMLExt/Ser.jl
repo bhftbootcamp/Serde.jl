@@ -1,9 +1,9 @@
 module SerToml
 
-export to_toml
-
 using Dates
-using ..Serde
+using Serde
+import Serde.TOML: isnull, ser_name, ser_type, ser_type, ser_ignore_field,
+    ser_value
 
 struct TomlSerializationError <: Exception
     message::String
@@ -92,7 +92,7 @@ end
 
 function toml_pair(key, val::T; parent_key::String = "", level::Int64 = 0, kw...)::String where {T}
     key = isempty(parent_key) ? toml_key(key) : parent_key * "." * toml_key(key; kw...)
-    return "\n" * indent(level + 1) * "[" * key * "]" * "\n" * to_toml(val; parent_key = key, level = level + 1)
+    return "\n" * indent(level + 1) * "[" * key * "]" * "\n" * Serde.TOML.to_toml(val; parent_key = key, level = level + 1)
 end
 
 function create_simple_vector(key, val::AbstractVector{T}; level::Int64 = 0, kw...) where {T}
@@ -140,17 +140,6 @@ function toml_pairs(val::AbstractDict; kw...)
     return sort([(k, v) for (k, v) in val], by = x -> !issimple(x[2]))
 end
 
-isnull(::Any) = false
-isnull(v::Missing)::Bool = true
-isnull(v::Nothing)::Bool = true
-
-(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
-(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
-
-(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
-(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-
 function toml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
 
@@ -166,69 +155,7 @@ function toml_pairs(val::T; kw...) where {T}
     return sort(kv, by = x -> !issimple(x[2]))
 end
 
-"""
-    to_toml(data) -> String
-
-Passes a dictionary `data` (or custom data structure) for making TOML string.
-
-## Examples
-
-Make TOML string from nested dictionaries.
-
-```julia-repl
-julia> data = Dict(
-           "points" => [
-               Dict("x" => "100", "y" => 200),
-               Dict("x" => 300, "y" => 400),
-           ],
-           "data" => Dict("id" => 321, "price" => 600),
-           "answer" => 42,
-       );
-
-julia> to_toml(data) |> println
-answer = 42
-
-[data]
-price = 600
-id = 321
-
-[[points]]
-y = 200
-x = "100"
-
-[[points]]
-y = 400
-x = 300
-```
-
-Make TOML string from custom data structures.
-
-```julia-repl
-julia> struct Point
-           x::Int64
-           y::Int64
-       end
-
-julia> struct MyPlot
-           tag::String
-           points::Vector{Point}
-       end
-
-julia> myline = MyPlot("line", Point[Point(1, 0), Point(2, 3)]);
-
-julia> to_toml(myline) |> println
-tag = "line"
-
-[[points]]
-x = 1
-y = 0
-
-[[points]]
-x = 2
-y = 3
-```
-"""
-function to_toml(data::T; kw...)::String where {T}
+function Serde.TOML.to_toml(data::T; kw...)::String where {T}
     return join([toml_pair(k, v; kw...) for (k, v) in toml_pairs(data; kw...)])
 end
 

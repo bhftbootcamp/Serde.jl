@@ -139,6 +139,6 @@
         "Gerty",     "Gramma",     "567-89-0123", 41.0,    80.0,    60.0,    40.0,    44.0,   "C"
         "Heffalump", "Harvey",     "632-79-9439", 30.0,     1.0,    20.0,    30.0,    40.0,   "C"\
         """ * "&/%"
-        @test_throws Serde.ParCsv.CSVSyntaxError Serde.parse_csv(exp_str)
+        @test_throws Serde.CSV.CSVSyntaxError Serde.parse_csv(exp_str)
     end
 end

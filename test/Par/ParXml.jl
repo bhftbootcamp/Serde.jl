@@ -83,7 +83,7 @@
           <?xml version="1.0" encoding="UTF-8"?>
         </wrong_order>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
 
         exp_str = """
         <root>
@@ -91,7 +91,7 @@
           <unclosed_tag>
         </root>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
 
         exp_str = """
         <wrong_order>
@@ -99,7 +99,7 @@
           </wrong_order>
         </tag>
         """
-        @test_throws Serde.ParXml.XmlSyntaxError Serde.parse_xml(exp_str)
+        @test_throws Serde.XML.XmlSyntaxError Serde.parse_xml(exp_str)
     end
 
     @testset "Case №4: Attributes tests" begin

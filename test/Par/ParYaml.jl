@@ -78,7 +78,7 @@
 
     @testset "Case №4: Exceptions tests" begin
         exp_str = "vector: [3,,4]"
-        @test_throws Serde.ParYaml.YamlSyntaxError Serde.parse_yaml(exp_str)
+        @test_throws Serde.YAML.YamlSyntaxError Serde.parse_yaml(exp_str)
     end
 
     @testset "Case №5: Different Dict type" begin
@@ -87,6 +87,6 @@
         bar: true
         """
         exp_obj = IdDict("foo" => 163, "bar" => true)
-        @test Serde.ParYaml.parse_yaml(exp_str; dict_type = IdDict) == exp_obj
+        @test Serde.YAML.parse_yaml(exp_str; dict_type = IdDict) == exp_obj
     end
 end
