@@ -41,10 +41,11 @@ include("Ser/Ser.jl")
 include("De/De.jl")
 include("Ext.jl")
 include("JSON.jl")
-include("TOML.jl")
 using .JSON
 include("CSV.jl")
 using .CSV
+include("TOML.jl")
+using .TOML
 include("XML.jl")
 using .XML
 include("YAML.jl")

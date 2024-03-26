@@ -1,10 +1,10 @@
 module SerToml
 
-export to_toml
-
 using Dates
+using Serde
+import Serde.TOML: isnull, ser_name, ser_type, ser_type, ser_ignore_field,
+    ser_value
 using UUIDs
-using ..Serde
 
 struct TomlSerializationError <: Exception
     message::String
@@ -99,7 +99,7 @@ end
 
 function toml_pair(key, val::T; parent_key::String = "", level::Int64 = 0, kw...)::String where {T}
     key = isempty(parent_key) ? toml_key(key) : parent_key * "." * toml_key(key; kw...)
-    return "\n" * indent(level + 1) * "[" * key * "]" * "\n" * to_toml(val; parent_key = key, level = level + 1)
+    return "\n" * indent(level + 1) * "[" * key * "]" * "\n" * Serde.TOML.to_toml(val; parent_key = key, level = level + 1)
 end
 
 function create_simple_vector(key, val::AbstractVector{T}; level::Int64 = 0, kw...) where {T}
@@ -147,17 +147,6 @@ function toml_pairs(val::AbstractDict; kw...)
     return sort([(k, v) for (k, v) in val], by = x -> !issimple(x[2]))
 end
 
-isnull(::Any) = false
-isnull(v::Missing)::Bool = true
-isnull(v::Nothing)::Bool = true
-
-(ser_name(::Type{T}, k::Val{x})::Symbol) where {T,x} = Serde.ser_name(T, k)
-(ser_value(::Type{T}, k::Val{x}, v::V)) where {T,x,V} = Serde.ser_value(T, k, v)
-(ser_type(::Type{T}, v::V)) where {T,V} = Serde.ser_type(T, v)
-
-(ser_ignore_field(::Type{T}, k::Val{x})::Bool) where {T,x} = Serde.ser_ignore_field(T, k)
-(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
-
 function toml_pairs(val::T; kw...) where {T}
     kv = Tuple[]
 
@@ -173,7 +162,7 @@ function toml_pairs(val::T; kw...) where {T}
     return sort(kv, by = x -> !issimple(x[2]))
 end
 
-function to_toml(data::T; kw...)::String where {T}
+function Serde.TOML.to_toml(data::T; kw...)::String where {T}
     return join([toml_pair(k, v; kw...) for (k, v) in toml_pairs(data; kw...)])
 end
 
