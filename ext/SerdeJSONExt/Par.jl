@@ -9,7 +9,7 @@ function Serde.JSON.parse_json(x::S; dict_type::Type{D} = Dict{String,Any}, kw..
     try
         JSON.parse(x; dicttype = dict_type, kw...)
     catch e
-        throw(JsonSyntaxError("invalid JSON syntax", e))
+        throw(Serde.JSON.JsonSyntaxError("invalid JSON syntax", e))
     end
 end
 
