@@ -296,7 +296,7 @@ field: 1
 simple_field: "a"
 ```
 """
-function to_yaml(x...; kw...)::String
+function Serde.to_yaml(x...; kw...)::String
     buf = IOBuffer()
     yaml_value!(buf, x...; l = 0, skip_lf = true, kw...)
     print(buf, "\n")

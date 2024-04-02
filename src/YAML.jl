@@ -81,7 +81,9 @@ julia> deser_yaml(Server, yaml)
 Server("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict("Kevin" => 1, "George" => 2))
 ```
 """
-function deser_yaml() end
+function deser_yaml()
+    err()
+end
 
 """
     parse_yaml(x::AbstractString; kw...) -> Dict{String,Any}
@@ -128,7 +130,9 @@ Dict{String, Any} with 6 entries:
   "date"       => Date("2024-01-01")
 ```
 """
-function parse_yaml() end
+function parse_yaml()
+    err()
+end
 
 """
     to_yaml([f::Function], data) -> String
@@ -208,6 +212,8 @@ field: 1
 simple_field: "a"
 ```
 """
-function to_yaml() end
+function to_yaml()
+    err()
+end
 
 end
