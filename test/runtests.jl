@@ -1,8 +1,9 @@
 # runtests
 
 using Serde
-using Test, Dates, NanoDates
+using Test, Dates, NanoDates, BSON
 
+include("Ser/SerBson.jl")
 include("Par/Par.jl")
 include("Ser/Ser.jl")
 include("Utl/Macros.jl")
