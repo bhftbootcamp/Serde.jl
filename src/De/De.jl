@@ -106,3 +106,6 @@ using .DeXml
 
 include("DeYaml.jl")
 using .DeYaml
+
+include("DeBson.jl")
+using .DeBson
