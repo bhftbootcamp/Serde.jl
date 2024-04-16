@@ -7,7 +7,7 @@ makedocs(;
     modules = [Serde],
     sitename = "Serde.jl",
     format = Documenter.HTML(;
-        repolink = "https://github.com/bhftbootcamp/Serde.jl.git",
+        repolink = "https://github.com/bhftbootcamp/Serde.jl",
         canonical = "https://bhftbootcamp.github.io/Serde.jl",
         edit_link = "master",
         assets = String["assets/favicon.ico"],
