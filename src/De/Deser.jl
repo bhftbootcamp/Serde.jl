@@ -243,11 +243,11 @@ end
 # to NullType
 
 function deser(::Type{T}, data::D)::T where {T<:Nothing,D<:Any}
-    return data
+    return throw(MethodError(deser, (T, data)))
 end
 
 function deser(::Type{T}, data::D)::T where {T<:Missing,D<:Any}
-    return data
+    return throw(MethodError(deser, (T, data)))
 end
 
 function deser(::NullType, ::Type{T}, data::D)::Nothing where {T<:Nothing,D<:Nothing}
