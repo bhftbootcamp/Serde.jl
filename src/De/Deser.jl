@@ -519,7 +519,7 @@ function deser(
     ::Type{D},
     data::AbstractDict{K,V},
 )::D where {D<:Any,K<:Union{AbstractString,Symbol},V<:Any}
-vals = Any[]
+    vals = Any[]
 
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
