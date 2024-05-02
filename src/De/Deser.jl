@@ -479,7 +479,7 @@ Computer("N/A", "N/A")
 _field_types(::Type{T}) where {T} = Tuple(fieldtype(T, x) for x in fieldnames(T))
 
 function deser(::CustomType, ::Type{D}, data::AbstractVector{A})::D where {D<:Any,A<:Any}
-    vals = Union{_field_types(D)...}[]
+    vals = Any[]
 
     for (index, type) in enumerate(_field_types(D))
         val = get(data, index, nulltype(type))
@@ -519,7 +519,7 @@ function deser(
     ::Type{D},
     data::AbstractDict{K,V},
 )::D where {D<:Any,K<:Union{AbstractString,Symbol},V<:Any}
-    vals = Union{_field_types(D)...}[]
+    vals = Any[]
 
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
@@ -533,7 +533,7 @@ function deser(
 end
 
 function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
-    vals = Union{_field_types(D)...}[]
+    vals = Any[]
 
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
