@@ -19,7 +19,7 @@ using Test, Dates
         @test Serde.deser(Foo, exp_kvs) == exp_obj
 
         exp_kvs = Dict{String,Int64}("a" => 100)
-        @test_throws "ParamError: parameter 'b::Int64' was not passed or has the value 'null'" Serde.deser(
+        @test_throws "ParamError: parameter 'b::Int64' was not passed or has the value 'nothing'" Serde.deser(
             Foo,
             exp_kvs,
         )
@@ -322,7 +322,7 @@ using Test, Dates
             name::String
         end
 
-        @test_throws "ParamError: parameter 'name::String' was not passed or has the value 'null'" Serde.deser(
+        @test_throws "ParamError: parameter 'name::String' was not passed or has the value 'nothing'" Serde.deser(
             Foo24,
             Dict{String,Any}("name" => nothing),
         )
@@ -432,7 +432,7 @@ using Test, Dates
             x::Union{Nothing,Int64}
         end
 
-        Serde.isempty(::Type{Foo33}, x)::Bool = (x === "" ? true : false)
+        Serde.isempty(::Type{Foo33}, x::String)::Bool = x === ""
 
         exp_kvs = Dict{String,Union{String,Int64}}("z" => 100, "x" => "")
         exp_obj = Foo33(100, nothing)

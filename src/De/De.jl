@@ -9,7 +9,7 @@ end
 function Base.show(io::IO, e::ParamError)
     return print(
         io,
-        "ParamError: parameter '$(e.key)' was not passed or has the value 'null'",
+        "ParamError: parameter '$(e.key)' was not passed or has the value 'nothing'",
     )
 end
 
