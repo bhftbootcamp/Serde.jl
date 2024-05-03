@@ -3,6 +3,8 @@ module SerCsv
 export to_csv
 
 using Dates
+using OrderedCollections
+
 import ..to_flatten
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
@@ -90,7 +92,7 @@ function to_csv(
     headers::Vector{String} = String[],
     with_names::Bool = true,
 )::String where {T}
-    cols = Set{String}()
+    cols = OrderedSet{String}()
     vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
 
     for (index, item) in enumerate(data)
@@ -100,7 +102,7 @@ function to_csv(
     end
 
     with_names && (vals[1] = Dict{String,String}(cols .=> string.(cols)))
-    t_cols = isempty(headers) ? sort([cols...]) : headers
+    t_cols = isempty(headers) ? [cols...] : headers
     l_cols = t_cols[end]
     buf = IOBuffer()
 

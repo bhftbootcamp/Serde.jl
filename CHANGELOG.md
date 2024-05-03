@@ -2,6 +2,11 @@
 
 The latest version of this file can be found at the master branch of the [Serde.jl](https://bhftbootcamp.github.io/Serde.jl) repository.
 
+## 3.1.0
+
+- Preserve headers order by default in CSV serialisation ([#45](../../pull/45)).
+- `Serde.to_flatten` now returns `OrderedDict`([#45](../../pull/45)).
+
 ## 3.0.0 (22/03/2024)
 
 ### Added
