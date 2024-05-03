@@ -520,12 +520,17 @@ function deser(
     data::AbstractDict{K,V},
 )::D where {D<:Any,K<:Union{AbstractString,Symbol},V<:Any}
     vals = Any[]
-
+    # Iterate over the fields of the Type{D} to be deserialized
     for (type, name) in zip(_field_types(D), fieldnames(D))
+        # Get custom name in serialized format as key
         key = custom_name(D, Val(name))
+        # Get value from data Dict by key, if not exist, use default_value
         val = get(data, K(key), default_value(D, Val(name)))
         val = isnothing(val) ? nulltype(type) : val
-        val = isempty(D, val) ? nulltype(type) : val
+        # Handel empty value
+        if Nothing <: type
+            val = isempty(D, val) ? nulltype(type) : val
+        end
         push!(vals, eldeser(D, type, key, val))
     end
 
@@ -539,7 +544,9 @@ function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
         key = custom_name(D, Val(name))
         val = get(data, key, default_value(D, Val(name)))
         val = isnothing(val) ? nulltype(type) : val
-        val = isempty(D, val) ? nulltype(type) : val
+        if Nothing <: type
+            val = isempty(D, val) ? nulltype(type) : val
+        end
         push!(vals, eldeser(D, type, key, val))
     end
 

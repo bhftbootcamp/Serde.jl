@@ -664,4 +664,23 @@ using Test, Dates
             exp_str,
         )
     end
+
+    @testset "Case №38: Skip non-Nothing field when handeling empty value" begin
+        struct Foo46
+            empty_string_is_nothing::Union{Nothing,String}
+            empty_string::String
+        end
+        Serde.isempty(::Type{Foo46}, x::String) = x == ""
+        exp_obj = Foo46(nothing,"")
+        @test Serde.deser(Foo46,Dict("empty_string_is_nothing"=>"","empty_string"=>"")) == exp_obj
+
+        struct Foo47
+            zero_is_nothing::Union{Foo47,Int}
+            zero::Int
+        end 
+        Serde.isempty(::Type{Foo47}, x::Int)= x == 0
+        exp_obj2=Foo47(0,0)
+        @test Serde.deser(Foo47,Dict("zero_is_nothing"=>0,"zero"=>0))==exp_obj2
+        
+    end
 end
