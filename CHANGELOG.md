@@ -2,6 +2,12 @@
 
 The latest version of this file can be found at the master branch of the [Serde.jl](https://bhftbootcamp.github.io/Serde.jl) repository.
 
+## 3.0.3
+
+### Changed
+
+- Improve empty value handling for non-null fields ([#44](../../pull/44)).
+
 ## 3.0.0 (22/03/2024)
 
 ### Added
