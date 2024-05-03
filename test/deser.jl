@@ -673,6 +673,8 @@ using Test, Dates
         Serde.isempty(::Type{Foo46}, x::String) = x == ""
         exp_obj = Foo46(nothing,"")
         @test Serde.deser(Foo46,Dict("empty_string_is_nothing"=>"","empty_string"=>"")) == exp_obj
+        
+        @test Serde.deser(Foo46,NamedTuple{(:empty_string_is_nothing, :empty_string)}(("", ""))) == exp_obj
 
         struct Foo47
             zero_is_nothing::Union{Foo47,Int}
