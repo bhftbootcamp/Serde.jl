@@ -186,15 +186,10 @@ function json_value!(buf::IOBuffer, val::T; l::Int64, kw...)::Nothing where {T}
     return json_value!(buf, fieldnames, val; l = l, kw...)
 end
 
-function Serde.JSON.to_json(x...; kw...)::String
+function Serde.to_string(::Val{:JSON}, x...; kw...)::String
+    pretty = get(kw, :pretty, false)
     buf = IOBuffer()
-    json_value!(buf, x...; l = -1, kw...)
-    return String(take!(buf))
-end
-
-function Serde.JSON.to_pretty_json(x...; kw...)::String
-    buf = IOBuffer()
-    json_value!(buf, x...; l = 1, kw...)
+    json_value!(buf, x...; l = (pretty ? 1 : -1), kw...)
     return String(take!(buf))
 end
 

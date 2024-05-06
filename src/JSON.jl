@@ -7,11 +7,6 @@ export to_json,
        deser_json,
        parse_json
 
-function err_JSON()
-    error("""JSON extension isn't loaded, please ensure that the 'JSON' package is imported
-          into your environment""")
-end
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
@@ -108,8 +103,8 @@ julia> to_json(x -> (:field, :simple_field), ManyFields(1, 2.0, "a", [true, fals
 {"field":1,"simple_field":"a"}
 ```
 """
-function to_json()
-    err_JSON()
+function to_json(args...; kwargs...)
+    Serde.to_string(Val(:JSON), args...; kwargs...)
 end
 
 """
@@ -147,8 +142,8 @@ julia> to_pretty_json(Person(person_info, Pet("Buddy", 5))) |> print
 }
 ```
 """
-function to_pretty_json()
-    err_JSON()
+function to_pretty_json(args...; kwargs...)
+    Serde.to_string(Val(:JSON), args...; pretty=true, kwargs...)
 end
 
 """
@@ -176,8 +171,8 @@ julia> deser_json(Data, json)
 Data(100, "json", Record(100.0))
 ```
 """
-function deser_json()
-    err_JSON()
+function deser_json(args...; kwargs...)
+    Serde.from_string(Val(:JSON), args...; kwargs...)
 end
 
 """
@@ -210,8 +205,8 @@ Dict{String, Any} with 3 entries:
   "dictionary" => Dict{String, Any}("string"=>"123")
 ```
 """
-function parse_json()
-    err_JSON()
+function parse_json(args...; kwargs...)
+    Serde.parse(Val(:JSON), args...; kwargs...)
 end
 
 end
