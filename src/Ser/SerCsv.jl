@@ -61,13 +61,13 @@ julia> data = [
            Dict(:level => 1),
        ];
 
-julia> to_csv(data, separator = "|") |> print
-level|sub_level|sub_sub_level
-1|2|3
-1||
+julia> to_csv(data; delimiter = "|") |> print
+sub_sub_level|sub_level|level
+3|2|1
+||1
 ```
 
-Converting a vector of custom structures.
+Converting a vector of custom structures. The headers order will be consistent with the structure fields.
 
 ```julia-repl
 julia> struct Foo
@@ -81,9 +81,9 @@ julia> data = [Foo(1, "a"), Foo(2, "b")]
  Foo(2, "b")
 
 julia> to_csv(data) |> print
-str,val
-a,1
-b,2
+val,str
+1,a
+2,b
 ```
 """
 function to_csv(
