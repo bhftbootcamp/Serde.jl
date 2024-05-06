@@ -6,11 +6,6 @@ export to_csv,
        deser_csv,
        parse_csv
 
-function err()
-    error("""CSV extension isn't loaded, please ensure that the 'CSV' package is imported
-          into your environment""")
-end
-
 """
     CSVSyntaxError <: Exception
 
@@ -92,8 +87,8 @@ a,1
 b,2
 ```
 """
-function to_csv()
-    err()
+function to_csv(args...; kwargs...)
+    Serde.to_string(Val(:CSV), args...; kwargs...)
 end
 
 """
@@ -123,8 +118,8 @@ julia> deser_csv(Data, csv)
  Data(2, "Benny", 82.0)
 ```
 """
-function deser_csv()
-    err()
+function deser_csv(args...; kwargs...)
+    Serde.from_string(Val(:CSV), args...; kwargs...)
 end
 
 """
@@ -152,8 +147,8 @@ julia> parse_csv(csv)
  (id = "2", name = "Benny", grade = "82.0")
 ```
 """
-function parse_csv() 
-    err()
+function parse_csv(args...; kwargs...) 
+    Serde.parse(Val(:CSV), args...; kwargs...)
 end
 
 end

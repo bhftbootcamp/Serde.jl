@@ -1,8 +1,7 @@
 module SerCsv
 
 using Dates
-import Serde.to_flatten
-import Serde.CSV.to_csv
+import Serde
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
@@ -16,7 +15,8 @@ function wrap_value(s::AbstractString)
     return s
 end
 
-function to_csv(
+function Serde.to_string(
+    ::Val{:CSV},
     data::Vector{T};
     delimiter::String = ",",
     headers::Vector{String} = String[],
@@ -26,7 +26,7 @@ function to_csv(
     vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
 
     for (index, item) in enumerate(data)
-        val = to_flatten(item)
+        val = Serde.to_flatten(item)
         push!(cols, keys(val)...)
         vals[index + with_names] = val
     end
