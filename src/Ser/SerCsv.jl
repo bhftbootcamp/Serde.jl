@@ -3,6 +3,8 @@ module SerCsv
 export to_csv
 
 using Dates
+using OrderedCollections
+
 import ..to_flatten
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
@@ -59,13 +61,13 @@ julia> data = [
            Dict(:level => 1),
        ];
 
-julia> to_csv(data, separator = "|") |> print
-level|sub_level|sub_sub_level
-1|2|3
-1||
+julia> to_csv(data; delimiter = "|") |> print
+sub_sub_level|sub_level|level
+3|2|1
+||1
 ```
 
-Converting a vector of custom structures.
+Converting a vector of custom structures. The headers order will be consistent with the structure fields.
 
 ```julia-repl
 julia> struct Foo
@@ -79,9 +81,9 @@ julia> data = [Foo(1, "a"), Foo(2, "b")]
  Foo(2, "b")
 
 julia> to_csv(data) |> print
-str,val
-a,1
-b,2
+val,str
+1,a
+2,b
 ```
 """
 function to_csv(
@@ -90,7 +92,7 @@ function to_csv(
     headers::Vector{String} = String[],
     with_names::Bool = true,
 )::String where {T}
-    cols = Set{String}()
+    cols = OrderedSet{String}()
     vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
 
     for (index, item) in enumerate(data)
@@ -100,7 +102,7 @@ function to_csv(
     end
 
     with_names && (vals[1] = Dict{String,String}(cols .=> string.(cols)))
-    t_cols = isempty(headers) ? sort([cols...]) : headers
+    t_cols = isempty(headers) ? [cols...] : headers
     l_cols = t_cols[end]
     buf = IOBuffer()
 

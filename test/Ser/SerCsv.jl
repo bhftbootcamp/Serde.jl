@@ -88,10 +88,10 @@
             WeakKeyDict("a" => 10, "B" => 35),
         ]
         expected_csv_with_delimiter = """
-        B;a
-        20;10
-        32;15
-        35;10
+        a;B
+        10;20
+        15;32
+        10;35
         """
         @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
               expected_csv_with_delimiter |> strip
@@ -114,5 +114,38 @@
         """
         @test Serde.to_csv(exp_obj, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = false) |> strip ==
               exp_str |> strip
+    end
+
+    @testset "Case 5: Serializing Order" begin
+        struct Bar500
+            num::Float64
+            str::String
+        end
+
+        struct Foo500
+            val::Int64
+            bar::Bar500
+            str::String
+        end
+        nested_struct = [Foo500(1, Bar500(1.0,"b"), "a")]
+        exp_str = """
+        val,bar_num,bar_str,str
+        1,1.0,b,a
+        """
+        @test Serde.to_csv(nested_struct) == exp_str
+
+        struct FooBar500
+            bar::Bar500
+            foo::Foo500
+        end
+        nested_struct2 = [FooBar500(Bar500(2.0,"a"),Foo500(1, Bar500(1.0,"b"), "a"))
+        FooBar500(Bar500(3.0,"a"),Foo500(1, Bar500(1.0,"b"), "a"))
+        ]
+        exp_str2 = """
+        bar_num,bar_str,foo_val,foo_bar_num,foo_bar_str,foo_str
+        2.0,a,1,1.0,b,a
+        3.0,a,1,1.0,b,a
+        """
+        @test Serde.to_csv(nested_struct2) == exp_str2
     end
 end
