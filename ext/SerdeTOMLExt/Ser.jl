@@ -162,7 +162,7 @@ function toml_pairs(val::T; kw...) where {T}
     return sort(kv, by = x -> !issimple(x[2]))
 end
 
-function Serde.TOML.to_toml(data::T; kw...)::String where {T}
+function Serde.to_string(::Val{:TOML}, data::T; kw...)::String where {T}
     return join([toml_pair(k, v; kw...) for (k, v) in toml_pairs(data; kw...)])
 end
 

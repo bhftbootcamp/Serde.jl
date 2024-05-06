@@ -6,11 +6,6 @@ export to_toml,
        deser_toml,
        parse_toml
 
-function err()
-    error("""TOML extension isn't loaded, please ensure that the 'TOML' package is imported
-          into your environment""")
-end
-
 isnull(::Any) = false
 isnull(v::Missing)::Bool = true
 isnull(v::Nothing)::Bool = true
@@ -71,8 +66,8 @@ julia> deser_toml(MyPlot, toml)
 MyPlot("line", Point[Point(1, 0), Point(2, 3)])
 ```
 """
-function deser_toml()
-    err()
+function deser_toml(args...; kwargs...)
+    Serde.from_string(Val(:TOML), args...; kwargs...)
 end
 
 """
@@ -100,8 +95,8 @@ Dict{String, Any} with 3 entries:
   "points" => Any[Dict{String, Any}("y"=>0, "x"=>1), Dict{String, Any}("y"=>3, "x"=>2)]
 ```
 """
-function parse_toml()
-    err()
+function parse_toml(args...; kwargs...)
+    Serde.parse(Val(:TOML), args...; kwargs...)
 end
 
 """
@@ -166,8 +161,8 @@ x = 2
 y = 3
 ```
 """
-function to_toml()
-    err()
+function to_toml(args...; kwargs...)
+    Serde.to_string(Val(:TOML), args...; kwargs...)
 end
 
 end

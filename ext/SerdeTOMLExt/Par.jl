@@ -3,7 +3,7 @@ module ParToml
 using TOML
 import Serde
 
-function Serde.TOML.parse_toml(x::S; kw...) where {S<:AbstractString}
+function Serde.parse(::Val{:TOML}, x::S; kw...) where {S<:AbstractString}
     try
         TOML.parse(x; kw...)
     catch e
@@ -11,8 +11,8 @@ function Serde.TOML.parse_toml(x::S; kw...) where {S<:AbstractString}
     end
 end
 
-function Serde.TOML.parse_toml(x::Vector{UInt8}; kw...)
-    return Serde.TOML.parse_toml(unsafe_string(pointer(x), length(x)); kw...)
+function Serde.parse(ext::Val{:TOML}, x::Vector{UInt8}; kw...)
+    return Serde.parse(ext, unsafe_string(pointer(x), length(x)); kw...)
 end
 
 end

@@ -4,15 +4,15 @@ using ..ParToml
 import Serde.to_deser
 import Serde
 
-function Serde.TOML.deser_toml(::Type{T}, x; kw...) where {T}
-    return to_deser(T, Serde.TOML.parse_toml(x; kw...))
+function Serde.from_string(ext::Val{:TOML}, ::Type{T}, x; kw...) where {T}
+    return to_deser(T, Serde.parse(ext, x; kw...))
 end
 
-Serde.TOML.deser_toml(::Type{Nothing}, _) = nothing
-Serde.TOML.deser_toml(::Type{Missing}, _) = missing
+Serde.from_string(::Val{:TOML}, ::Type{Nothing}, _) = nothing
+Serde.from_string(::Val{:TOML}, ::Type{Missing}, _) = missing
 
-function Serde.TOML.deser_toml(f::Function, x; kw...)
-    object = Serde.TOML.parse_toml(x; kw...)
+function Serde.from_string(ext::Val{:TOML}, f::Function, x; kw...)
+    object = Serde.parse(ext, x; kw...)
     return to_deser(f(object), object)
 end
 
