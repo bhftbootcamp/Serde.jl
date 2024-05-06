@@ -39,6 +39,24 @@ include("Utl/Utl.jl")
 include("Par/Par.jl")
 include("Ser/Ser.jl")
 include("De/De.jl")
+
+function to_string end
+function to_string(ext::Module, args...; kwargs...)
+    to_string(Val(first(fullname(ext))), args...; kwargs...)
+end
+
+function from_string end
+function from_string(ext::Module, args...; kwargs...)
+    from_string(Val(first(fullname(ext))), args...; kwargs...)
+end
+
+function parse end
+function parse(ext::Module, args...; kwargs...)
+    parse(Val(first(fullname(ext))), args...; kwargs...)
+end
+    
+export to_string, from_string, parse
+
 #include("Ext.jl")
 include("JSON.jl")
 using .JSON
