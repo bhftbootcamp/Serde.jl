@@ -6,11 +6,6 @@ export to_xml,
        deser_xml,
        parse_xml
 
-function err()
-    error("""XML extension isn't loaded, please ensure that the 'EzXML' package is imported
-          into your environment""")
-end
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
@@ -75,8 +70,8 @@ julia> deser_xml(Data, xml)
 Data(100, "xml", Record(100.0))
 ```
 """
-function deser_xml()
-    err()
+function deser_xml(args...; kwargs...)
+    Serde.from_string(Val(:EzXML), args...; kwargs...)
 end
 
 """
@@ -112,8 +107,8 @@ Dict{String, Any} with 5 entries:
   "authors" => Dict{String, Any}("author"=>Dict{String, Any}[Dict("lang"=>"en", "_"=>"John Doe"), Dict("lang"=>"es", "_"=>"Juan Pérez")])
 ```
 """
-function parse_xml()
-    err()
+function parse_xml(args...; kwargs...)
+    Serde.parse(Val(:EzXML), args...; kwargs...)
 end
 
 """
@@ -156,8 +151,8 @@ julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
 </xml>
 ```
 """
-function to_xml()
-    err()
+function to_xml(args...; kwargs...)
+    Serde.to_string(Val(:EzXML), args...; kwargs...)
 end
 
 end

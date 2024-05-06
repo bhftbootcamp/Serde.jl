@@ -195,7 +195,7 @@ function _to_xml(val::T; level::Int64 = 0, kw...)::String where {T}
     return join([xml_pair(k, v; level, kw...) for (k, v) in xml_pairs(val; level, kw...)])
 end
 
-function Serde.XML.to_xml(val::T; key::String = "xml", kw...)::String where {T}
+function Serde.to_string(::Val{:EzXML}, val::T; key::String = "xml", kw...)::String where {T}
     return _to_xml(Dict{String,Any}(key => val))
 end
 

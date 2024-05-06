@@ -43,7 +43,19 @@ function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
     return xml_dict
 end
 
-function Serde.XML.parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
+#function Serde.XML.parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
+#    try
+#        _xml2dict(x; dict_type = dict_type, kw...)
+#    catch e
+#        throw(Serde.XML.XmlSyntaxError("invalid XML syntax", e))
+#    end
+#end
+
+#function Serde.XML.parse_xml(x::Vector{UInt8}; kw...)
+#    return Serde.XML.parse_xml(unsafe_string(pointer(x), length(x)); kw...)
+#end
+
+function Serde.parse(::Val{:EzXML}, x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
         _xml2dict(x; dict_type = dict_type, kw...)
     catch e
@@ -51,8 +63,8 @@ function Serde.XML.parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...)
     end
 end
 
-function Serde.XML.parse_xml(x::Vector{UInt8}; kw...)
-    return Serde.XML.parse_xml(unsafe_string(pointer(x), length(x)); kw...)
+function Serde.parse(ext::Val{:EzXML}, x::Vector{UInt8}; kw...)
+    return Serde.parse(ext, unsafe_string(pointer(x), length(x)); kw...)
 end
 
 end
