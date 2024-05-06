@@ -4,15 +4,15 @@ using ..ParYaml
 import Serde.to_deser
 import Serde
 
-function Serde.YAML.deser_yaml(::Type{T}, x; kw...) where {T}
-    return to_deser(T, Serde.YAML.parse_yaml(x; kw...))
+function Serde.from_string(ext::Val{:YAML}, ::Type{T}, x; kw...) where {T}
+    return to_deser(T, Serde.from_string(ext, x; kw...))
 end
 
-Serde.YAML.deser_yaml(::Type{Nothing}, _) = nothing
-Serde.YAML.deser_yaml(::Type{Missing}, _) = missing
+Serde.from_string(::Val{:YAML}, ::Type{Nothing}, _) = nothing
+Serde.from_string(::Val{:YAML}, ::Type{Missing}, _) = missing
 
-function Serde.YAML.deser_yaml(f::Function, x; kw...)
-    object = Serde.YAML.parse_yaml(x; kw...)
+function Serde.from_string(ext::Val{:YAML}, f::Function, x; kw...)
+    object = Serde.parse(ext, x; kw...)
     return to_deser(f(object), object)
 end
 

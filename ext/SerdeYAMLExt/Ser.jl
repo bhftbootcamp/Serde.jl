@@ -1,9 +1,10 @@
 module SerYaml
 
 using Dates
+import YAML
 import Serde
-import Serde.YAML: isnull, ser_name, ser_type, ser_type, ser_ignore_field, ser_ignore_null,
-    ser_value
+import Serde.YAML:
+    isnull, ser_name, ser_type, ser_type, ser_ignore_field, ser_ignore_null, ser_value
 using UUIDs
 
 const YAML_NULL = "null"
@@ -296,9 +297,9 @@ field: 1
 simple_field: "a"
 ```
 """
-function Serde.to_yaml(x...; kw...)::String
+function Serde.to_string(ext::Val{:YAML}, args...; kwargs...)::String
     buf = IOBuffer()
-    yaml_value!(buf, x...; l = 0, skip_lf = true, kw...)
+    yaml_value!(buf, args...; l = 0, skip_lf = true, kwargs...)
     print(buf, "\n")
     return String(take!(buf))
 end

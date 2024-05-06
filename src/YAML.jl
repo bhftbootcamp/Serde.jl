@@ -6,11 +6,6 @@ export to_yaml,
        deser_yaml,
        parse_yaml
 
-function err()
-    error("""YAML extension isn't loaded, please ensure that the 'YAML' package is imported
-          into your environment""")
-end
-
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
@@ -81,8 +76,8 @@ julia> deser_yaml(Server, yaml)
 Server("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict("Kevin" => 1, "George" => 2))
 ```
 """
-function deser_yaml()
-    err()
+function deser_yaml(args...; kwargs...)
+    Serde.from_string(Val(:YAML), args...; kwargs...)
 end
 
 """
@@ -130,8 +125,8 @@ Dict{String, Any} with 6 entries:
   "date"       => Date("2024-01-01")
 ```
 """
-function parse_yaml()
-    err()
+function parse_yaml(args...; kwargs...)
+    Serde.parse(Val(:YAML), args...; kwargs...)
 end
 
 """
@@ -212,8 +207,8 @@ field: 1
 simple_field: "a"
 ```
 """
-function to_yaml()
-    err()
+function to_yaml(args...; kwargs...)
+    Serde.to_string(Val(:YAML), args...; kwargs...)
 end
 
 end
