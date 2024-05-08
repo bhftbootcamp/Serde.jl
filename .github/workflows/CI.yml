@@ -75,3 +75,16 @@ jobs:
           using Serde
           DocMeta.setdocmeta!(Serde, :DocTestSetup, :(using Serde); recursive=true)
           doctest(Serde)
+      - name: Make comment with preview link
+        if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened'}}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: ':blue_book: A preview of the documentation will be [here](${{env.preview_url}}) soon'
+            })
+        env:
+          preview_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/previews/PR${{ github.event.number }}/
