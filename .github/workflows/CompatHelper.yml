@@ -1,16 +1,32 @@
 name: CompatHelper
+
 on:
   schedule:
     - cron: 0 0 * * *
   workflow_dispatch:
+
 jobs:
   CompatHelper:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
     steps:
-      - name: Pkg.add("CompatHelper")
-        run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
-      - name: CompatHelper.main()
+      - uses: actions/checkout@v4
+      - uses: julia-actions/add-julia-registry@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          registry: bhftbootcamp/Green
+      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/cache@v2
+      - name: Configure CompatHelper
+        run: |
+          julia -e '
+            using Pkg
+            Pkg.add("CompatHelper")
+            using CompatHelper
+            CompatHelper.main(use_existing_registries = true)
+          '
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}
-        run: julia -e 'using CompatHelper; CompatHelper.main()'
+          GITHUB_TOKEN: ${{ github.token }} # Token required to create a pull request to the same repository
+          
