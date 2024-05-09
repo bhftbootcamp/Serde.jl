@@ -119,16 +119,16 @@ Converting a vector of nested dictionaries with custom separator symbol.
 
 ```julia-repl
 julia> data = [
-    Dict(
-        "level" => 1,
-        "sub" => Dict(
-            "level" => 2,
-            "sub" => Dict(
-                "level" => 3
+            Dict(
+                "level" => 1,
+                "sub" => Dict(
+                    "level" => 2,
+                    "sub" => Dict(
+                        "level" => 3
+                    ),
+                ),
             ),
-        ),
-    ),
-    Dict(:level => 1),
+            Dict(:level => 1),
 ];
 
 julia> to_csv(data, separator = "|") |> print
