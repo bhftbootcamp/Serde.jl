@@ -6,11 +6,11 @@
             a_id::Int64
             b_category::String
             c_quantity::Int64
-            d_value::Union{String,Float64}
+            d_value::String
         end
 
         exp_obj = [
-            SimpleRecord(1, "a", 11, 11.1),
+            SimpleRecord(1, "a", 11, "11.1"),
             SimpleRecord(2, "b", 22, "bb"),
             SimpleRecord(2, "b", 22, "bb"),
         ]
@@ -37,23 +37,23 @@
             id::Int64
             name::String
             count::Int64
-            data::Union{String,Float64,SubRecord}
+            data::SubRecord
         end
 
         exp_obj = [
-            ComplexRecord(1, "Hello", 3, "World"),
-            ComplexRecord(2, "Julia", 5, 3.14),
-            ComplexRecord(3, "Coconut", 7, SubRecord(42, NestedDetail("Nested object"))),
+            ComplexRecord(1, "Hello", 3, SubRecord(42, NestedDetail("Nested object1"))),
+            ComplexRecord(2, "Julia", 5, SubRecord(43, NestedDetail("Nested object2"))),
+            ComplexRecord(3, "Coconut", 7, SubRecord(44, NestedDetail("Nested object3"))),
         ]
         exp_str = """
-        id,name,count,data,data_code,data_nested_detail
-        1,Hello,3,World,,
-        2,Julia,5,3.14,,
-        3,Coconut,7,,42,Nested object
+        id,name,count,data_code,data_nested_detail
+        1,Hello,3,42,Nested object1
+        2,Julia,5,43,Nested object2
+        3,Coconut,7,44,Nested object3
         """
         @test Serde.to_csv(
             exp_obj,
-            headers = ["id", "name", "count", "data", "data_code", "data_nested_detail"],
+            headers = ["id", "name", "count", "data_code", "data_nested_detail"],
         ) |> strip == exp_str |> strip
     end
 
@@ -62,13 +62,13 @@
             id::Int64
             text::String
             count::Int64
-            value::Union{String,Float64}
+            value::String
         end
 
         exp_obj = [
-            SpecialCharRecord(1, "a,,,,;", 11, 11.1),
+            SpecialCharRecord(1, "a,,,,;", 11, "11.1"),
             SpecialCharRecord(2, "b\nl", 22, "bb\"\""),
-            SpecialCharRecord(1, "a,,,,;", 12, 11.1),
+            SpecialCharRecord(1, "a,,,,;", 12, "11.1"),
         ]
         exp_str = """
         id,text,count,value
@@ -88,10 +88,10 @@
             WeakKeyDict("a" => 10, "B" => 35),
         ]
         expected_csv_with_delimiter = """
-        a;B
-        10;20
-        15;32
-        10;35
+        B;a
+        20;10
+        32;15
+        35;10
         """
         @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
               expected_csv_with_delimiter |> strip
@@ -147,5 +147,73 @@
         3.0,a,1,1.0,b,a
         """
         @test Serde.to_csv(nested_struct2) == exp_str2
+    end
+
+    @testset "Case №6: Get header and value for Simple Type and Nested Type" begin
+        struct SimpleRecord2
+            a_id::Int64
+            b_category::String
+            c_quantity::Int64
+            d_value::String
+        end
+        obj = SimpleRecord2(1, "a", 11, "11.1")
+        exp_obj = Serde.SerCsv.get_headers(SimpleRecord2)
+        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        @test exp_obj == ["a_id","b_category","c_quantity","d_value"]
+        @test exp_row_val == [1, "a", 11, "11.1"]
+        @test Serde.SerCsv.to_csv([obj];delimiter="|") == """
+        a_id|b_category|c_quantity|d_value
+        1|a|11|11.1
+        """
+
+        struct SimpleRecord3
+            a_id::Int64
+            b_category::String
+            c_quantity::Int64
+            d_value::SimpleRecord2
+            e_value::Int64
+        end
+        obj = SimpleRecord3(1,"2",11,SimpleRecord2(1, "a", 11, "11.1"),1)
+        exp_obj = Serde.SerCsv.get_headers(SimpleRecord3)
+        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        @test exp_obj == ["a_id","b_category","c_quantity","d_value_a_id","d_value_b_category","d_value_c_quantity","d_value_d_value","e_value"]
+        @test exp_row_val == [1,"2",11,1, "a", 11, "11.1",1]
+        @test Serde.SerCsv.to_csv([obj]) == """
+        a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
+        1,2,11,1,a,11,11.1,1
+        """
+
+        struct SimpleRecord4
+            a_id::Int64
+            b_category::String
+            c_quantity::Int64
+            d_value::Union{String,Nothing}
+        end
+        obj = SimpleRecord4(1, "a", 11, nothing)
+        exp_obj = Serde.SerCsv.get_headers(SimpleRecord4)
+        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        @test exp_obj == ["a_id","b_category","c_quantity","d_value"]
+        @test exp_row_val == [1, "a", 11, nothing]
+        @test Serde.SerCsv.to_csv([obj]) == """
+        a_id,b_category,c_quantity,d_value
+        1,a,11,
+        """
+
+        struct SimpleRecord5
+            a_id::Int64
+            b_category::String
+            c_quantity::Int64
+            d_value::Union{SimpleRecord2,Nothing}
+            e_value::Int64
+        end
+        obj = SimpleRecord5(1,"2",11,nothing,1)
+        exp_obj = Serde.SerCsv.get_headers(SimpleRecord5)
+        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        @test exp_obj == ["a_id","b_category","c_quantity","d_value_a_id","d_value_b_category","d_value_c_quantity","d_value_d_value","e_value"]
+        @test exp_row_val == [1,"2",11,nothing,nothing,nothing,nothing,1]
+        @test Serde.SerCsv.to_csv([obj]) == """
+        a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
+        1,2,11,,,,,1
+        """
     end
 end

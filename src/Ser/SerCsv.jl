@@ -3,9 +3,78 @@ module SerCsv
 export to_csv
 
 using Dates
-using OrderedCollections
 
 import ..to_flatten
+import ..to_flatten_vector
+
+issimple(::Any)::Bool = false
+issimple(::AbstractString)::Bool = true
+issimple(::Symbol)::Bool = true
+issimple(::AbstractChar)::Bool = true
+issimple(::Number)::Bool = true
+issimple(::Enum)::Bool = true
+issimple(::Type)::Bool = true
+issimple(::Dates.TimeType)::Bool = true
+
+issimple(t::Type) = (
+    t <: AbstractString || t <: Symbol || t <: AbstractChar || t <: Number || t <: Enum || t <: Type || t <: Dates.TimeType)
+
+isnull(t::Type) = (t === Nothing || t === Missing)
+isnull(t::Any) = isnothing(t) || ismissing(t)
+
+isunion(t::Type) = t isa Union
+
+iscomposite(t::Type) = !issimple(t) && !isnull(t) && !isunion(t)
+
+function is_valid_union(t::Type)::Bool
+    if !isunion(t)
+        return throw("Parameter `t` must be a Union type")
+    end
+    simple_count = 0
+    composite_count = 0
+    for type in Base.uniontypes(t)
+        if issimple(type)
+            simple_count += 1
+        elseif iscomposite(type)
+            composite_count += 1
+        end
+    end
+    return simple_count + composite_count == 1
+end
+
+"""
+Extract first composite type from union type, or return itself is `t` is a Union type, return nothing if no composite type.
+Only type `t` is_valid_union(t) return true can be used as parameters. Otherwise, unexpected situations may occur
+"""
+function extract_composite(t::Type)::Union{Type,Nothing}
+    if iscomposite(t)
+        return t
+    end
+    if !isunion(t)
+        throw("Parameter `t` must be a Union type or Composite Type")
+    end
+    try
+        return first(Iterators.filter(x->iscomposite(x),Base.uniontypes(t)))
+    catch
+        return nothing
+    end
+end
+
+function could_flatten(t::Type)::Bool
+    if issimple(t)
+        return false
+    end
+    if isnull(t)
+        return false
+    end
+    if iscomposite(t)
+        return true
+    end
+    if is_valid_union(t) && !isnothing(extract_composite(t))
+        return true
+    end
+    return false
+end
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
@@ -18,6 +87,9 @@ function wrap_value(s::AbstractString)
     end
     return s
 end
+
+"Convert type value to csv cell string"
+value_to_string(v::Any) = (isnothing(v) || ismissing(v)) ? "" : wrap_value(string(v))
 
 """
     to_csv(data::Vector{T}; kw...) -> String
@@ -34,37 +106,23 @@ In case of nested `data`, names of resulting headers will be concatenate by "_" 
 Converting a vector of regular dictionaries with fixed headers order.
 
 ```julia-repl
-julia> data = [
-           Dict("id" => 1, "name" => "Jack"),
-           Dict( "id" => 2, "name" => "Bob"),
-       ];
+jjulia> data = [
+    Dict(
+        "level" => 1,
+        "sub" => Dict(
+            "level" => 2,
+            "sub" => Dict(
+                "level" => 3
+            ),
+        ),
+    ),
+    Dict(:level => 1),
+];
 
-julia> to_csv(data, headers = ["name", "id"]) |> print
-name,id
-Jack,1
-Bob,2
-```
-
-Converting a vector of nested dictionaries with custom separator symbol.
-
-```julia-repl
-julia> data = [
-           Dict(
-               "level" => 1,
-               "sub" => Dict(
-                   "level" => 2,
-                   "sub" => Dict(
-                       "level" => 3
-                   ),
-               ),
-           ),
-           Dict(:level => 1),
-       ];
-
-julia> to_csv(data; delimiter = "|") |> print
-sub_sub_level|sub_level|level
-3|2|1
-||1
+julia> to_csv(data, separator = "|") |> print
+level|sub_level|sub_sub_level
+1|2|3
+1||
 ```
 
 Converting a vector of custom structures. The headers order will be consistent with the structure fields.
@@ -85,14 +143,25 @@ val,str
 1,a
 2,b
 ```
+
+When using the Union type, only the following combinations are supported:
+
+- Null Type (Nothing, Missing) + one Composite Type: `Union{Nothing, CompositeType}` or `Union{Missing, Nothing, CompositeType}`
+- Null Type + one "Simple Type"(String, Symbol, Char, Number, Enum, Type, Dates.TimeType): `Union{Missing, Dates.TimeType}` 
+
+The following Union types will not be serialized correctly:
+- Union Multiple Composite Type
+- Union Multiple Simple Type
+- Union Simple Types + Composite Type
+
 """
 function to_csv(
     data::Vector{T};
     delimiter::String = ",",
     headers::Vector{String} = String[],
     with_names::Bool = true,
-)::String where {T}
-    cols = OrderedSet{String}()
+)::String where {T<:AbstractDict}
+    cols = Set{String}()
     vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
 
     for (index, item) in enumerate(data)
@@ -102,7 +171,7 @@ function to_csv(
     end
 
     with_names && (vals[1] = Dict{String,String}(cols .=> string.(cols)))
-    t_cols = isempty(headers) ? [cols...] : headers
+    t_cols = isempty(headers) ? sort([cols...]) : headers
     l_cols = t_cols[end]
     buf = IOBuffer()
 
@@ -115,6 +184,76 @@ function to_csv(
     end
 
     return String(take!(buf))
+end
+
+function to_csv(
+    data::Vector{T};
+    delimiter::String = ",",
+    headers::Vector{String} = String[],
+    with_names::Bool = true,
+)::String where {T}
+    buf = IOBuffer()
+    
+    # Set title if needed
+    if with_names
+        # Check custom headers dimensions if provided
+        length(headers) > 0 ?
+            (length(headers) == get_null_number(T) ?
+                t_cols = headers : 
+                throw(DimensionMismatch("The dimensions of custom headers do not match the dimensions of the output."))) :
+            t_cols = get_headers(T)
+
+        # write headers to buf
+        join(buf,t_cols,delimiter)
+        println(buf)
+    end
+
+    # Fill csv values to buf
+    for e in data
+        join(buf, map(x -> value_to_string(x), get_row_values(e)), delimiter)
+        println(buf)
+    end
+
+    return String(take!(buf))
+end
+
+function get_headers(type::Type)::Vector{String}
+    result = Vector{String}()
+    for (name,type) in zip(fieldnames(type),fieldtypes(type))
+        if isunion(type) && !is_valid_union(type)
+            throw("Unsupported Union Type.")
+        end
+        # Only `Composite type` and `Union with Composite type` could be flatten
+        # - `Union with Composite type` and `Composite type`: extract Composite type from Union and recursively call get_headers.
+        # - `Simple type`: push to result
+        could_flatten(type) ? 
+            foreach(x-> push!(result,String(name) * "_" * x), get_headers(extract_composite(type))) : push!(result,String(name))
+    end
+    return result
+end
+
+function get_row_values(data::T)::Vector{Any} where {T}
+    result = Vector{Any}()
+    for (name,type) in zip(fieldnames(T),fieldtypes(T))
+        value = getproperty(data, name)
+        could_flatten(type) ?
+            (append!(result, 
+                isnull(value) ? fill(nothing, get_null_number(extract_composite(type))) : get_row_values(value))) :
+            push!(result, value)
+    end
+    return result
+end
+
+
+function get_null_number(type::Type)::Int
+    result = 0
+    for type in fieldtypes(type)
+        if isunion(type) && !is_valid_union(type)
+            throw("Unsupported Union Type.")
+        end
+        result += could_flatten(type) ?  get_null_number(extract_composite(type)) : 1
+    end
+    return result
 end
 
 end

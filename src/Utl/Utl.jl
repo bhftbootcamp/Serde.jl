@@ -1,7 +1,6 @@
 # Utl/Utl
 
 using Dates
-using OrderedCollections
 
 include("Macros.jl")
 
@@ -15,7 +14,7 @@ issimple(::Type)::Bool = true
 issimple(::Dates.TimeType)::Bool = true
 
 """
-    Serde.to_flatten(data; delimiter = "_") -> OrderedDict{String, Any}
+    Serde.to_flatten(data; delimiter = "_") -> Dict{String, Any}
 
 Transforms a nested dictionary `data` (or custom type) into a single-level dictionary. The keys in the new dictionary are created by joining the nested keys (or fieldnames) with `delimiter` symbol.
 
@@ -35,10 +34,10 @@ julia> nested_dict = Dict(
        );
 
 julia> Serde.to_flatten(nested_dict; delimiter = "__")
-OrderedCollections.OrderedDict{String, Any} with 3 entries:
-  "bar__baz__foo" => 3
-  "bar__foo"      => 2
-  "foo"           => 1
+Dict{String, Any} with 3 entries:
+  :bar__baz__foo => 3
+  :foo           => 1
+  :bar__foo      => 2
 ```
 
 Flatten the nested structure.
@@ -57,17 +56,17 @@ julia> struct Foo
 julia> nested_struct = Foo(1, "a", Bar(1.0));
 
 julia> Serde.to_flatten(nested_struct)
-OrderedCollections.OrderedDict{String, Any} with 3 entries:
-  "val"     => 1
-  "str"     => "a"
-  "bar_num" => 1.0
+Dict{String, Any} with 3 entries:
+  :bar_num => 1.0
+  :val   => 1
+  :str   => "a"
 ```
 """
 function to_flatten(
     data::AbstractDict{K,V};
     delimiter::AbstractString = "_",
-)::OrderedDict{String,Any} where {K,V}
-    result = OrderedDict{String,Any}()
+)::Dict{String,Any} where {K,V}
+    result = Dict{String,Any}()
     for (key, value) in data
         key = string(key)
         if isa(value, AbstractDict)
@@ -81,8 +80,8 @@ function to_flatten(
     return result
 end
 
-function to_flatten(data::T; delimiter::AbstractString = "_")::OrderedDict{String,Any} where {T}
-    result = OrderedDict{String,Any}()
+function to_flatten(data::T; delimiter::AbstractString = "_")::Dict{String,Any} where {T}
+    result = Dict{String,Any}()
     for key in fieldnames(T)
         value = getproperty(data, key)
         key = string(key)
