@@ -118,7 +118,7 @@ Bob,2
 Converting a vector of nested dictionaries with custom separator symbol.
 
 ```julia-repl
-jjulia> data = [
+julia> data = [
     Dict(
         "level" => 1,
         "sub" => Dict(
