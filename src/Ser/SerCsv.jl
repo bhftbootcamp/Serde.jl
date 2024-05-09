@@ -5,7 +5,6 @@ export to_csv
 using Dates
 
 import ..to_flatten
-import ..to_flatten_vector
 
 issimple(::Any)::Bool = false
 issimple(::AbstractString)::Bool = true
@@ -13,7 +12,6 @@ issimple(::Symbol)::Bool = true
 issimple(::AbstractChar)::Bool = true
 issimple(::Number)::Bool = true
 issimple(::Enum)::Bool = true
-issimple(::Type)::Bool = true
 issimple(::Dates.TimeType)::Bool = true
 
 issimple(t::Type) = (
