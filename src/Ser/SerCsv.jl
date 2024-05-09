@@ -210,7 +210,7 @@ function to_csv(
 
     # Fill csv values to buf
     for e in data
-        join(buf, map(x -> value_to_string(x), get_row_values(e)), delimiter)
+        get_row_values(buf,e;delimiter = delimiter)
         println(buf)
     end
 
@@ -232,16 +232,21 @@ function get_headers(type::Type)::Vector{String}
     return result
 end
 
-function get_row_values(data::T)::Vector{Any} where {T}
-    result = Vector{Any}()
+function get_row_values(io::IO,data::T;delimiter::String = ",") where {T}
+    i = 1
     for (name,type) in zip(fieldnames(T),fieldtypes(T))
+        if i != 1
+            print(io, delimiter)
+        end
         value = getproperty(data, name)
-        could_flatten(type) ?
-            (append!(result, 
-                isnull(value) ? fill(nothing, get_null_number(extract_composite(type))) : get_row_values(value))) :
-            push!(result, value)
+        could_flatten(type) ? 
+            isnull(value) ? 
+                print(io, repeat(delimiter,get_null_number(extract_composite(type))-1)) :
+                get_row_values(io::IO,value) :
+            print(io, value_to_string(value) )
+        i+=1
     end
-    return result
+    # return result
 end
 
 

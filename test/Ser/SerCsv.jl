@@ -158,9 +158,9 @@
         end
         obj = SimpleRecord2(1, "a", 11, "11.1")
         exp_obj = Serde.SerCsv.get_headers(SimpleRecord2)
-        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        # exp_row_val = Serde.SerCsv.get_row_values(obj)
         @test exp_obj == ["a_id","b_category","c_quantity","d_value"]
-        @test exp_row_val == [1, "a", 11, "11.1"]
+        # @test exp_row_val == [1, "a", 11, "11.1"]
         @test Serde.SerCsv.to_csv([obj];delimiter="|") == """
         a_id|b_category|c_quantity|d_value
         1|a|11|11.1
@@ -175,9 +175,9 @@
         end
         obj = SimpleRecord3(1,"2",11,SimpleRecord2(1, "a", 11, "11.1"),1)
         exp_obj = Serde.SerCsv.get_headers(SimpleRecord3)
-        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        # exp_row_val = Serde.SerCsv.get_row_values(obj)
         @test exp_obj == ["a_id","b_category","c_quantity","d_value_a_id","d_value_b_category","d_value_c_quantity","d_value_d_value","e_value"]
-        @test exp_row_val == [1,"2",11,1, "a", 11, "11.1",1]
+        # @test exp_row_val == [1,"2",11,1, "a", 11, "11.1",1]
         @test Serde.SerCsv.to_csv([obj]) == """
         a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
         1,2,11,1,a,11,11.1,1
@@ -191,9 +191,9 @@
         end
         obj = SimpleRecord4(1, "a", 11, nothing)
         exp_obj = Serde.SerCsv.get_headers(SimpleRecord4)
-        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        # exp_row_val = Serde.SerCsv.get_row_values(obj)
         @test exp_obj == ["a_id","b_category","c_quantity","d_value"]
-        @test exp_row_val == [1, "a", 11, nothing]
+        # @test exp_row_val == [1, "a", 11, nothing]
         @test Serde.SerCsv.to_csv([obj]) == """
         a_id,b_category,c_quantity,d_value
         1,a,11,
@@ -208,9 +208,9 @@
         end
         obj = SimpleRecord5(1,"2",11,nothing,1)
         exp_obj = Serde.SerCsv.get_headers(SimpleRecord5)
-        exp_row_val = Serde.SerCsv.get_row_values(obj)
+        # exp_row_val = Serde.SerCsv.get_row_values(obj)
         @test exp_obj == ["a_id","b_category","c_quantity","d_value_a_id","d_value_b_category","d_value_c_quantity","d_value_d_value","e_value"]
-        @test exp_row_val == [1,"2",11,nothing,nothing,nothing,nothing,1]
+        # @test exp_row_val == [1,"2",11,nothing,nothing,nothing,nothing,1]
         @test Serde.SerCsv.to_csv([obj]) == """
         a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
         1,2,11,,,,,1
