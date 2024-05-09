@@ -4,8 +4,19 @@ The latest version of this file can be found at the master branch of the [Serde.
 
 ## 3.1.0
 
-- Preserve headers order by default in CSV serialisation ([#45](../../pull/45)).
-- `Serde.to_flatten` now returns `OrderedDict`([#45](../../pull/45)).
+- The CSV headers name and headers order after serialization are now predictable, ([#45](../../pull/45)).
+
+When using the Union type in CSV serialization, only the following combinations are supported:
+
+- Null Type (Nothing, Missing) + one Composite Type: `Union{Nothing, CompositeType}` or `Union{Missing, Nothing, CompositeType}`
+- Null Type + one "Simple Type"(String, Symbol, Char, Number, Enum, Type, Dates.TimeType): `Union{Missing, Dates.TimeType}` 
+
+The following Union types will not be serialized correctly:
+- Union Multiple Composite Type
+- Union Multiple Simple Type
+- Union Simple Types + Composite Type
+
+- CSV serialization performance improvements([#45](../../pull/45)).
 
 ## 3.0.0 (22/03/2024)
 
