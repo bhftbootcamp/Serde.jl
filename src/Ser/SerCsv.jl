@@ -104,6 +104,20 @@ In case of nested `data`, names of resulting headers will be concatenate by "_" 
 Converting a vector of regular dictionaries with fixed headers order.
 
 ```julia-repl
+julia> data = [
+           Dict("id" => 1, "name" => "Jack"),
+           Dict( "id" => 2, "name" => "Bob"),
+       ];
+
+julia> to_csv(data, headers = ["name", "id"]) |> print
+name,id
+Jack,1
+Bob,2
+```
+
+Converting a vector of nested dictionaries with custom separator symbol.
+
+```julia-repl
 jjulia> data = [
     Dict(
         "level" => 1,
