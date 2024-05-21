@@ -540,6 +540,9 @@ function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
         val = get(data, key, default_value(D, Val(name)))
         val = isnothing(val) ? nulltype(type) : val
         val = isempty(D, val) ? nulltype(type) : val
+        if Nothing <: type && !(Missing <: type) && ismissing(val)
+            val = nothing
+        end
         push!(vals, eldeser(D, type, key, val))
     end
 
