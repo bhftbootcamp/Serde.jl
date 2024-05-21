@@ -664,4 +664,20 @@ using Test, Dates
             exp_str,
         )
     end
+
+    @testset "Case №38: Deserialization with missing field with Union{nothing, AnyType}" begin
+      struct Data
+        id::Int
+        name::Union{String,Nothing}
+      end
+
+      #  csv = """
+      #  "id","name"
+      #  1,
+      #  2,"name2"
+      #  """;
+      csv = Serde.to_csv([Data(1, nothing), Data(2, "name2")])
+      exp_obj =      Data[Data(1, nothing), Data(2, "name2")]
+      @test Serde.deser_csv(Data, csv) == exp_obj
+    end
 end
