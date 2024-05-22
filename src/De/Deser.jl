@@ -524,8 +524,7 @@ function deser(
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
         val = get(data, K(key), default_value(D, Val(name)))
-        val = isnothing(val) ? nulltype(type) : val
-        val = isempty(D, val) ? nulltype(type) : val
+        val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
         push!(vals, eldeser(D, type, key, val))
     end
 
