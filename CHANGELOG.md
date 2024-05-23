@@ -3,7 +3,7 @@
 The latest version of this file can be found at the master branch of the [Serde.jl](https://bhftbootcamp.github.io/Serde.jl) repository.
 
 ## 3.0.4 (21/05/2024)
-- supports CSV deserialization of Union{Nothing, Another} type
+- Supports deserialization of Union{Nulltype,AnyType} type
 
 ## 3.0.0 (22/03/2024)
 
