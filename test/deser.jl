@@ -664,4 +664,22 @@ using Test, Dates
             exp_str,
         )
     end
+
+    @testset "Case №38: Deserialization with missing field with Union{Nulltype,AnyType}" begin
+        struct WithNothing
+            y::Int64
+            x::Union{String,Nothing}
+        end
+    
+        @test Serde.deser(WithNothing, Dict("y" => 1, "x" => nothing)) == WithNothing(1, nothing)
+        @test Serde.deser(WithNothing, Dict("y" => 2, "x" => missing)) == WithNothing(2, nothing)
+    
+        struct WithMissing
+            y::Int64
+            x::Union{String,Missing}
+        end
+    
+        @test Serde.deser(WithMissing, Dict("y" => 3, "x" => nothing)) == WithMissing(3, missing)
+        @test Serde.deser(WithMissing, Dict("y" => 4, "x" => missing)) == WithMissing(4, missing)
+    end
 end
