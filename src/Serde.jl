@@ -55,6 +55,22 @@ function Base.show(io::IO, e::SerdeExtensionError)
     to import the '$(string(e.extension))' module.""")
 end
 
+"""
+    if_module(f::Function, mod::Symbol)
+
+Execute `f` if the module named by `mod` is imported into `Main`.
+
+The function `f` receives a constant of the given `mod` as argument to dispatch on for calling
+functions in extensions.
+"""
+function if_module(f::Function, mod::Symbol)
+    if mod in names(Main; imported = true)
+        f(Val(mod))
+    else
+        throw(SerdeExtensionError(mod))
+    end
+end
+
 function to_string end
 function to_string(ext::Module, args...; kwargs...)
     to_string(Val(first(fullname(ext))), args...; kwargs...)
