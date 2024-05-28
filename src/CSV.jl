@@ -1,10 +1,12 @@
 module CSV
 
-import ..Serde
+import ..Serde, ..if_module
 
 export to_csv,
        deser_csv,
        parse_csv
+
+const EXT = :CSV
 
 """
     CSVSyntaxError <: Exception
@@ -88,7 +90,9 @@ b,2
 ```
 """
 function to_csv(args...; kwargs...)
-    Serde.to_string(Val(:CSV), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.to_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -119,7 +123,9 @@ julia> deser_csv(Data, csv)
 ```
 """
 function deser_csv(args...; kwargs...)
-    Serde.from_string(Val(:CSV), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.from_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -148,7 +154,9 @@ julia> parse_csv(csv)
 ```
 """
 function parse_csv(args...; kwargs...) 
-    Serde.parse(Val(:CSV), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.parse(mod, args...; kwargs...)
+    end
 end
 
 end

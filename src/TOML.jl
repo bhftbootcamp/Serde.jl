@@ -1,10 +1,12 @@
 module TOML
 
-import ..Serde
+import ..Serde, ..if_module
 
 export to_toml,
        deser_toml,
        parse_toml
+
+const EXT = :TOML
 
 isnull(::Any) = false
 isnull(v::Missing)::Bool = true
@@ -67,7 +69,9 @@ MyPlot("line", Point[Point(1, 0), Point(2, 3)])
 ```
 """
 function deser_toml(args...; kwargs...)
-    Serde.from_string(Val(:TOML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.from_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -96,7 +100,9 @@ Dict{String, Any} with 3 entries:
 ```
 """
 function parse_toml(args...; kwargs...)
-    Serde.parse(Val(:TOML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.parse(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -162,7 +168,9 @@ y = 3
 ```
 """
 function to_toml(args...; kwargs...)
-    Serde.to_string(Val(:TOML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.to_string(mod, args...; kwargs...)
+    end
 end
 
 end

@@ -1,11 +1,13 @@
 module JSON
 
-import ..Serde
+import ..Serde, ..if_module
 
 export to_json,
        to_pretty_json,
        deser_json,
        parse_json
+
+const EXT = :JSON
 
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
@@ -104,7 +106,9 @@ julia> to_json(x -> (:field, :simple_field), ManyFields(1, 2.0, "a", [true, fals
 ```
 """
 function to_json(args...; kwargs...)
-    Serde.to_string(Val(:JSON), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.to_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -143,7 +147,9 @@ julia> to_pretty_json(Person(person_info, Pet("Buddy", 5))) |> print
 ```
 """
 function to_pretty_json(args...; kwargs...)
-    Serde.to_string(Val(:JSON), args...; pretty=true, kwargs...)
+    if_module(EXT) do mod
+        Serde.to_string(mod, args...; pretty=true, kwargs...)
+    end
 end
 
 """
@@ -172,7 +178,9 @@ Data(100, "json", Record(100.0))
 ```
 """
 function deser_json(args...; kwargs...)
-    Serde.from_string(Val(:JSON), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.from_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -206,7 +214,9 @@ Dict{String, Any} with 3 entries:
 ```
 """
 function parse_json(args...; kwargs...)
-    Serde.parse(Val(:JSON), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.parse(mod, args...; kwargs...)
+    end
 end
 
 end

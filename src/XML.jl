@@ -1,10 +1,12 @@
 module XML
 
-import ..Serde
+import ..Serde, ..if_module
 
 export to_xml,
        deser_xml,
        parse_xml
+
+const EXT = :EzXML
 
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
@@ -71,7 +73,9 @@ Data(100, "xml", Record(100.0))
 ```
 """
 function deser_xml(args...; kwargs...)
-    Serde.from_string(Val(:EzXML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.from_string(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -108,7 +112,9 @@ Dict{String, Any} with 5 entries:
 ```
 """
 function parse_xml(args...; kwargs...)
-    Serde.parse(Val(:EzXML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.parse(mod, args...; kwargs...)
+    end
 end
 
 """
@@ -152,7 +158,9 @@ julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
 ```
 """
 function to_xml(args...; kwargs...)
-    Serde.to_string(Val(:EzXML), args...; kwargs...)
+    if_module(EXT) do mod
+        Serde.to_string(mod, args...; kwargs...)
+    end
 end
 
 end
