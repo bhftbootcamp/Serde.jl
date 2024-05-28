@@ -1,10 +1,12 @@
 module YAML
 
-import ..Serde
+import ..Serde, ..SerdeExtensionError
 
 export to_yaml,
        deser_yaml,
        parse_yaml
+
+const EXT = :YAML
 
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
@@ -77,7 +79,11 @@ Server("cloud_server", Status(42, 12.34), [1, 2, 3], true, Dict("Kevin" => 1, "G
 ```
 """
 function deser_yaml(args...; kwargs...)
-    Serde.from_string(Val(:YAML), args...; kwargs...)
+    if EXT in names(Main; imported = true)
+        Serde.from_string(Val(EXT), args...; kwargs...)
+    else
+        throw(SerdeExtensionError(EXT))
+    end
 end
 
 """
@@ -126,7 +132,11 @@ Dict{String, Any} with 6 entries:
 ```
 """
 function parse_yaml(args...; kwargs...)
-    Serde.parse(Val(:YAML), args...; kwargs...)
+    if EXT in names(Main; imported = true)
+        Serde.parse(Val(EXT), args...; kwargs...)
+    else
+        throw(SerdeExtensionError(EXT))
+    end
 end
 
 """
@@ -208,7 +218,11 @@ simple_field: "a"
 ```
 """
 function to_yaml(args...; kwargs...)
-    Serde.to_string(Val(:YAML), args...; kwargs...)
+    if EXT in names(Main; imported = true)
+        Serde.to_string(Val(EXT), args...; kwargs...)
+    else
+        throw(SerdeExtensionError(EXT))
+    end
 end
 
 end

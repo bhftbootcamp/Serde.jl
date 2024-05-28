@@ -40,6 +40,21 @@ include("Par/Par.jl")
 include("Ser/Ser.jl")
 include("De/De.jl")
 
+"""
+Exception raised when the module required for an extension is missing.
+"""
+struct SerdeExtensionError <: Exception
+    # This must be a symbol since we cannot instantiate the module object: The
+    # module is obviously missing, that's why we want to report it in the first
+    # place...
+    extension::Symbol
+end
+
+function Base.show(io::IO, e::SerdeExtensionError)
+    return print(io, """SerdeExtensionError: to use this method, first you need \
+    to import the '$(string(e.extension))' module.""")
+end
+
 function to_string end
 function to_string(ext::Module, args...; kwargs...)
     to_string(Val(first(fullname(ext))), args...; kwargs...)
