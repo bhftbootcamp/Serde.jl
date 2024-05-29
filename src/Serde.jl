@@ -71,19 +71,31 @@ function if_module(f::Function, mod::Symbol)
     end
 end
 
+"""
+    to_symbol(m::Module)::Symbol
+
+Convert a module name to a symbol.
+
+Takes the `fullname` of the module, joins the individual components with a `_` and returns the
+result as Symbol.
+"""
+function to_symbol(m::Module)::Symbol
+    Symbol(join(string.(fullname(m)), '_'))
+end
+
 function to_string end
 function to_string(ext::Module, args...; kwargs...)
-    to_string(Val(first(fullname(ext))), args...; kwargs...)
+    to_string(Val(to_symbol(ext)), args...; kwargs...)
 end
 
 function from_string end
 function from_string(ext::Module, args...; kwargs...)
-    from_string(Val(first(fullname(ext))), args...; kwargs...)
+    from_string(Val(to_symbol(ext)), args...; kwargs...)
 end
 
 function parse end
 function parse(ext::Module, args...; kwargs...)
-    parse(Val(first(fullname(ext))), args...; kwargs...)
+    parse(Val(to_symbol(ext)), args...; kwargs...)
 end
     
 export to_string, from_string, parse
