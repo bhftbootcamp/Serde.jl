@@ -1,19 +1,15 @@
 using Serde, Test
 
-# NOTE: We must prepend `Main_` in the impls below since we're defining the
-# module right in the "main" file of the interpreter (when running tests). This
-# also applies when `include`ing a file from the REPL. This does not apply to
-# regular packages.
 module TestGuessThis
     import Serde
 
-    function Serde.to_string(::Val{:Main_TestGuessThis}, args...; kwargs...)
+    @eval function Serde.to_string(::Val{Serde.to_symbol(@__MODULE__)}, args...; kwargs...)
         "success"
     end
     module OrThis
         import Serde
 
-        function Serde.to_string(::Val{:Main_TestGuessThis_OrThis}, args...; kwargs...)
+        @eval function Serde.to_string(::Val{Serde.to_symbol(@__MODULE__)}, args...; kwargs...)
             "success2"
         end
     end
