@@ -2,6 +2,9 @@
 
 using Serde
 using Test, Dates, NanoDates, UUIDs
+
+include("extensions.jl")
+
 # To ensure that all extensions are loaded
 import JSON, CSV, TOML, YAML, EzXML
 
