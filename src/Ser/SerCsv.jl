@@ -2,7 +2,6 @@ module SerCsv
 
 export to_csv
 
-using Dates
 import ..to_flatten
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])

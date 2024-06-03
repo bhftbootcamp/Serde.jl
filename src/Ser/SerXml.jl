@@ -3,6 +3,7 @@ module SerXml
 export to_xml
 
 using Dates
+using UUIDs
 using ..Serde
 
 const CONTENT_WORD = "_"
@@ -21,6 +22,7 @@ issimple(::Number)::Bool = true
 issimple(::Enum)::Bool = true
 issimple(::Type)::Bool = true
 issimple(::Dates.TimeType)::Bool = true
+issimple(::UUID)::Bool = true
 
 function attributes(node::AbstractDict)
     return filter(pair -> issimple(pair[2]) && pair[1] != CONTENT_WORD, node)
@@ -63,6 +65,7 @@ xml_value(val::Dates.TimeType; kw...)::String = xml_value(string(val); kw...)
 xml_value(val::Dates.DateTime; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
 xml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
 xml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
+xml_value(val::UUID; _...)::String = xml_value(string(val); kw...)
 
 # key
 

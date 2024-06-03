@@ -12,21 +12,30 @@
         end
 
         struct FooXml1
+            uuid::UUID
             date::Date
             bar::BarXml1
         end
 
-        exp_obj = FooXml1(Date("2023-07-30"), BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"))
+        exp_obj = FooXml1(
+            UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+            Date("2023-07-30"),
+            BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"),
+        )
         exp_str = """
-        <xml date="2023-07-30">
+        <xml uuid="f47ac10b-58cc-4372-a567-0e02b2c3d479" date="2023-07-30">
           <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
         </xml>
         """
         @test Serde.SerXml.to_xml(exp_obj) == exp_str
 
-        exp_obj = FooXml1(Date("2023-07-30"), BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"))
+        exp_obj = FooXml1(
+            UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+            Date("2023-07-30"),
+            BarXml1("text", :ok, 'g', Int64, 3.14, "CONTENT"),
+        )
         exp_str = """
-        <dexamel date="2023-07-30">
+        <dexamel uuid="f47ac10b-58cc-4372-a567-0e02b2c3d479" date="2023-07-30">
           <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
         </dexamel>
         """

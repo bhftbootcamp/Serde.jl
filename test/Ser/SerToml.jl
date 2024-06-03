@@ -89,6 +89,7 @@
             val::Int64
             bar1::Bar1
             bar2::Vector{Bar2}
+            uuid::UUID
         end
 
         Serde.SerToml.ser_name(::Type{Fooo}, ::Val{:val}) = :test
@@ -97,6 +98,7 @@
         exp_str = """
         test = 100
         bar1 = 1
+        uuid = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
 
         [[bar2]]
         v1 = 100
@@ -107,7 +109,12 @@
         v2 = "ds"
         """
         @test Serde.to_toml(
-            Fooo(100, Bar1(100, "ds"), [Bar2(100, "ds"), Bar2(100, "ds")]),
+            Fooo(
+                100,
+                Bar1(100, "ds"),
+                [Bar2(100, "ds"), Bar2(100, "ds")],
+                UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+            ),
         ) == exp_str
     end
 
