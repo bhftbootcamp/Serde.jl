@@ -3,6 +3,7 @@ module SerYaml
 export to_yaml
 
 using Dates
+using UUIDs
 using ..Serde
 
 const YAML_NULL = "null"
@@ -67,6 +68,10 @@ function yaml_value!(buf::IOBuffer, f::Function, val::Symbol; kw...)::Nothing
 end
 
 function yaml_value!(buf::IOBuffer, f::Function, val::TimeType; kw...)::Nothing
+    return yaml_value!(buf, f, string(val); kw...)
+end
+
+function yaml_value!(buf::IOBuffer, f::Function, val::UUID; kw...)::Nothing
     return yaml_value!(buf, f, string(val); kw...)
 end
 

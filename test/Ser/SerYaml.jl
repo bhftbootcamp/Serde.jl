@@ -137,6 +137,7 @@
             timetype::TimeType
             enm::Num
             set::Set
+            uuid::UUID
         end
 
         exp_obj = YamlFoo6(
@@ -148,6 +149,7 @@
             Date("2022-01-01"),
             num1,
             Set([1, 2]),
+            UUID("764c061c-fdf6-4149-9924-d3b4b3e416d2"),
         )
         exp_str = """
         vector:
@@ -171,6 +173,7 @@
         set:
           - 2
           - 1
+        uuid: "764c061c-fdf6-4149-9924-d3b4b3e416d2"
         """
         @test Serde.to_yaml(exp_obj) == exp_str
     end
