@@ -30,7 +30,6 @@ toml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"H
 toml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
 toml_value(val::UUID; kw...)::String = toml_value(string(val); kw...)
 
-
 function isnumber(c::Char)::Bool
     return (c >= '0') & (c <= '9')
 end
