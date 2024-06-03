@@ -1,7 +1,7 @@
 # runtests
 
 using Serde
-using Test, Dates, NanoDates
+using Test, Dates, NanoDates, UUIDs
 
 include("Par/Par.jl")
 include("Ser/Ser.jl")
