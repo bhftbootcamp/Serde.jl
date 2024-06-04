@@ -100,4 +100,13 @@ end
         @test Serde.from_string(TOML, TestMe, str_val) == Serde.TOML.deser_toml(TestMe, str_val)
         @test Serde.parse(TOML, str_val) == Serde.TOML.parse_toml(str_val)
     end
+
+    @testset "Case №11: Query API equality" begin
+        import Serde.Query
+        str_val = Serde.to_string(Query, dict_val)::String
+
+        @test Serde.to_string(Query, dict_val) == Serde.Query.to_query(dict_val)
+        @test Serde.from_string(Query, TestMe, str_val) == Serde.Query.deser_query(TestMe, str_val)
+        @test Serde.parse(Query, str_val) == Serde.Query.parse_query(str_val)
+    end
 end

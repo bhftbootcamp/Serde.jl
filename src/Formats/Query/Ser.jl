@@ -1,8 +1,6 @@
 module SerQuery
 
-export to_query
-
-using ..Serde
+import ...Serde
 
 function _bytes end
 function escape_query end
@@ -107,46 +105,8 @@ function iter_query(f::Function, query::Q)::Nothing where {Q}
     return nothing
 end
 
-"""
-    to_query(data; kw...) -> String
-
-Converts dictionary `data` (or custom type) to the query string.
-Values of `data` must be of primitive types or a vector of such.
-In case of custom data, the names of the query elements are obtained from the field names of `data`.
-
-## Keyword arguments
-- `delimiter::AbstractString = "&"`: The separator character between query string elements.
-- `sort_keys::Bool = false`: A flag that determines whether the keys should be sorted by lexicographic order.
-- `escape::Bool = true`: Option to construct a valid URI-encoded string.
-
-## Examples
-
-```julia-repl
-julia> struct Data
-           int::Int64
-           float::Float64
-           strings::Vector{String}
-       end
-
-julia> to_query(Data(1, 2.0, ["a", "b", "c"]), sort_keys=true)
-"float=2.0&int=1&strings=%5Ba%2Cb%2Cc%5D"
-
-julia> to_query(Data(1, 2.0, ["a", "b", "c"]), escape = false)
-"int=1&float=2.0&strings=[a,b,c]"
-```
-
-```julia-repl
-julia> data = Dict(
-           "int" => 1,
-           "float" => 2.0,
-           "strings" => ["a", "b", "c"]
-       );
-
-julia> to_query(data, escape = false)
-"int=1&strings=[a,b,c]&float=2.0"
-```
-"""
-function to_query(
+function Serde.to_string(
+    ::Val{:Serde_Query},
     data::T;
     delimiter::AbstractString = "&",
     sort_keys::Bool = false,

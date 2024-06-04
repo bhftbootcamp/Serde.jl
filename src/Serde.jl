@@ -60,5 +60,7 @@ include("XML.jl")
 using .XML
 include("YAML.jl")
 using .YAML
+include("Formats/Query/Query.jl")
+using .Query
 
 end

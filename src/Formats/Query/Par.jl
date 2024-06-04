@@ -1,33 +1,6 @@
 module ParQuery
 
-export QuerySyntaxError
-export parse_query
-
-"""
-    QuerySyntaxError <: Exception
-
-Exception thrown when a [`parse_query`](@ref) fails due to incorrect query syntax or any underlying error that occurs during parsing.
-
-## Fields
-- `message::String`: The error message.
-- `exception::Exception`: The caught exception.
-"""
-struct QuerySyntaxError <: Exception
-    message::String
-    exception::Exception
-end
-
-struct QueryParsingError <: Exception
-    message::String
-end
-
-struct EscapeError <: Exception
-    message::String
-end
-
-Base.show(io::IO, e::QuerySyntaxError) = print(io, e.message)
-Base.show(io::IO, e::QueryParsingError) = print(io, e.message)
-Base.show(io::IO, e::EscapeError) = print(io, e.message)
+import ...Serde
 
 function cut(s::AbstractString, sep::AbstractString)
     index = findfirst(sep, s)
@@ -56,7 +29,7 @@ function unescape(q::AbstractString)::AbstractString
                 c = read(io, Char)
                 write(out, Base.parse(UInt8, string(c1, c); base = 16))
             catch
-                throw(EscapeError("invalid Query escape '%$c1$c'"))
+                throw(Serde.Query.EscapeError("invalid Query escape '%$c1$c'"))
             end
         else
             write(out, c)
@@ -74,7 +47,8 @@ function decode_key(k::AbstractString)::AbstractString
 end
 
 function validate_key(k::AbstractString)::Nothing
-    contains(k, ';') && throw(QueryParsingError("invalid semicolon separator in query key"))
+    contains(k, ';') &&
+        throw(Serde.Query.QueryParsingError("invalid semicolon separator in query key"))
     return nothing
 end
 
@@ -146,40 +120,8 @@ function parse(
     return parsed
 end
 
-"""
-    parse_query(x::AbstractString; kw...) -> Dict{String, Union{String, Vector{String}}}
-    parse_query(x::Vector{UInt8}; kw...) -> Dict{String, Union{String, Vector{String}}}
-
-Parses a query string `x` (or vector of UInt8) into a dictionary.
-
-## Keyword arguments
-- `backbone::Type = Nothing`: The custom type that describes types of query elements.
-- `delimiter::AbstractString = "&"`: The delimiter of query string.
-- `dict_type::Type{<:AbstractDict} = Dict`: The type of the dictionary to be returned.
-
-## Examples
-```julia-repl
-julia> struct Template
-           vector::Vector
-           value::String
-       end
-
-julia> query = "value=abc&vector=[1,2,3]"
-
-julia> parse_query(query)
-Dict{String, Union{String, Vector{String}}} with 2 entries:
-  "vector" => "[1,2,3]"
-  "value"  => "abc"
-
-julia> parse_query(query, backbone = Template)
-Dict{String, Union{String, Vector{String}}} with 2 entries:
-  "vector" => ["1", "2", "3"]
-  "value"  => "abc"
-```
-"""
-function parse_query end
-
-function parse_query(
+function Serde.parse(
+    ext::Val{:Serde_Query},
     x::S;
     backbone::Type = Nothing,
     dict_type::Type{D} = Dict{String,Any},
@@ -196,12 +138,12 @@ function parse_query(
         end
         parsed
     catch e
-        throw(QuerySyntaxError("invalid Query syntax", e))
+        throw(Serde.Query.QuerySyntaxError("invalid Query syntax", e))
     end
 end
 
-function parse_query(x::Vector{UInt8}; kw...)
-    return parse_query(unsafe_string(pointer(x), length(x)); kw...)
+function Serde.parse(ext::Val{:Serde_Query}, x::Vector{UInt8}; kw...)
+    return Serde.parse(ext, unsafe_string(pointer(x), length(x)); kw...)
 end
 
 end
