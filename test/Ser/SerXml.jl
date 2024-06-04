@@ -27,7 +27,7 @@
           <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
 
         exp_obj = FooXml1(
             UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
@@ -39,7 +39,7 @@
           <bar str="text" symb="ok" char="g" type="Int64" num="3.14">CONTENT</bar>
         </dexamel>
         """
-        @test Serde.SerXml.to_xml(exp_obj; key = "dexamel") == exp_str
+        @test Serde.to_xml(exp_obj; key = "dexamel") == exp_str
     end
 
     @testset "Case №2: XmlVector" begin
@@ -56,7 +56,7 @@
         </xml>
         """
 
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №3: SerXml" begin
@@ -74,7 +74,7 @@
         </xml>
         """
 
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №4: EmptyTag" begin
@@ -92,7 +92,7 @@
           <bar str="bottom text"/>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
 
         exp_obj = Dict("bar" => Dict("_" => "bottom text"))
         exp_str = """
@@ -100,7 +100,7 @@
           <bar>bottom text</bar>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №5: Content" begin
@@ -118,7 +118,7 @@
           <bar>CONTENT</bar>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
 
         exp_obj = Dict("bar" => Dict("_" => "CONTENT"))
         exp_str = """
@@ -126,7 +126,7 @@
           <bar>CONTENT</bar>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
     end
 
     @testset "Case №6: Vector again" begin
@@ -150,6 +150,6 @@
           <a b="40" a="10"/>
         </xml>
         """
-        @test Serde.SerXml.to_xml(exp_obj) == exp_str
+        @test Serde.to_xml(exp_obj) == exp_str
     end
 end

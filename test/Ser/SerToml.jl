@@ -92,8 +92,8 @@
             uuid::UUID
         end
 
-        Serde.SerToml.ser_name(::Type{Fooo}, ::Val{:val}) = :test
-        Serde.SerToml.ser_value(::Type{Fooo}, ::Val{:bar1}, x::Bar1) = 1
+        Serde.TOML.ser_name(::Type{Fooo}, ::Val{:val}) = :test
+        Serde.TOML.ser_value(::Type{Fooo}, ::Val{:bar1}, x::Bar1) = 1
 
         exp_str = """
         test = 100

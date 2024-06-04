@@ -125,7 +125,7 @@ end
     @testset "Case №3: Ignore null" begin
         abstract type AbstractQuery_3 <: Comparable end
 
-        (Serde.SerQuery.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_3} = true
+        (Serde.Query.SerQuery.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_3} = true
 
         Base.@kwdef struct QueryFoo3_1 <: AbstractQuery_3
             x::String
@@ -162,7 +162,7 @@ end
             dt::DateTime
         end
 
-        Serde.SerQuery.ser_type(::Type{QueryFoo4}, x::DateTime) = string(datetime2unix(x))
+        Serde.Query.SerQuery.ser_type(::Type{QueryFoo4}, x::DateTime) = string(datetime2unix(x))
 
         exp_str = "dt=1.677538897248e9"
         exp_obj = QueryFoo4(DateTime("2023-02-27T23:01:37.248"))

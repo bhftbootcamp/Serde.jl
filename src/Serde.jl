@@ -4,25 +4,25 @@ function deser end
 function parse_value end
 
 # Ser
-export to_csv,
-    to_json,
+export to_json,
     to_pretty_json,
+    to_csv,
     to_query,
     to_toml,
     to_xml,
     to_yaml
 
 # De
-export deser_csv,
-    deser_json,
+export deser_json,
+    deser_csv,
     deser_query,
     deser_toml,
     deser_xml,
     deser_yaml
 
 # Par
-export parse_csv,
-    parse_json,
+export parse_json,
+    parse_csv,
     parse_query,
     parse_toml,
     parse_xml,
@@ -36,8 +36,29 @@ export @serde,
     to_flatten
 
 include("Utl/Utl.jl")
-include("Par/Par.jl")
-include("Ser/Ser.jl")
-include("De/De.jl")
+include("Serialize.jl")
+include("Deserialize.jl")
+
+include("API.jl")
+using .API
+import .API: SerdeExtensionError,
+    parse,
+    if_module,
+    to_symbol,
+    to_string,
+    from_string
+
+include("Formats/JSON.jl")
+using .JSON
+include("Formats/CSV.jl")
+using .CSV
+include("Formats/TOML.jl")
+using .TOML
+include("Formats/XML.jl")
+using .XML
+include("Formats/YAML.jl")
+using .YAML
+include("Formats/Query/Query.jl")
+using .Query
 
 end
