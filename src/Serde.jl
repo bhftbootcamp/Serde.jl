@@ -36,7 +36,6 @@ export @serde,
     to_flatten
 
 include("Utl/Utl.jl")
-include("Par/Par.jl")
 include("Ser/Ser.jl")
 include("De/De.jl")
 
