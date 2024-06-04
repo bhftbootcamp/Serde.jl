@@ -49,16 +49,15 @@ import .API: SerdeExtensionError,
     to_string,
     from_string
 
-#include("Ext.jl")
-include("JSON.jl")
+include("Formats/JSON.jl")
 using .JSON
-include("CSV.jl")
+include("Formats/CSV.jl")
 using .CSV
-include("TOML.jl")
+include("Formats/TOML.jl")
 using .TOML
-include("XML.jl")
+include("Formats/XML.jl")
 using .XML
-include("YAML.jl")
+include("Formats/YAML.jl")
 using .YAML
 include("Formats/Query/Query.jl")
 using .Query
