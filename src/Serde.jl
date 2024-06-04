@@ -36,8 +36,8 @@ export @serde,
     to_flatten
 
 include("Utl/Utl.jl")
-include("Ser/Ser.jl")
 include("De/De.jl")
+include("Serialize.jl")
 
 include("API.jl")
 using .API
