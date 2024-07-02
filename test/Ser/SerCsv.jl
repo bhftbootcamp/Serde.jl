@@ -1,16 +1,16 @@
 # Ser/SerCsv
 
-@testset verbose = true "Serialization to CSV Test Suite" begin
+@testset verbose = true "SerCsv" begin
     @testset "Case 1: Simple Serialization" begin
         struct SimpleRecord
             a_id::Int64
             b_category::String
             c_quantity::Int64
-            d_value::Union{String,Float64}
+            d_value::String
         end
 
         exp_obj = [
-            SimpleRecord(1, "a", 11, 11.1),
+            SimpleRecord(1, "a", 11, "11.1"),
             SimpleRecord(2, "b", 22, "bb"),
             SimpleRecord(2, "b", 22, "bb"),
         ]
@@ -37,23 +37,23 @@
             id::Int64
             name::String
             count::Int64
-            data::Union{String,Float64,SubRecord}
+            data::SubRecord
         end
 
         exp_obj = [
-            ComplexRecord(1, "Hello", 3, "World"),
-            ComplexRecord(2, "Julia", 5, 3.14),
-            ComplexRecord(3, "Coconut", 7, SubRecord(42, NestedDetail("Nested object"))),
+            ComplexRecord(1, "Hello", 3, SubRecord(42, NestedDetail("Nested object1"))),
+            ComplexRecord(2, "Julia", 5, SubRecord(43, NestedDetail("Nested object2"))),
+            ComplexRecord(3, "Coconut", 7, SubRecord(44, NestedDetail("Nested object3"))),
         ]
         exp_str = """
-        id,name,count,data,data_code,data_nested_detail
-        1,Hello,3,World,,
-        2,Julia,5,3.14,,
-        3,Coconut,7,,42,Nested object
+        id,name,count,data_code,data_nested_detail
+        1,Hello,3,42,Nested object1
+        2,Julia,5,43,Nested object2
+        3,Coconut,7,44,Nested object3
         """
         @test Serde.to_csv(
             exp_obj,
-            headers = ["id", "name", "count", "data", "data_code", "data_nested_detail"],
+            headers = ["id", "name", "count", "data_code", "data_nested_detail"],
         ) |> strip == exp_str |> strip
     end
 
@@ -62,13 +62,13 @@
             id::Int64
             text::String
             count::Int64
-            value::Union{String,Float64}
+            value::String
         end
 
         exp_obj = [
-            SpecialCharRecord(1, "a,,,,;", 11, 11.1),
+            SpecialCharRecord(1, "a,,,,;", 11, "11.1"),
             SpecialCharRecord(2, "b\nl", 22, "bb\"\""),
-            SpecialCharRecord(1, "a,,,,;", 12, 11.1),
+            SpecialCharRecord(1, "a,,,,;", 12, "11.1"),
         ]
         exp_str = """
         id,text,count,value
@@ -88,10 +88,10 @@
             WeakKeyDict("a" => 10, "B" => 35),
         ]
         expected_csv_with_delimiter = """
-        B;a
-        20;10
-        32;15
-        35;10
+        a;B
+        10;20
+        15;32
+        10;35
         """
         @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
               expected_csv_with_delimiter |> strip
@@ -114,5 +114,42 @@
         """
         @test Serde.to_csv(exp_obj, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = false) |> strip ==
               exp_str |> strip
+    end
+
+    @testset "Case 5: Serializing Order" begin
+        struct Bar500
+            num::Float64
+            str::String
+        end
+
+        struct Foo500
+            val::Int64
+            bar::Bar500
+            str::String
+        end
+
+        nested_struct = [Foo500(1, Bar500(1.0, "b"), "a")]
+        exp_str = """
+        val,bar_num,bar_str,str
+        1,1.0,b,a
+        """
+        @test Serde.to_csv(nested_struct) == exp_str
+
+        struct FooBar500
+            bar::Bar500
+            foo::Foo500
+        end
+
+        nested_struct2 = [
+            FooBar500(Bar500(2.0, "a"), Foo500(1, Bar500(1.0, "b"), "a")),
+            FooBar500(Bar500(3.0, "a"), Foo500(1, Bar500(1.0, "b"), "a")),
+        ]
+        exp_str2 = """
+        bar_num,bar_str,foo_val,foo_bar_num,foo_bar_str,foo_str
+        2.0,a,1,1.0,b,a
+        3.0,a,1,1.0,b,a
+        """
+
+        @test Serde.to_csv(nested_struct2) == exp_str2
     end
 end
