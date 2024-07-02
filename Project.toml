@@ -1,6 +1,6 @@
 name = "Serde"
 uuid = "db9b398d-9517-45f8-9a95-92af99003e0e"
-version = "3.1.0"
+version = "3.1.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

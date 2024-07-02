@@ -65,32 +65,35 @@ Dict{String, Any} with 3 entries:
 function to_flatten(
     data::AbstractDict{K,V};
     delimiter::AbstractString = "_",
-)::Dict{String,Any} where {K,V}
-    result = Dict{String,Any}()
+    dict_type::Type{<:AbstractDict} = Dict{String,Any},
+) where {K,V}
+    result = dict_type()
     for (key, value) in data
-        key = string(key)
         if isa(value, AbstractDict)
-            for (k, v) in to_flatten(value; delimiter = delimiter)
-                result[key * delimiter * k] = v
+            for (k, v) in to_flatten(value; delimiter = delimiter, dict_type = dict_type)
+                result[string(key) * delimiter * k] = v
             end
         else
-            result[key] = value
+            result[string(key)] = value
         end
     end
     return result
 end
 
-function to_flatten(data::T; delimiter::AbstractString = "_")::Dict{String,Any} where {T}
-    result = Dict{String,Any}()
+function to_flatten(
+    data::T;
+    delimiter::AbstractString = "_",
+    dict_type::Type{<:AbstractDict} = Dict{String,Any},
+) where {T}
+    result = dict_type()
     for key in fieldnames(T)
         value = getproperty(data, key)
-        key = string(key)
         if !issimple(value)
-            for (k, v) in to_flatten(value; delimiter = delimiter)
-                result[key * delimiter * k] = v
+            for (k, v) in to_flatten(value; delimiter = delimiter, dict_type = dict_type)
+                result[string(key) * delimiter * k] = v
             end
         else
-            result[key] = value
+            result[string(key)] = value
         end
     end
     return result
