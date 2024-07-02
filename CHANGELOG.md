@@ -2,6 +2,10 @@
 
 The latest version of this file can be found at the master branch of the [Serde.jl](https://bhftbootcamp.github.io/Serde.jl) repository.
 
+## 3.2.0 (03/07/2024)
+- Added ordered header output to CSV ([#45](../../pull/45)).
+- Added dict_type parameter to to_flatten for customizable dictionary output ([#46](../../pull/46)).
+
 ## 3.0.4 (21/05/2024)
 - Supports deserialization of Union{Nulltype,AnyType} type
 
