@@ -4,6 +4,7 @@ export to_json
 export to_pretty_json
 
 using Dates
+using UUIDs
 using ..Serde
 
 const JSON_NULL = "null"
@@ -67,6 +68,10 @@ function json_value!(buf::IOBuffer, f::Function, val::Symbol; kw...)::Nothing
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::TimeType; kw...)::Nothing
+    return json_value!(buf, f, string(val); kw...)
+end
+
+function json_value!(buf::IOBuffer, f::Function, val::UUID; kw...)::Nothing
     return json_value!(buf, f, string(val); kw...)
 end
 

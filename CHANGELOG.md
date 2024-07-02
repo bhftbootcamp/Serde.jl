@@ -2,21 +2,8 @@
 
 The latest version of this file can be found at the master branch of the [Serde.jl](https://bhftbootcamp.github.io/Serde.jl) repository.
 
-## 3.1.0
-
-- The CSV headers name and headers order after serialization are now predictable, ([#45](../../pull/45)).
-
-When using the Union type in CSV serialization, only the following combinations are supported:
-
-- Null Type (Nothing, Missing) + one Composite Type: `Union{Nothing, CompositeType}` or `Union{Missing, Nothing, CompositeType}`
-- Null Type + one "Simple Type"(String, Symbol, Char, Number, Enum, Type, Dates.TimeType): `Union{Missing, Dates.TimeType}` 
-
-The following Union types will not be serialized correctly:
-- Union Multiple Composite Type
-- Union Multiple Simple Type
-- Union Simple Types + Composite Type
-
-- CSV serialization performance improvements([#45](../../pull/45)).
+## 3.0.4 (21/05/2024)
+- Supports deserialization of Union{Nulltype,AnyType} type
 
 ## 3.0.0 (22/03/2024)
 

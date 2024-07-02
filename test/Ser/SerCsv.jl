@@ -1,6 +1,6 @@
 # Ser/SerCsv
 
-@testset verbose = true "Serialization to CSV Test Suite" begin
+@testset verbose = true "SerCsv" begin
     @testset "Case 1: Simple Serialization" begin
         struct SimpleRecord
             a_id::Int64
@@ -88,10 +88,10 @@
             WeakKeyDict("a" => 10, "B" => 35),
         ]
         expected_csv_with_delimiter = """
-        B;a
-        20;10
-        32;15
-        35;10
+        a;B
+        10;20
+        15;32
+        10;35
         """
         @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
               expected_csv_with_delimiter |> strip
@@ -151,95 +151,5 @@
         """
 
         @test Serde.to_csv(nested_struct2) == exp_str2
-    end
-
-    @testset "Case №6: Headers and values" begin
-        struct SimpleRecord1
-            a_id::Int64
-            b_category::String
-            c_quantity::Int64
-            d_value::String
-        end
-
-        obj = SimpleRecord1(1, "a", 11, "11.1")
-        exp_obj = Serde.SerCsv.csv_headers(SimpleRecord1)
-
-        @test exp_obj == ["a_id", "b_category", "c_quantity", "d_value"]
-
-        @test Serde.SerCsv.to_csv([obj]; delimiter = "|") == """
-        a_id|b_category|c_quantity|d_value
-        1|a|11|11.1
-        """
-
-        struct SimpleRecord2
-            a_id::Int64
-            b_category::String
-            c_quantity::Int64
-            d_value::SimpleRecord1
-            e_value::Int64
-        end
-
-        obj = SimpleRecord2(1, "2", 11, SimpleRecord1(1, "a", 11, "11.1"), 1)
-        exp_obj = Serde.SerCsv.csv_headers(SimpleRecord2)
-
-        @test exp_obj == [
-            "a_id",
-            "b_category",
-            "c_quantity",
-            "d_value_a_id",
-            "d_value_b_category",
-            "d_value_c_quantity",
-            "d_value_d_value",
-            "e_value",
-        ]
-
-        @test Serde.SerCsv.to_csv([obj]) == """
-        a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
-        1,2,11,1,a,11,11.1,1
-        """
-
-        struct SimpleRecord3
-            a_id::Int64
-            b_category::String
-            c_quantity::Int64
-            d_value::Union{String,Nothing}
-        end
-
-        obj = SimpleRecord3(1, "a", 11, nothing)
-        exp_obj = Serde.SerCsv.csv_headers(SimpleRecord3)
-
-        @test exp_obj == ["a_id", "b_category", "c_quantity", "d_value"]
-
-        @test Serde.SerCsv.to_csv([obj]) == """
-        a_id,b_category,c_quantity,d_value
-        1,a,11,
-        """
-
-        struct SimpleRecord4
-            a_id::Int64
-            b_category::String
-            c_quantity::Int64
-            d_value::Union{SimpleRecord1,Nothing}
-            e_value::Int64
-        end
-
-        obj = SimpleRecord4(1, "2", 11, nothing, 1)
-        exp_obj = Serde.SerCsv.csv_headers(SimpleRecord4)
-
-        @test exp_obj == [
-            "a_id",
-            "b_category",
-            "c_quantity",
-            "d_value_a_id",
-            "d_value_b_category",
-            "d_value_c_quantity",
-            "d_value_d_value",
-            "e_value",
-        ]
-
-        @test Serde.SerCsv.to_csv([obj]) == """
-        a_id,b_category,c_quantity,d_value_a_id,d_value_b_category,d_value_c_quantity,d_value_d_value,e_value
-        1,2,11,,,,,1
-        """
     end
 end

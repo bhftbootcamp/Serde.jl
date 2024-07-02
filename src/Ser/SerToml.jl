@@ -3,6 +3,7 @@ module SerToml
 export to_toml
 
 using Dates
+using UUIDs
 using ..Serde
 
 struct TomlSerializationError <: Exception
@@ -27,6 +28,7 @@ toml_value(val::Dates.TimeType; kw...)::String = toml_value(string(val); kw...)
 toml_value(val::Dates.DateTime; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
 toml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
 toml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
+toml_value(val::UUID; kw...)::String = toml_value(string(val); kw...)
 
 function isnumber(c::Char)::Bool
     return (c >= '0') & (c <= '9')
@@ -61,6 +63,7 @@ issimple(::Number)::Bool = true
 issimple(::Enum)::Bool = true
 issimple(::Type)::Bool = true
 issimple(::Dates.TimeType)::Bool = true
+issimple(::UUID)::Bool = true
 
 function issimple(vec::AbstractVector{T})::Bool where {T}
     if isempty(vec) || issimple(vec[1])
@@ -87,6 +90,10 @@ function toml_pair(key, val::Number; level::Int64 = 0, kw...)::String
 end
 
 function toml_pair(key, val::Dates.TimeType; level::Int64 = 0, kw...)::String
+    return indent(level) * toml_key(key; kw...) * " = " * toml_value(val; kw...) * "\n"
+end
+
+function toml_pair(key, val::UUID; level::Int64 = 0, kw...)::String
     return indent(level) * toml_key(key; kw...) * " = " * toml_value(val; kw...) * "\n"
 end
 
