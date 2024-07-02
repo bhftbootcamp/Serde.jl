@@ -2,18 +2,51 @@ module SerCsv
 
 export to_csv
 
-import ..to_flatten
+import ..to_flatten, ..issimple
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
 function wrap_value(s::AbstractString)
-    for i in eachindex(s)
-        if s[i] in WRAPPED
-            escaped_s = replace(s, "\"" => "\"\"")
-            return "\"$escaped_s\""
-        end
+    if any(c -> c in WRAPPED, s)
+        escaped_s = replace(s, "\"" => "\"\"")
+        return "\"$escaped_s\""
     end
     return s
+end
+
+function to_keys(
+    data::AbstractDict{K,V};
+    delimiter::AbstractString = "_",
+) where {K,V}
+    result = String[]
+    for (key, value) in data
+        if isa(value, AbstractDict)
+            for k in to_keys(value; delimiter = delimiter)
+                push!(result, string(key) * delimiter * k)
+            end
+        else
+            push!(result, string(key))
+        end
+    end
+    return result
+end
+
+function to_keys(
+    data::T;
+    delimiter::AbstractString = "_",
+) where {T}
+    result = String[]
+    for key in fieldnames(T)
+        value = getproperty(data, key)
+        if !issimple(value)
+            for k in to_keys(value; delimiter = delimiter)
+                push!(result, string(key) * delimiter * k)
+            end
+        else
+            push!(result, string(key))
+        end
+    end
+    return result
 end
 
 """
@@ -89,29 +122,37 @@ function to_csv(
     headers::Vector{String} = String[],
     with_names::Bool = true,
 )::String where {T}
-    cols = Set{String}()
-    vals = Vector{Dict{String,Any}}(undef, length(data) + with_names)
+    out_data = Vector{Dict{String,Any}}(undef, length(data) + with_names)
+    uni_keys = Set{String}()
+    ord_keys = String[]
 
     for (index, item) in enumerate(data)
-        val = to_flatten(item)
-        push!(cols, keys(val)...)
-        vals[index + with_names] = val
+        flt_data = to_flatten(item)
+        new_keys = setdiff(keys(flt_data), uni_keys)
+        if !isempty(new_keys)
+            union!(uni_keys, new_keys)
+            append!(ord_keys, setdiff(to_keys(item), ord_keys))
+        end
+        out_data[index + with_names] = flt_data
     end
 
-    with_names && (vals[1] = Dict{String,String}(cols .=> string.(cols)))
-    t_cols = isempty(headers) ? sort([cols...]) : headers
-    l_cols = t_cols[end]
-    buf = IOBuffer()
+    if with_names
+        out_data[1] = Dict{String,String}(ord_keys .=> ord_keys)
+    end
 
-    for csv_item in vals
-        for col in t_cols
-            val = get(csv_item, col, nothing)
+    out_cols = isempty(headers) ? ord_keys : headers
+    out_bufs = IOBuffer()
+    last_col = out_cols[end]
+
+    for item in out_data
+        for col in out_cols
+            val = get(item, col, nothing)
             str = val === nothing ? "" : wrap_value(string(val))
-            print(buf, str, col != l_cols ? delimiter : "\n")
+            print(out_bufs, str, col != last_col ? delimiter : "\n")
         end
     end
 
-    return String(take!(buf))
+    return String(take!(out_bufs))
 end
 
 end
