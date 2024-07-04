@@ -682,4 +682,18 @@ using Test, Dates
         @test Serde.deser(WithMissing, Dict("y" => 3, "x" => nothing)) == WithMissing(3, missing)
         @test Serde.deser(WithMissing, Dict("y" => 4, "x" => missing)) == WithMissing(4, missing)
     end
+
+    @testset "Case №39: Null value" begin
+        struct Foo46
+            empty_string_is_nothing::Union{Nothing,String}
+            empty_string::String
+        end
+
+        Serde.isempty(::Type{Foo46}, ::Val{:empty_string_is_nothing}, x) = x == ""
+
+        exp_obj = Foo46(nothing, "")
+
+        @test Serde.deser(Foo46, Dict("empty_string_is_nothing" => "", "empty_string" => "")) == exp_obj
+        @test Serde.deser(Foo46, NamedTuple{(:empty_string_is_nothing, :empty_string)}(("", ""))) == exp_obj
+    end
 end

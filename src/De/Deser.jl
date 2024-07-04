@@ -432,6 +432,10 @@ function Base.isempty(::Type{T}, x)::Bool where {T}
     return false
 end
 
+function Base.isempty(::Type{T}, ::Val{f}, x) where {T, f}
+    return false
+end
+
 """
     Serde.nulltype(::Type{T}) -> nothing
 
@@ -524,7 +528,7 @@ function deser(
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
         val = get(data, K(key), default_value(D, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
+        val = isnothing(val) || ismissing(val) || isempty(D, Val(name), val) || isempty(D, val) ? nulltype(type) : val
         push!(vals, eldeser(D, type, key, val))
     end
 
@@ -537,7 +541,7 @@ function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
         val = get(data, key, default_value(D, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
+        val = isnothing(val) || ismissing(val) || isempty(D, Val(name), val) || isempty(D, val) ? nulltype(type) : val
         push!(vals, eldeser(D, type, key, val))
     end
 
