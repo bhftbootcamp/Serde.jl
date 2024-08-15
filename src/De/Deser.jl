@@ -320,6 +320,18 @@ function deser(
     return map(x -> deser(eltype(T), x), data)
 end
 
+function deser(
+    ::ArrayType,
+    ::Type{T},
+    x::D,
+)::T where {T<:Tuple,D<:Union{Tuple,AbstractVector}}
+    if (T === Tuple) || isa(T, UnionAll)
+        T(x)
+    else
+        T(deser(t, v) for (t, v) in zip(fieldtypes(T), x))
+    end
+end
+
 """
     Serde.custom_name(::Type{T}, ::Val{x}) -> x
 
