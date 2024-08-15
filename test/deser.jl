@@ -682,4 +682,45 @@ using Test, Dates
         @test Serde.deser(WithMissing, Dict("y" => 3, "x" => nothing)) == WithMissing(3, missing)
         @test Serde.deser(WithMissing, Dict("y" => 4, "x" => missing)) == WithMissing(4, missing)
     end
+
+    @testset "Case №39: Deserialization Tuple to Tuple" begin
+        struct DifferentTuples
+            a::Tuple
+            b::NTuple{2}
+            c::Tuple{String,String,String}
+            d::Tuple{String,Int64}
+            e::Tuple{Float64,Int64}
+        end
+
+        exp_str = """
+        {
+            "a": ["1", "2", "3"],
+            "b": ["1", "2"],
+            "c": ["a", "b", "c"],
+            "d": ["s", "1"],
+            "e": ["0.01", "1"]
+        }
+        """
+        @test Serde.deser_json(DifferentTuples, exp_str).a == Tuple(("1", "2", "3"))
+        @test Serde.deser_json(DifferentTuples, exp_str).b == NTuple{2}(("1", "2"))
+        @test Serde.deser_json(DifferentTuples, exp_str).c == Tuple{String,String,String}(("a", "b", "c"))
+        @test Serde.deser_json(DifferentTuples, exp_str).d == Tuple{String,Int64}(("s", 1))
+        @test Serde.deser_json(DifferentTuples, exp_str).e == Tuple{Float64,Int64}((0.01, 1))
+
+        struct Tuples
+            a::Tuple
+            b::NTuple{3,Int64}
+            c::Tuple{Int64,String,Int64}
+        end
+
+        exp_kvs = Dict{String,Any}(
+            "a" => ("a", 1),
+            "b" => (1, 2, 3),
+            "c" => (1, 2, 3),
+        )
+        exp_obj = Tuples(Tuple(("a", 1)), NTuple{3,Int64}((1, 2, 3)), Tuple{Int64,String,Int64}((1, "2", 3)))
+        @test Serde.deser(Tuples, exp_kvs).a == exp_obj.a
+        @test Serde.deser(Tuples, exp_kvs).b == exp_obj.b
+        @test Serde.deser(Tuples, exp_kvs).c == exp_obj.c
+    end
 end
