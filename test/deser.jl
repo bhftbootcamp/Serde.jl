@@ -683,7 +683,7 @@ using Test, Dates
         @test Serde.deser(WithMissing, Dict("y" => 4, "x" => missing)) == WithMissing(4, missing)
     end
 
-    @testset "Case №39: Deserialization Tuple to Tuple" begin
+    @testset "Case №39: Deserialization Tuple" begin
         struct DifferentTuples
             a::Tuple
             b::NTuple{2}
