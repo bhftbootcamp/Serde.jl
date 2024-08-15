@@ -328,7 +328,7 @@ function deser(
     if (T === Tuple) || isa(T, UnionAll)
         T(x)
     else
-        T(Serde.deser(t, v) for (t, v) in zip(fieldtypes(T), x))
+        T(deser(t, v) for (t, v) in zip(fieldtypes(T), x))
     end
 end
 
