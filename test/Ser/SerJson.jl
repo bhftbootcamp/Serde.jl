@@ -176,6 +176,7 @@
             text::String
             object::SerJsonObject
             array::Vector{Int64}
+            matrix::Matrix{Float64}
         end
 
         obj = SerJsonFoo1(
@@ -183,6 +184,7 @@
             "sertupe",
             SerJsonObject(Set(["a", "b"]), :a => 2, SerJsonFoo1, OneMoreObject(true, nothing)),
             [1, 2, 3],
+            ones(2, 3)
         )
 
         @test Serde.to_pretty_json(obj) == """{
@@ -206,6 +208,20 @@
                                                1,
                                                2,
                                                3
+                                             ],
+                                             "matrix":[
+                                               [
+                                                 1.0,
+                                                 1.0
+                                               ],
+                                               [
+                                                 1.0,
+                                                 1.0
+                                               ],
+                                               [
+                                                 1.0,
+                                                 1.0
+                                               ]
                                              ]
                                            }"""
     end

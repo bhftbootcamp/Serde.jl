@@ -161,6 +161,18 @@ function json_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, kw.
     return print(buf, indent(l - 1), "]")
 end
 
+function json_value!(buf::IOBuffer, f::Function, A::AbstractArray{<:Any,n}; l::Int64, kw...)::Nothing where {n}
+    print(buf, "[", indent(l))
+    newdims = ntuple(_ -> :, n - 1)
+    first = true
+    for j in axes(A, n)
+        first || print(buf, ",", indent(l))
+        first = false
+        json_value!(buf, f, view(A, newdims..., j); l = l + (l != -1), kw...)
+    end
+    print(buf, indent(l - 1), "]")
+end
+
 (isnull(::Any)::Bool) = false
 (isnull(v::Missing)::Bool) = true
 (isnull(v::Nothing)::Bool) = true
