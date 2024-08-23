@@ -43,26 +43,31 @@ function unescape(q::AbstractString)::AbstractString
     occursin("%", q) || return q
     out = IOBuffer()
     io = IOBuffer(q)
-    while !eof(io)
-        c = read(io, Char)
-        if c == '%'
-            c1 = ""
-            c = ""
-            # Convert a pair of characters (c1, c) representing a hexadecimal value into its corresponding UInt8 value
-            # and write it to the specified output stream 'out'.
-            # The 'base=16' argument indicates that the conversion should be performed in base 16 (hexadecimal).
-            try
-                c1 = read(io, Char)
-                c = read(io, Char)
-                write(out, Base.parse(UInt8, string(c1, c); base = 16))
-            catch
-                throw(EscapeError("invalid Query escape '%$c1$c'"))
+    try
+        while !eof(io)
+            c = read(io, Char)
+            if c == '%'
+                c1 = ""
+                c = ""
+                # Convert a pair of characters (c1, c) representing a hexadecimal value into its corresponding UInt8 value
+                # and write it to the specified output stream 'out'.
+                # The 'base=16' argument indicates that the conversion should be performed in base 16 (hexadecimal).
+                try
+                    c1 = read(io, Char)
+                    c = read(io, Char)
+                    write(out, Base.parse(UInt8, string(c1, c); base = 16))
+                catch
+                    throw(EscapeError("invalid Query escape '%$c1$c'"))
+                end
+            else
+                write(out, c)
             end
-        else
-            write(out, c)
         end
+        return String(take!(out))
+    finally
+        close(io)
+        close(out)
     end
-    return String(take!(out))
 end
 
 function decode_key(k::AbstractString)::AbstractString

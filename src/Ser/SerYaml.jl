@@ -311,9 +311,13 @@ simple_field: "a"
 """
 function to_yaml(x...; kw...)::String
     buf = IOBuffer()
-    yaml_value!(buf, x...; l = 0, skip_lf = true, kw...)
-    print(buf, "\n")
-    return String(take!(buf))
+    try
+        yaml_value!(buf, x...; l = 0, skip_lf = true, kw...)
+        print(buf, "\n")
+        return String(take!(buf))
+    finally
+        close(buf)
+    end
 end
 
 end

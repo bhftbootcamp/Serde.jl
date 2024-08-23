@@ -53,10 +53,13 @@ function parse_csv(x::Vector{UInt8}; delimiter::AbstractString = ",", kw...)
 end
 
 function parse_csv(x::S; delimiter::AbstractString = ",", kw...) where {S<:AbstractString}
+    io = IOBuffer(x)
     try
-        return CSV.File(IOBuffer(x); delim = delimiter, types = String, strict = true, kw...) |> CSV.rowtable
+        return CSV.File(io; delim = delimiter, types = String, strict = true, kw...) |> CSV.rowtable
     catch e
         throw(CSVSyntaxError("invalid CSV syntax", e))
+    finally
+        close(io)
     end
 end
 

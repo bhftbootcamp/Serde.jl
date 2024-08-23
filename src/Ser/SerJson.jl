@@ -283,8 +283,12 @@ julia> to_json(x -> (:field, :simple_field), ManyFields(1, 2.0, "a", [true, fals
 """
 function to_json(x...; kw...)::String
     buf = IOBuffer()
-    json_value!(buf, x...; l = -1, kw...)
-    return String(take!(buf))
+    try
+        json_value!(buf, x...; l = -1, kw...)
+        return String(take!(buf))
+    finally
+        close(buf)
+    end
 end
 
 """
@@ -324,8 +328,12 @@ julia> to_pretty_json(Person(person_info, Pet("Buddy", 5))) |> print
 """
 function to_pretty_json(x...; kw...)::String
     buf = IOBuffer()
-    json_value!(buf, x...; l = 1, kw...)
-    return String(take!(buf))
+    try
+        json_value!(buf, x...; l = 1, kw...)
+        return String(take!(buf))
+    finally
+        close(buf)
+    end
 end
 
 end

@@ -144,15 +144,18 @@ function to_csv(
     out_bufs = IOBuffer()
     last_col = out_cols[end]
 
-    for item in out_data
-        for col in out_cols
-            val = get(item, col, nothing)
-            str = val === nothing ? "" : wrap_value(string(val))
-            print(out_bufs, str, col != last_col ? delimiter : "\n")
+    try
+        for item in out_data
+            for col in out_cols
+                val = get(item, col, nothing)
+                str = val === nothing ? "" : wrap_value(string(val))
+                print(out_bufs, str, col != last_col ? delimiter : "\n")
+            end
         end
+        return String(take!(out_bufs))
+    finally
+        close(out_bufs)
     end
-
-    return String(take!(out_bufs))
 end
 
 end
