@@ -141,7 +141,7 @@ function to_csv(
     end
 
     out_cols = isempty(headers) ? ord_keys : headers
-    out_bufs = IOBuffer()
+    io = IOBuffer()
     last_col = out_cols[end]
 
     try
@@ -149,12 +149,12 @@ function to_csv(
             for col in out_cols
                 val = get(item, col, nothing)
                 str = val === nothing ? "" : wrap_value(string(val))
-                print(out_bufs, str, col != last_col ? delimiter : "\n")
+                print(io, str, col != last_col ? delimiter : "\n")
             end
         end
-        return String(take!(out_bufs))
+        return String(take!(io))
     finally
-        close(out_bufs)
+        close(io)
     end
 end
 
