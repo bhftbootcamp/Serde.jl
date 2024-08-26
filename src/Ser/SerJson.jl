@@ -9,57 +9,15 @@ using ..Serde
 
 const JSON_NULL = "null"
 const INDENT = "  "
-
-# escaped string
-
-const NEEDESCAPE = Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
-
-function escape_char(b)
-    b == UInt8('"')  && return UInt8('"')
-    b == UInt8('\\') && return UInt8('\\')
-    b == UInt8('\b') && return UInt8('b')
-    b == UInt8('\f') && return UInt8('f')
-    b == UInt8('\n') && return UInt8('n')
-    b == UInt8('\r') && return UInt8('r')
-    b == UInt8('\t') && return UInt8('t')
-    return 0x00
-end
-
-function escaped(b)
-    if b == UInt8('/')
-        return UInt8[UInt8('/')]
-    elseif b >= 0x80
-        return UInt8[b]
-    elseif b in NEEDESCAPE
-        return UInt8[UInt8('\\'), escape_char(b)]
-    elseif iscntrl(Char(b))
-        return UInt8[UInt8('\\'), UInt8('u'), Base.string(b, base = 16, pad = 4)...]
-    else
-        return UInt8[b]
-    end
-end
-
-const ESCAPECHARS = Vector{UInt8}[escaped(b) for b = 0x00:0xff]
-
-const ESCAPELENS = Int64[length(x) for x in ESCAPECHARS]
-
-function escape_length(str)
-    x = 0
-    l = ncodeunits(str)
-    @simd for i = 1:l
-        @inbounds len = ESCAPELENS[codeunit(str, i)+1]
-        x += len
-    end
-    return x
-end
+const NEEDESCAPE = Set(['"', '\\', '\b', '\f', '\n', '\r', '\t'])
 
 indent(l::Int64)::String = l > -1 ? "\n" * (INDENT^l) : ""
 
 function json_value!(buf::IOBuffer, f::Function, val::AbstractString; kw...)::Nothing
-    if escape_length(val) == ncodeunits(val)
-        return print(buf, '\"', val, '\"')
+    if any(c -> c in NEEDESCAPE || iscntrl(c), val)
+        print(buf, '"', escape_string(val), '"')
     else
-        return print(buf, '\"', escape_string(val), '\"')
+        print(buf, '"', val, '"')
     end
 end
 
@@ -76,7 +34,7 @@ function json_value!(buf::IOBuffer, f::Function, val::UUID; kw...)::Nothing
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::AbstractChar; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+    return print(buf, '"', val, '"')
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::Bool; kw...)::Nothing
@@ -88,7 +46,7 @@ function json_value!(buf::IOBuffer, f::Function, val::Number; kw...)::Nothing
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::Enum; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+    return print(buf, '"', val, '"')
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::Missing; kw...)::Nothing
@@ -100,7 +58,7 @@ function json_value!(buf::IOBuffer, f::Function, val::Nothing; kw...)::Nothing
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::Type; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+    return print(buf, '"', val, '"')
 end
 
 function json_value!(buf::IOBuffer, f::Function, val::Pair; l::Int64, kw...)::Nothing
