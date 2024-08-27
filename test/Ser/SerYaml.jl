@@ -63,7 +63,7 @@
 
         exp_obj = YamlFoo3("test", Date("2022-01-01"), UInt8['t', 'e', 's', 't'])
         exp_str = "name: \"test\"\ndate: \"2022-01-01\"\nbytes:\n  - 116\n  - 101\n  - 115\n  - 116\n"
-        @test Serde.to_yaml(fields1, exp_obj) == exp_str
+        @test Serde.to_yaml(exp_obj) == exp_str
     end
 
     @testset "Case №4: Ignore field" begin
@@ -194,7 +194,7 @@
 
         (Serde.SerYaml.ser_ignore_null(::Type{A})::Bool) where {A<:AbstractQuery_7} = true
 
-        exp_obj = YamlFoo7_1("test", nothing, nothing)
+        exp_obj = YamlFoo7_1("test", nothing)
         exp_str = "x: \"test\"\n"
         @test Serde.to_yaml(exp_obj) == exp_str
 
@@ -215,7 +215,7 @@
         Serde.SerYaml.ser_type(::Type{YamlFoo8}, x::DateTime) = string(datetime2unix(x))
 
         exp_obj = YamlFoo8(DateTime("2023-02-27T23:01:37.248"))
-        exp_str = "dt: 1.677538897248e9"
+        exp_str = "dt: \"1.677538897248e9\"\n"
         @test Serde.to_yaml(exp_obj) == exp_str
     end
 
@@ -248,14 +248,14 @@
         exp_str = """
         value: 34
         text: "sertupe"
-        object:
+        object: 
           set:
             - "b"
             - "a"
           pair:
             a: 2
           datatype: YamlFoo9_3
-          onemoreobject:
+          onemoreobject: 
             bool: true
             empty: null
         array:

@@ -9,168 +9,127 @@ using ..Serde
 
 const JSON_NULL = "null"
 const INDENT = "  "
-
-# escaped string
-
-const NEEDESCAPE = Set{UInt8}(UInt8['"', '\\', '\b', '\f', '\n', '\r', '\t'])
-
-function escape_char(b)
-    b == UInt8('"')  && return UInt8('"')
-    b == UInt8('\\') && return UInt8('\\')
-    b == UInt8('\b') && return UInt8('b')
-    b == UInt8('\f') && return UInt8('f')
-    b == UInt8('\n') && return UInt8('n')
-    b == UInt8('\r') && return UInt8('r')
-    b == UInt8('\t') && return UInt8('t')
-    return 0x00
-end
-
-function escaped(b)
-    if b == UInt8('/')
-        return UInt8[UInt8('/')]
-    elseif b >= 0x80
-        return UInt8[b]
-    elseif b in NEEDESCAPE
-        return UInt8[UInt8('\\'), escape_char(b)]
-    elseif iscntrl(Char(b))
-        return UInt8[UInt8('\\'), UInt8('u'), Base.string(b, base = 16, pad = 4)...]
-    else
-        return UInt8[b]
-    end
-end
-
-const ESCAPECHARS = Vector{UInt8}[escaped(b) for b = 0x00:0xff]
-
-const ESCAPELENS = Int64[length(x) for x in ESCAPECHARS]
-
-function escape_length(str)
-    x = 0
-    l = ncodeunits(str)
-    @simd for i = 1:l
-        @inbounds len = ESCAPELENS[codeunit(str, i)+1]
-        x += len
-    end
-    return x
-end
+const NEEDESCAPE = Set(['"', '\\', '\b', '\f', '\n', '\r', '\t'])
+const DOUBLE_QUOTE = '"'
 
 indent(l::Int64)::String = l > -1 ? "\n" * (INDENT^l) : ""
 
-function json_value!(buf::IOBuffer, f::Function, val::AbstractString; kw...)::Nothing
-    if escape_length(val) == ncodeunits(val)
-        return print(buf, '\"', val, '\"')
+function json_value!(io::IOBuffer, f::Function, val::AbstractString; kw...)::Nothing
+    if any(c -> c in NEEDESCAPE || iscntrl(c), val)
+        print(io, DOUBLE_QUOTE, escape_string(val), DOUBLE_QUOTE)
     else
-        return print(buf, '\"', escape_string(val), '\"')
+        print(io, DOUBLE_QUOTE, val, DOUBLE_QUOTE)
     end
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Symbol; kw...)::Nothing
-    return json_value!(buf, f, string(val); kw...)
+function json_value!(io::IOBuffer, f::Function, val::Symbol; kw...)::Nothing
+    return json_value!(io, f, string(val); kw...)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::TimeType; kw...)::Nothing
-    return json_value!(buf, f, string(val); kw...)
+function json_value!(io::IOBuffer, f::Function, val::TimeType; kw...)::Nothing
+    return json_value!(io, f, string(val); kw...)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::UUID; kw...)::Nothing
-    return json_value!(buf, f, string(val); kw...)
+function json_value!(io::IOBuffer, f::Function, val::UUID; kw...)::Nothing
+    return json_value!(io, f, string(val); kw...)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::AbstractChar; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+function json_value!(io::IOBuffer, f::Function, val::AbstractChar; kw...)::Nothing
+    return print(io, DOUBLE_QUOTE, val, DOUBLE_QUOTE)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Bool; kw...)::Nothing
-    return print(buf, val)
+function json_value!(io::IOBuffer, f::Function, val::Bool; kw...)::Nothing
+    return print(io, val)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Number; kw...)::Nothing
-    return isnan(val) || isinf(val) ? print(buf, JSON_NULL) : print(buf, val)
+function json_value!(io::IOBuffer, f::Function, val::Number; kw...)::Nothing
+    return isnan(val) || isinf(val) ? print(io, JSON_NULL) : print(io, val)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Enum; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+function json_value!(io::IOBuffer, f::Function, val::Enum; kw...)::Nothing
+    return print(io, DOUBLE_QUOTE, val, DOUBLE_QUOTE)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Missing; kw...)::Nothing
-    return print(buf, JSON_NULL)
+function json_value!(io::IOBuffer, f::Function, val::Missing; kw...)::Nothing
+    return print(io, JSON_NULL)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Nothing; kw...)::Nothing
-    return print(buf, JSON_NULL)
+function json_value!(io::IOBuffer, f::Function, val::Nothing; kw...)::Nothing
+    return print(io, JSON_NULL)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Type; kw...)::Nothing
-    return print(buf, '\"', val, '\"')
+function json_value!(io::IOBuffer, f::Function, val::Type; kw...)::Nothing
+    return print(io, DOUBLE_QUOTE, val, DOUBLE_QUOTE)
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Pair; l::Int64, kw...)::Nothing
-    print(buf, "{", indent(l))
-    json_value!(buf, f, first(val); l = l + (l != -1), kw...)
-    print(buf, ":")
-    json_value!(buf, f, last(val); l = l + (l != -1), kw...)
-    return print(buf, indent(l - 1), "}")
+function json_value!(io::IOBuffer, f::Function, val::Pair; l::Int64, kw...)::Nothing
+    print(io, "{", indent(l))
+    json_value!(io, f, first(val); l = l + (l != -1), kw...)
+    print(io, ":")
+    json_value!(io, f, last(val); l = l + (l != -1), kw...)
+    return print(io, indent(l - 1), "}")
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::AbstractDict; l::Int64, kw...)::Nothing
+function json_value!(io::IOBuffer, f::Function, val::AbstractDict; l::Int64, kw...)::Nothing
     next = iterate(val)
-    print(buf, "{", indent(l))
+    print(io, "{", indent(l))
     while next !== nothing
         (k, v), index = next
-        json_value!(buf, f, k; l = l + (l != -1), kw...)
-        print(buf, ":")
-        json_value!(buf, f, v; l = l + (l != -1), kw...)
+        json_value!(io, f, k; l = l + (l != -1), kw...)
+        print(io, ":")
+        json_value!(io, f, v; l = l + (l != -1), kw...)
         next = iterate(val, index)
-        next === nothing || print(buf, ",", indent(l))
+        next === nothing || print(io, ",", indent(l))
     end
-    return print(buf, indent(l - 1), "}")
+    return print(io, indent(l - 1), "}")
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::AbstractVector; l::Int64, kw...)::Nothing
+function json_value!(io::IOBuffer, f::Function, val::AbstractVector; l::Int64, kw...)::Nothing
     next = iterate(val)
-    print(buf, "[", indent(l))
+    print(io, "[", indent(l))
     while next !== nothing
         item, index = next
-        json_value!(buf, f, item; l = l + (l != -1), kw...)
+        json_value!(io, f, item; l = l + (l != -1), kw...)
         next = iterate(val, index)
-        next === nothing || print(buf, ",", indent(l))
+        next === nothing || print(io, ",", indent(l))
     end
-    return print(buf, indent(l - 1), "]")
+    return print(io, indent(l - 1), "]")
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::Tuple; l::Int64, kw...)::Nothing
+function json_value!(io::IOBuffer, f::Function, val::Tuple; l::Int64, kw...)::Nothing
     next = iterate(val)
-    print(buf, "[", indent(l))
+    print(io, "[", indent(l))
     while next !== nothing
         item, index = next
-        json_value!(buf, f, item; l = l + (l != -1), kw...)
+        json_value!(io, f, item; l = l + (l != -1), kw...)
         next = iterate(val, index)
-        next === nothing || print(buf, ",", indent(l))
+        next === nothing || print(io, ",", indent(l))
     end
-    return print(buf, indent(l - 1), "]")
+    return print(io, indent(l - 1), "]")
 end
 
-function json_value!(buf::IOBuffer, f::Function, val::AbstractSet; l::Int64, kw...)::Nothing
+function json_value!(io::IOBuffer, f::Function, val::AbstractSet; l::Int64, kw...)::Nothing
     next = iterate(val)
-    print(buf, "[", indent(l))
+    print(io, "[", indent(l))
     while next !== nothing
         item, index = next
-        json_value!(buf, f, item; l = l + (l != -1), kw...)
+        json_value!(io, f, item; l = l + (l != -1), kw...)
         next = iterate(val, index)
-        next === nothing || print(buf, ",", indent(l))
+        next === nothing || print(io, ",", indent(l))
     end
-    return print(buf, indent(l - 1), "]")
+    return print(io, indent(l - 1), "]")
 end
 
-function json_value!(buf::IOBuffer, f::Function, A::AbstractArray{<:Any,n}; l::Int64, kw...)::Nothing where {n}
-    print(buf, "[", indent(l))
+function json_value!(io::IOBuffer, f::Function, A::AbstractArray{<:Any,n}; l::Int64, kw...)::Nothing where {n}
+    print(io, "[", indent(l))
     newdims = ntuple(_ -> :, n - 1)
     first = true
     for j in axes(A, n)
-        first || print(buf, ",", indent(l))
+        first || print(io, ",", indent(l))
         first = false
-        json_value!(buf, f, view(A, newdims..., j); l = l + (l != -1), kw...)
+        json_value!(io, f, view(A, newdims..., j); l = l + (l != -1), kw...)
     end
-    print(buf, indent(l - 1), "]")
+    print(io, indent(l - 1), "]")
 end
 
 (isnull(::Any)::Bool) = false
@@ -186,9 +145,9 @@ end
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
 (ser_ignore_null(::Type{T})::Bool) where {T} = false
 
-function json_value!(buf::IOBuffer, f::Function, val::T; l::Int64, kw...)::Nothing where {T}
+function json_value!(io::IOBuffer, f::Function, val::T; l::Int64, kw...)::Nothing where {T}
     next = iterate(f(T))
-    print(buf, "{", indent(l))
+    print(io, "{", indent(l))
     ignore_count::Int64 = 0
     while next !== nothing
         field, index = next
@@ -199,17 +158,17 @@ function json_value!(buf::IOBuffer, f::Function, val::T; l::Int64, kw...)::Nothi
             ignore_count += 1
             continue
         end
-        (index - ignore_count) == 2 || print(buf, ",", indent(l))
-        json_value!(buf, f, k; l = l + (l != -1), kw...)
-        print(buf, ":")
-        json_value!(buf, f, v; l = l + (l != -1), kw...)
+        (index - ignore_count) == 2 || print(io, ",", indent(l))
+        json_value!(io, f, k; l = l + (l != -1), kw...)
+        print(io, ":")
+        json_value!(io, f, v; l = l + (l != -1), kw...)
         next = iterate(f(T), index)
     end
-    return print(buf, indent(l - 1), "}")
+    return print(io, indent(l - 1), "}")
 end
 
-function json_value!(buf::IOBuffer, val::T; l::Int64, kw...)::Nothing where {T}
-    return json_value!(buf, fieldnames, val; l = l, kw...)
+function json_value!(io::IOBuffer, val::T; l::Int64, kw...)::Nothing where {T}
+    return json_value!(io, fieldnames, val; l = l, kw...)
 end
 
 """
@@ -282,9 +241,13 @@ julia> to_json(x -> (:field, :simple_field), ManyFields(1, 2.0, "a", [true, fals
 ```
 """
 function to_json(x...; kw...)::String
-    buf = IOBuffer()
-    json_value!(buf, x...; l = -1, kw...)
-    return String(take!(buf))
+    io = IOBuffer()
+    try
+        json_value!(io, x...; l = -1, kw...)
+        return String(take!(io))
+    finally
+        close(io)
+    end
 end
 
 """
@@ -323,9 +286,13 @@ julia> to_pretty_json(Person(person_info, Pet("Buddy", 5))) |> print
 ```
 """
 function to_pretty_json(x...; kw...)::String
-    buf = IOBuffer()
-    json_value!(buf, x...; l = 1, kw...)
-    return String(take!(buf))
+    io = IOBuffer()
+    try
+        json_value!(io, x...; l = 1, kw...)
+        return String(take!(io))
+    finally
+        close(io)
+    end
 end
 
 end

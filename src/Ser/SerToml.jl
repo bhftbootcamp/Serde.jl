@@ -6,6 +6,8 @@ using Dates
 using UUIDs
 using ..Serde
 
+const DOUBLE_QUOTE = '"'
+
 struct TomlSerializationError <: Exception
     message::String
 end
@@ -15,7 +17,7 @@ function Base.show(io::IO, e::TomlSerializationError)
 end
 
 function toml_value(val::AbstractString; _...)::String
-    return string('"', escape_string(val), '"')
+    return string(DOUBLE_QUOTE, escape_string(val), DOUBLE_QUOTE)
 end
 
 toml_value(val::Symbol; kw...)::String = toml_value(string(val); kw...)
@@ -47,7 +49,7 @@ function istomlkeyvalid(val::AbstractString)::Bool
 end
 
 function toml_key(val::AbstractString; _...)
-    return istomlkeyvalid(val) ? val : string('"', escape_string(val), '"')
+    return istomlkeyvalid(val) ? val : string(DOUBLE_QUOTE, escape_string(val), DOUBLE_QUOTE)
 end
 
 toml_key(val::Integer; _...)::String = string(val)
