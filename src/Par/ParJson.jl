@@ -3,7 +3,7 @@ module ParJson
 export JsonSyntaxError
 export parse_json
 
-using JSON
+using YYJSON
 
 """
     JsonSyntaxError <: Exception
@@ -55,7 +55,7 @@ function parse_json end
 
 function parse_json(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
-        JSON.parse(x; dicttype = dict_type, kw...)
+        YYJSON.parse_json(x; dict_type, kw...)
     catch e
         throw(JsonSyntaxError("invalid JSON syntax", e))
     end
