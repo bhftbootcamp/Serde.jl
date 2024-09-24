@@ -26,6 +26,19 @@ function deser(::Type{Any}, val_ptr::Ptr{YYJSONVal})
     end
 end
 
+function deser(::Type{T}, ::Type{Union{Nothing,E}}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+    return deser(T, E, val_ptr)
+end
+
+function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+    deser_methods = methods(deser, Tuple{Type{T},Type{E},Any})
+    if any(method -> !(parentmodule(method) == Serde || parentmodule(method) == Serde.DeJson), deser_methods)
+        deser(T, E, deser(Any, val_ptr))
+    else
+        deser(E, val_ptr)
+    end
+end
+
 # PrimitiveType
 
 function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:AbstractString}
@@ -93,6 +106,18 @@ end
 function deser(::NullType, ::Type{Missing}, val_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(val_ptr)
         deser(Missing, missing)
+    end
+end
+
+function deser(::NullType, ::Type{Union{Nothing,T}}, val_ptr::Ptr{YYJSONVal}) where {T}
+    return if yyjson_is_null(val_ptr)
+        deser(T, val_ptr)
+    end
+end
+
+function deser(::NullType, ::Type{Union{Missing,T}}, val_ptr::Ptr{YYJSONVal}) where {T}
+    return if yyjson_is_null(val_ptr)
+        deser(T, val_ptr)
     end
 end
 
@@ -199,13 +224,7 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_pt
         elseif yyjson_is_null(val_ptr) && isa(E, Missing)
             missing
         else
-            # Magic
-            deser_methods = methods(deser, Tuple{Type{T},Type{E},Any})
-            if any(method -> parentmodule(method) != Serde, deser_methods)
-                deser(T, E, deser(Any, val_ptr))
-            else
-                deser(T, E, val_ptr)
-            end
+            deser(T, E, val_ptr)
         end
     catch e
         val = deser(Any, val_ptr)
