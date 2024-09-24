@@ -3,7 +3,7 @@ module ParJson
 export JsonSyntaxError
 export parse_json
 
-using YYJSON
+import YYJSON
 
 """
     JsonSyntaxError <: Exception

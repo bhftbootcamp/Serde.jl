@@ -2,7 +2,8 @@ module DeJson
 
 export deser_json
 
-using YYJSON, ..Serde
+using YYJSON
+import ..Serde
 import ..Serde: deser, eldeser, isempty, custom_name, default_value, nulltype
 import ..Serde: WrongType, CustomType, NullType, PrimitiveType, ArrayType, DictType, NTupleType
 
@@ -318,7 +319,7 @@ end
 
 Creates a new object of type `T` and fill it with values from JSON formated string `x` (or vector of UInt8).
 
-Keyword arguments `kw` is the same as in [`parse_json`](@ref).
+Keyword arguments `kw` is the same as in [`parse_json`](@ref Serde.ParJson.parse_json).
 
 ## Examples
 ```julia-repl
