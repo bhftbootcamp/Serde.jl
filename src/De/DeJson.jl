@@ -34,6 +34,7 @@ function deser(::Type{T}, ::Type{Nothing}, val_ptr::Ptr{YYJSONVal}) where {T}
     return deser(Nothing, val_ptr)
 end
 
+# NOTE: Highly decrease performance but allows to define custom deser(...) behavior
 function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
     mod = parentmodule(deser, (Type{T},Type{E},Any))
     return if !(mod == Serde || mod == DeJson)
@@ -41,8 +42,12 @@ function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
     else
         deser(E, val_ptr)
     end
-    # return deser(E, val_ptr)
 end
+
+# NOTE: Increase performance but disables custom deser(...) behavior
+# function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+#     return deser(E, val_ptr)
+# end
 
 # PrimitiveType
 
@@ -60,7 +65,7 @@ function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Ab
     end
 end
 
-function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Number} # String / Number
+function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Number}
     return if yyjson_is_str(val_ptr)
         tryparse(T, unsafe_string(yyjson_get_str(val_ptr)))
     elseif yyjson_is_raw(val_ptr)
@@ -74,7 +79,7 @@ function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Nu
     end
 end
 
-function deser(h::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Enum} # String/Num
+function deser(h::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Enum}
     return if yyjson_is_str(val_ptr)
         str = unsafe_string(yyjson_get_str(val_ptr))
         num = tryparse(Int64, str)
@@ -92,7 +97,7 @@ function deser(h::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:E
     end
 end
 
-function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Symbol} # String
+function deser(::PrimitiveType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Symbol}
     return if yyjson_is_str(val_ptr)
         Symbol(unsafe_string(yyjson_get_str(val_ptr)))
     elseif yyjson_is_raw(val_ptr)
@@ -128,7 +133,7 @@ end
 
 # NTupleType
 
-function deser(::NTupleType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:NamedTuple} # Dict/Obj
+function deser(::NTupleType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:NamedTuple}
     return if yyjson_is_obj(val_ptr)
         (; deser(Dict{Symbol,Any}, val_ptr)...)
     end
@@ -136,13 +141,13 @@ end
 
 # DictType
 
-function deser(::DictType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {N,T<:AbstractSet{N}} # Vector
+function deser(::DictType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {N,T<:AbstractSet{N}}
     return if yyjson_is_arr(val_ptr)
         T(deser(Vector{N}, val_ptr))
     end
 end
 
-function deser(::DictType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {K,V,T<:AbstractDict{K,V}} # Dict/Obj
+function deser(::DictType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {K,V,T<:AbstractDict{K,V}}
     return if yyjson_is_obj(val_ptr)
         iter = YYJSONObjIter()
         iter_ptr = pointer_from_objref(iter)
@@ -159,7 +164,7 @@ end
 
 # ArrayType
 
-function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:AbstractVector} # Vector
+function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:AbstractVector}
     return if yyjson_is_arr(val_ptr)
         iter = YYJSONArrIter()
         iter_ptr = pointer_from_objref(iter)
@@ -173,7 +178,7 @@ function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Abstra
     end
 end
 
-function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Tuple} # Vector
+function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Tuple}
     return if yyjson_is_arr(val_ptr)
         if T == Tuple
             T(deser(Vector{Any}, val_ptr))
@@ -193,7 +198,7 @@ end
 
 # CustomType
 
-function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T} # Vector
+function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T}
     iter = YYJSONArrIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
@@ -207,24 +212,6 @@ function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T} #
 
     return T(type_elements...)
 end
-
-# function eldeser(::Type{T}, ::Type{Union{Nothing,E}}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-#     return eldeser(T, E, key, val_ptr)
-# end
-
-# function eldeser(::Type{T}, ::Type{Union{Missing,E}}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-#     return eldeser(T, E, key, val_ptr)
-# end
-
-# function eldeser(::Type{T}, ::Type{Nothing}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T}
-#     return eldeser(T, Any, key, val_ptr)
-# end
-
-# function eldeser(::Type{T}, ::Type{Any}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T}
-#     return eldeser(T, Any, key, val_ptr)
-# end
-
-# Union{String, Int} isa Union
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
     E isa Union && E.a isa Nothing && eldeser(T, E.b, key, val_ptr)
@@ -258,7 +245,7 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_pt
     end
 end
 
-function deser_obj(::CustomType, ::Type{T}, obj_ptr::Ptr{YYJSONVal}) where {T} # AbstractDict
+function deser_obj(::CustomType, ::Type{T}, obj_ptr::Ptr{YYJSONVal}) where {T}
     type_elements = Vector{Any}(undef, fieldcount(T))
     for (i, type, name) in zip(eachindex(type_elements), fieldtypes(T), fieldnames(T))
         key = custom_name(T, Val(name))
