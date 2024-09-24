@@ -30,13 +30,18 @@ function deser(::Type{T}, ::Type{Union{Nothing,E}}, val_ptr::Ptr{YYJSONVal}) whe
     return deser(T, E, val_ptr)
 end
 
+function deser(::Type{T}, ::Type{Nothing}, val_ptr::Ptr{YYJSONVal}) where {T}
+    return deser(Nothing, val_ptr)
+end
+
 function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-    deser_methods = methods(deser, Tuple{Type{T},Type{E},Any})
-    if any(method -> !(parentmodule(method) == Serde || parentmodule(method) == Serde.DeJson), deser_methods)
+    mod = parentmodule(deser, (Type{T},Type{E},Any))
+    return if !(mod == Serde || mod == DeJson)
         deser(T, E, deser(Any, val_ptr))
     else
         deser(E, val_ptr)
     end
+    # return deser(E, val_ptr)
 end
 
 # PrimitiveType
@@ -99,13 +104,13 @@ end
 
 function deser(::NullType, ::Type{Nothing}, val_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(val_ptr)
-        deser(Nothing, nothing)
+        nothing
     end
 end
 
 function deser(::NullType, ::Type{Missing}, val_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(val_ptr)
-        deser(Missing, missing)
+        missing
     end
 end
 
@@ -203,7 +208,26 @@ function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T} #
     return T(type_elements...)
 end
 
+# function eldeser(::Type{T}, ::Type{Union{Nothing,E}}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+#     return eldeser(T, E, key, val_ptr)
+# end
+
+# function eldeser(::Type{T}, ::Type{Union{Missing,E}}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+#     return eldeser(T, E, key, val_ptr)
+# end
+
+# function eldeser(::Type{T}, ::Type{Nothing}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T}
+#     return eldeser(T, Any, key, val_ptr)
+# end
+
+# function eldeser(::Type{T}, ::Type{Any}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T}
+#     return eldeser(T, Any, key, val_ptr)
+# end
+
+# Union{String, Int} isa Union
+
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+    E isa Union && E.a isa Nothing && eldeser(T, E.b, key, val_ptr)
     return try
         if yyjson_is_str(val_ptr) && isa(E, AbstractString)
             unsafestring(yyjson_get_str(val_ptr))
@@ -219,10 +243,6 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_pt
             deser(E, val_ptr)
         elseif yyjson_is_arr(val_ptr) && isa(E, AbstractVector)
             deser(E, val_ptr) 
-        elseif yyjson_is_null(val_ptr) && isa(E, Nothing)
-            nothing
-        elseif yyjson_is_null(val_ptr) && isa(E, Missing)
-            missing
         else
             deser(T, E, val_ptr)
         end
