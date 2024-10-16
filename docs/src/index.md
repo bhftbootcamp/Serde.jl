@@ -220,6 +220,6 @@ json = """{"title": "JuliaCon 2024", "start": "2024-07-22"}"""
 julia> juliacon = deser_json(JuliaCon, json)
 JuliaCon("JuliaCon 2024", Date("2024-07-22"), Date("2024-07-24"))
 
-julia> to_json(juliacon)
-"{\"title\":\"JuliaCon 2024\",\"start_date\":\"2024-07-22\",\"end_date\":\"2024-07-24\"}"
+julia> to_json(juliacon) |> print
+{"title":"JuliaCon 2024","start_date":"2024-07-22","end_date":"2024-07-24"}
 ```
