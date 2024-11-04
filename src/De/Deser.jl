@@ -503,6 +503,14 @@ function deser(::CustomType, ::Type{D}, data::AbstractVector{A})::D where {D<:An
     return D(vals...)
 end
 
+function Serde.deser(
+    ::CustomType,
+    ::Type{D},
+    data::AbstractVector{<:AbstractDict},
+) where {D<:Any}
+    return deser(D, only(data))
+end
+
 function eldeser(
     structtype::Type,
     elmtype::Type,

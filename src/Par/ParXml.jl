@@ -34,7 +34,7 @@ function _has_content(node::EzXML.Node)::Bool
     return is_content && !is_empty
 end
 
-function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
+function _xml2dict(node::EzXML.Node; dict_type::Type{D}, vectorize::Bool) where {D<:AbstractDict}
     xml_dict = D()
 
     if _has_content(node)
@@ -47,7 +47,7 @@ function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
 
     for child in elements(node)
         child_name = nodename(child)
-        child_dict = _xml2dict(child; dict_type = dict_type)
+        child_dict = _xml2dict(child; dict_type, vectorize)
 
         if haskey(xml_dict, child_name)
             if isa(xml_dict[child_name], AbstractVector)
@@ -56,7 +56,11 @@ function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
                 xml_dict[child_name] = [xml_dict[child_name], child_dict]
             end
         else
-            xml_dict[child_name] = child_dict
+            xml_dict[child_name] = if vectorize
+                isa(child_dict, AbstractVector) ? child_dict : [child_dict]
+            else
+                child_dict
+            end 
         end
     end
 
@@ -98,9 +102,9 @@ Dict{String, Any} with 5 entries:
 """
 function parse_xml end
 
-function parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
+function parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, vectorize::Bool = false, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
-        _xml2dict(x; dict_type = dict_type, kw...)
+        _xml2dict(x; dict_type, vectorize, kw...)
     catch e
         throw(XmlSyntaxError("invalid XML syntax", e))
     end
