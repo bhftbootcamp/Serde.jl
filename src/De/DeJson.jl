@@ -36,19 +36,18 @@ function deser(::Type{T}, ::Type{Nothing}, val_ptr::Ptr{YYJSONVal}) where {T}
 end
 
 # NOTE: Highly decrease performance but allows to define custom deser(...) behavior
-function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-    mod = parentmodule(deser, (Type{T},Type{E},Any))
-    return if !(mod == Serde || mod == DeJson)
-        deser(T, E, deser(Any, val_ptr))
-    else
-        deser(E, val_ptr)
-    end
-end
-
-# NOTE: Increase performance but disables custom deser(...) behavior
 # function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-#     return deser(E, val_ptr)
+#     mod = parentmodule(deser, (Type{T},Type{E},Any))
+#     return if !(mod == Serde || mod == DeJson)
+#         deser(T, E, deser(Any, val_ptr))
+#     else
+#         deser(E, val_ptr)
+#     end
 # end
+
+function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
+    return deser(E, val_ptr)
+end
 
 # PrimitiveType
 
@@ -217,22 +216,22 @@ end
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
     E isa Union && E.a isa Nothing && eldeser(T, E.b, key, val_ptr)
     return try
-        if yyjson_is_str(val_ptr) && isa(E, AbstractString)
-            unsafestring(yyjson_get_str(val_ptr))
-        elseif yyjson_is_raw(val_ptr) && isa(E, AbstractString)
-            unsafestring(yyjson_get_raw(val_ptr))
-        elseif yyjson_is_real(val_ptr) && isa(E, Number)
+        if yyjson_is_str(val_ptr) && <:(E, AbstractString)
+            unsafe_string(yyjson_get_str(val_ptr))
+        elseif yyjson_is_raw(val_ptr) && <:(E, AbstractString)
+            unsafe_string(yyjson_get_raw(val_ptr))
+        elseif yyjson_is_real(val_ptr) && <:(E, Number)
             yyjson_get_real(val_ptr)
-        elseif yyjson_is_int(val_ptr) && isa(E, Number)
+        elseif yyjson_is_int(val_ptr) && <:(E, Number)
             yyjson_get_int(val_ptr)
-        elseif yyjson_is_bool(val_ptr) && isa(E, Number)
+        elseif yyjson_is_bool(val_ptr) && <:(E, Number)
             yyjson_get_bool(val_ptr)
-        elseif yyjson_is_obj(val_ptr) && isa(E, AbstractDict)
+        elseif yyjson_is_obj(val_ptr)
             deser(E, val_ptr)
-        elseif yyjson_is_arr(val_ptr) && isa(E, AbstractVector)
+        elseif yyjson_is_arr(val_ptr)
             deser(E, val_ptr) 
-        else
-            deser(T, E, val_ptr)
+        else 
+            deser(T, E, deser(Any, val_ptr))
         end
     catch e
         val = deser(Any, val_ptr)
