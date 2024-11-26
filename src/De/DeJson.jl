@@ -6,6 +6,7 @@ using YYJSON
 import ..Serde
 import ..Serde: deser, eldeser, isempty, custom_name, default_value, nulltype
 import ..Serde: WrongType, CustomType, NullType, PrimitiveType, ArrayType, DictType, NTupleType
+import ..to_deser
 
 # Any
 
@@ -226,9 +227,9 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_pt
             yyjson_get_int(val_ptr)
         elseif yyjson_is_bool(val_ptr) && <:(E, Number)
             yyjson_get_bool(val_ptr)
-        elseif yyjson_is_obj(val_ptr)
+        elseif yyjson_is_obj(val_ptr) && <:(E, AbstractDict)
             deser(E, val_ptr)
-        elseif yyjson_is_arr(val_ptr)
+        elseif yyjson_is_arr(val_ptr) && <:(E, AbstractVector)
             deser(E, val_ptr) 
         else 
             deser(T, E, deser(Any, val_ptr))
@@ -297,11 +298,11 @@ function bitwise_read_flag(;
     return flag
 end
 
-function read_json_doc(json::AbstractString; kw...)
+function read_json_doc(json; kw...)
     err = YYJSONReadErr()
     doc_ptr = yyjson_read_opts(
         json,
-        ncodeunits(json),
+        length(json),
         bitwise_read_flag(; kw...),
         C_NULL,
         pointer_from_objref(err),
@@ -340,7 +341,7 @@ Data(100, "json", Record(100.0))
 """
 function deser_json(
     ::Type{T},
-    json::AbstractString;
+    json;
     kw...
 ) where {T}
     doc_ptr = read_json_doc(json; kw...)
@@ -357,8 +358,9 @@ end
 deser_json(::Type{Nothing}, _) = nothing
 deser_json(::Type{Missing}, _) = missing
 
-function deser_json(::Type{T}, json::AbstractVector{UInt8}; kw...) where {T}
-    return deser_json(T, unsafe_string(pointer(json), length(json)); kw...)
+function deser_json(f::Function, x; kw...)
+    object = Serde.parse_json(x; kw...)
+    return to_deser(f(object), object)
 end
 
 end

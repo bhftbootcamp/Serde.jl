@@ -723,4 +723,40 @@ using Test, Dates
         @test Serde.deser(Tuples, exp_kvs).b == exp_obj.b
         @test Serde.deser(Tuples, exp_kvs).c == exp_obj.c
     end
+
+    @testset "Case №40: Custom deserialization" begin
+        struct SubType
+            y::String
+        end
+        struct MyType
+            x::SubType
+        end
+        json_str = """
+            {
+                "x":{
+                    "y":{
+                        "z":[1, 2, 3]
+                    }
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractDict)
+            return "test"
+        end
+        exp_obj = MyType(SubType("test"))
+        @test deser_json(MyType, json_str) == exp_obj
+
+        json_str2 = """
+            {
+                "x":{
+                    "y":[1, 2, 3]
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractVector)
+            return "test2"
+        end
+        exp_obj2 = MyType(SubType("test2"))
+        @test deser_json(MyType, json_str2) == exp_obj2
+    end
 end
