@@ -161,6 +161,7 @@ function deser(::Type{StructType}, ::Type{Nothing}, data::D) where {StructType<:
 end
 
 function deser(::Type{T}, data::D) where {T<:Any,D<:Any}
+    #println("T = $T and ClassType(T) = $(ClassType(T))")
     return deser(ClassType(T), T, data)
 end
 

@@ -151,13 +151,16 @@ end
 function deser(::DictType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {K,V,T<:AbstractDict{K,V}}
     return if yyjson_is_obj(val_ptr)
         iter = YYJSONObjIter()
-        iter_ptr = pointer_from_objref(iter)
-        yyjson_obj_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize object iterator."))
-        dict_elements = T()
-        for i in 1:yyjson_obj_size(val_ptr)
-            key_ptr = yyjson_obj_iter_next(iter_ptr)
-            val_ptr = yyjson_obj_iter_get_val(key_ptr)
-            dict_elements[deser(K, key_ptr)] = deser(V, val_ptr)
+        iter_ref = Ref(iter)
+        iter_ptr = Base.unsafe_convert(Ptr{YYJSONObjIter}, iter_ref)
+        GC.@preserve iter begin
+            yyjson_obj_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize object iterator."))
+            dict_elements = T()
+            for i in 1:yyjson_obj_size(val_ptr)
+                key_ptr = yyjson_obj_iter_next(iter_ptr)
+                val_ptr = yyjson_obj_iter_get_val(key_ptr)
+                dict_elements[deser(K, key_ptr)] = deser(V, val_ptr)
+            end
         end
         dict_elements
     end
@@ -168,12 +171,15 @@ end
 function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:AbstractVector}
     return if yyjson_is_arr(val_ptr)
         iter = YYJSONArrIter()
-        iter_ptr = pointer_from_objref(iter)
-        yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
-        array_elements = T(undef, yyjson_arr_size(val_ptr))
-        @inbounds for i in eachindex(array_elements)
-            val_ptr = yyjson_arr_iter_next(iter_ptr)
-            array_elements[i] = deser(eltype(T), val_ptr)
+        iter_ref = Ref(iter)
+        iter_ptr = Base.unsafe_convert(Ptr{YYJSONArrIter}, iter_ref)
+        GC.@preserve iter begin
+            yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
+            array_elements = T(undef, yyjson_arr_size(val_ptr))
+            @inbounds for i in eachindex(array_elements)
+                elem_ptr = yyjson_arr_iter_next(iter_ptr)
+                array_elements[i] = deser(eltype(T), elem_ptr)
+            end
         end
         array_elements
     end
@@ -185,12 +191,15 @@ function deser(::ArrayType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T<:Tuple}
             T(deser(Vector{Any}, val_ptr))
         else
             iter = YYJSONArrIter()
-            iter_ptr = pointer_from_objref(iter)
-            yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
-            tuple_elements = Vector{Any}(undef, fieldcount(T))
-            for (i, type) in zip(eachindex(tuple_elements), fieldtypes(T))
-                val_ptr = yyjson_arr_iter_next(iter_ptr)
-                tuple_elements[i] = deser(type, val_ptr)
+            iter_ref = Ref(iter)
+            iter_ptr = Base.unsafe_convert(Ptr{YYJSONArrIter}, iter_ref)
+            GC.@preserve iter begin
+                yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
+                tuple_elements = Vector{Any}(undef, fieldcount(T))
+                for (i, type) in zip(eachindex(tuple_elements), fieldtypes(T))
+                    val_ptr = yyjson_arr_iter_next(iter_ptr)
+                    tuple_elements[i] = deser(type, val_ptr)
+                end
             end
             T(tuple_elements)
         end
@@ -201,14 +210,17 @@ end
 
 function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T}
     iter = YYJSONArrIter()
-    iter_ptr = pointer_from_objref(iter)
-    yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
-    type_elements = Vector{Any}(undef, fieldcount(T))
+    iter_ref = Ref(iter)
+    iter_ptr = Base.unsafe_convert(Ptr{YYJSONArrIter}, iter_ref)
+    GC.@preserve iter begin
+        yyjson_arr_iter_init(val_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
+        type_elements = Vector{Any}(undef, fieldcount(T))
 
-    for (i, type) in zip(eachindex(type_elements), fieldtypes(T))
-        val_ptr = yyjson_arr_iter_next(iter_ptr)
-        val = val_ptr == C_NULL ? nulltype(T) : deser(T, type, val_ptr)
-        type_elements[i] = isempty(T, val) ? nulltype(type) : val
+        for (i, type) in zip(eachindex(type_elements), fieldtypes(T))
+            val_ptr = yyjson_arr_iter_next(iter_ptr)
+            val = val_ptr == C_NULL ? nulltype(T) : deser(T, type, val_ptr)
+            type_elements[i] = isempty(T, val) ? nulltype(type) : val
+        end
     end
 
     return T(type_elements...)

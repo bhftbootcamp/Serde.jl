@@ -759,4 +759,35 @@ using Test, Dates
         exp_obj2 = MyType(SubType("test2"))
         @test deser_json(MyType, json_str2) == exp_obj2
     end
+
+    @testset "Case №41: Deserialization Vector to Struct" begin
+        struct Point
+            x::Int
+            y::Int
+        end
+        struct Line
+            a::Point
+            b::Point
+        end
+        struct Arrow
+            label::String
+            segments::Vector{Line}
+            dashed::Bool
+        end
+        json_str = """{
+            "label": "Hello",
+            "segments": [
+                 {"a": {"x": 1, "y": 1}, "b": {"x": 2, "y": 2}},
+                 {"a": {"x": 2, "y": 2}, "b": {"x": 3, "y": 3}}
+             ],
+             "dashed": false
+        }"""
+
+        exp_obj = Arrow("Hello", Line[Line(Point(1, 1), Point(2, 2)), Line(Point(2, 2), Point(3, 3))], false)
+        calc_obj = deser_json(Arrow, json_str)
+        calc_obj.label == exp_obj.label
+        calc_obj.segments[1] == exp_obj.segments[1]
+        calc_obj.segments[2] == exp_obj.segments[2]
+        calc_obj.dashed == exp_obj.dashed
+    end
 end
