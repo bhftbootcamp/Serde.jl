@@ -36,16 +36,6 @@ function deser(::Type{T}, ::Type{Nothing}, val_ptr::Ptr{YYJSONVal}) where {T}
     return deser(Nothing, val_ptr)
 end
 
-# NOTE: Highly decrease performance but allows to define custom deser(...) behavior
-# function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-#     mod = parentmodule(deser, (Type{T},Type{E},Any))
-#     return if !(mod == Serde || mod == DeJson)
-#         deser(T, E, deser(Any, val_ptr))
-#     else
-#         deser(E, val_ptr)
-#     end
-# end
-
 function deser(::Type{T}, ::Type{E}, val_ptr::Ptr{YYJSONVal}) where {T,E}
     return deser(E, val_ptr)
 end
