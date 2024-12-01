@@ -227,7 +227,7 @@ function deser_arr(::CustomType, ::Type{T}, val_ptr::Ptr{YYJSONVal}) where {T}
 end
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_ptr::Ptr{YYJSONVal}) where {T,E}
-    E isa Union && E.a isa Nothing && eldeser(T, E.b, key, val_ptr)
+    E isa Union && E.a == Nothing && return eldeser(T, E.b, key, val_ptr)
     return try
         if yyjson_is_str(val_ptr) && <:(E, AbstractString)
             unsafe_string(yyjson_get_str(val_ptr))
@@ -242,8 +242,8 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, val_pt
         elseif yyjson_is_obj(val_ptr) && <:(E, AbstractDict)
             deser(E, val_ptr)
         elseif yyjson_is_arr(val_ptr) && <:(E, AbstractVector)
-            deser(E, val_ptr) 
-        else 
+            deser(E, val_ptr)
+        else
             deser(T, E, deser(Any, val_ptr))
         end
     catch e
