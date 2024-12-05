@@ -484,6 +484,8 @@ Computer("N/A", "N/A")
 """
 (nulltype(::Type{T})::Nothing) where {T<:Any} = nothing
 
+(nulltype(::Type{Missing})) = missing
+
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
 
 (nulltype(::Type{Union{Missing,T}})::Missing) where {T<:Any} = missing
