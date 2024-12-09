@@ -151,7 +151,7 @@ julia> to_json(Computer("i7-12900", "rtx-4090")) |> print
 ## Ignoring fields
 
 Finally, we can specify what fields must be ignored.
-In this case, you just need to extend the `Serde.<SubModule>.ignore_field` function.
+In this case, you just need to extend the `Serde.<SubModule>.ser_ignore_field` function.
 This approach is supported by the following serialization methods:
 
 - [`to_json`](@ref) (`SerJson` submodule).
@@ -160,7 +160,7 @@ The return value of your method must be of type `Bool`.
 The default signature is:
 
 ```julia
-ignore_field(::Type{T}, ::Val{x})::Bool where {T,x} = false
+ser_ignore_field(::Type{T}, ::Val{x})::Bool where {T,x} = false
 ```
 
 ### Example
@@ -181,10 +181,10 @@ struct Box
 end
 ```
 
-Let's add the `SerJson.ignore_field` method for type `Box`.
+Let's add the `SerJson.ser_ignore_field` method for type `Box`.
 
 ```julia
-SerJson.ignore_field(::Type{Box}, ::Val{:length}) = true
+SerJson.ser_ignore_field(::Type{Box}, ::Val{:length}) = true
 ```
 
 Because the field `length` is ignorable, the resulting JSON string contains only `height` and `width` values.
