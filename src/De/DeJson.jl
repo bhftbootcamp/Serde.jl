@@ -150,7 +150,7 @@ function deser(::DictType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {K,V,T<:A
         GC.@preserve iter begin
             yyjson_obj_iter_init(value_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize object iterator."))
             dict_elements = T()
-            for i in 1:yyjson_obj_size(value_ptr)
+            for _ = 1:yyjson_obj_size(value_ptr)
                 key_ptr = yyjson_obj_iter_next(iter_ptr)
                 value_ptr = yyjson_obj_iter_get_val(key_ptr)
                 dict_elements[deser(K, key_ptr)] = deser(V, value_ptr)
@@ -264,7 +264,6 @@ function deser_obj(::CustomType, ::Type{T}, obj_ptr::Ptr{YYJSONVal}) where {T}
         else
             eldeser(T, field_type, key, value_ptr)
         end
-
         field_values[index] = if isnothing(value) || ismissing(value) || isempty(T, value)
             nulltype(field_type)
         else

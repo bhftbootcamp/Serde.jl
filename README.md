@@ -193,7 +193,6 @@ julia> to_yaml(juliacon) |> print
 title: "JuliaCon 2024"
 start_date: "2024-07-09"
 end_date: "2024-07-13"
-
 ```
 
 If you want to see more serialization options, then take a look at the corresponding [section](https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/) of the documentation
