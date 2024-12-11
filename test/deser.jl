@@ -800,10 +800,10 @@ using Test, Dates
 
         exp_obj = Arrow("Hello", Line[Line(Point(1, 1), Point(2, 2)), Line(Point(2, 2), Point(3, 3))], false)
         calc_obj = deser_json(Arrow, json_str)
-        calc_obj.label == exp_obj.label
-        calc_obj.segments[1] == exp_obj.segments[1]
-        calc_obj.segments[2] == exp_obj.segments[2]
-        calc_obj.dashed == exp_obj.dashed
+        @test calc_obj.label == exp_obj.label
+        @test calc_obj.segments[1] == exp_obj.segments[1]
+        @test calc_obj.segments[2] == exp_obj.segments[2]
+        @test calc_obj.dashed == exp_obj.dashed
     end
 
     @testset "Case №42: Deserialization Inf" begin
@@ -823,5 +823,19 @@ using Test, Dates
 
         exp_obj = JsonBar3(true, 101.101, nothing, Inf, missing, nothing)
         @test deser_json(JsonBar3, exp_str2) == exp_obj
+    end
+
+    @testset "Case №43: Deserialization to Union" begin
+        struct UnionType
+            union_value::Union{Float64, String}
+        end
+
+        exp_str1 = "{\"union_value\":100.0}"
+        exp_obj1 = UnionType(100.0)
+        @test deser_json(UnionType, exp_str1) == exp_obj1
+
+        exp_str2 = "{\"union_value\":\"100\"}"
+        exp_obj2 = UnionType("100")
+        @test deser_json(UnionType, exp_str2) == exp_obj2
     end
 end

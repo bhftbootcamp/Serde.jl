@@ -242,26 +242,33 @@ function typeof_yyjson_val(val_ptr::Ptr{YYJSONVal})
     end
 end
 
-function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E<:Any}
-    E isa Union && E.a == Nothing && return eldeser(T, E.b, key, value_ptr)
+function check_types(::Type{E}, ::Type{T}) where {E,T}
+    return if E isa Union
+        any(x -> x <: T, Base.uniontypes(E))
+    else
+        <:(E, T)
+    end
+end
+
+function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
     return try
-        if yyjson_is_str(value_ptr) && <:(E, AbstractString)
+        if yyjson_is_str(value_ptr) && check_types(E, AbstractString)
             unsafe_string(yyjson_get_str(value_ptr))
-        elseif yyjson_is_raw(value_ptr) && <:(E, AbstractString)
+        elseif yyjson_is_raw(value_ptr) && check_types(E, AbstractString)
             unsafe_string(yyjson_get_raw(value_ptr))
-        elseif yyjson_is_real(value_ptr) && <:(E, Number)
+        elseif yyjson_is_real(value_ptr) && check_types(E, Number)
             yyjson_get_real(value_ptr)
-        elseif yyjson_is_int(value_ptr) && <:(E, Number)
+        elseif yyjson_is_int(value_ptr) && check_types(E, Number)
             yyjson_get_int(value_ptr)
-        elseif yyjson_is_bool(value_ptr) && <:(E, Number)
+        elseif yyjson_is_bool(value_ptr) && check_types(E, Number)
             yyjson_get_bool(value_ptr)
-        elseif yyjson_is_obj(value_ptr) && <:(E, AbstractDict)
+        elseif yyjson_is_obj(value_ptr) && check_types(E, AbstractDict)
             deser(E, value_ptr)
-        elseif yyjson_is_arr(value_ptr) && <:(E, AbstractVector)
+        elseif yyjson_is_arr(value_ptr) && check_types(E, AbstractVector)
             deser(E, value_ptr)
-        elseif yyjson_is_null(value_ptr) && <:(E, Nothing)
+        elseif yyjson_is_null(value_ptr) && check_types(E, Nothing)
             nothing
-        elseif yyjson_is_null(value_ptr) && <:(E, Missing)
+        elseif yyjson_is_null(value_ptr) && check_types(E, Missing)
             missing
         else
             deser(T, E, deser(Any, value_ptr))
