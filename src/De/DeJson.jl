@@ -52,7 +52,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        throw(error("Expected a string for type `AbstractString`."))
+        error("Expected a string for type `AbstractString`.")
     end
 end
 
@@ -64,7 +64,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        throw(error("Expected a number for type `Number`."))
+        error("Expected a number for type `Number`.")
     end
 end
 
@@ -83,6 +83,8 @@ function deser(h::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<
         T(Int64(yyjson_get_num(value_ptr)))
     elseif yyjson_is_bool(value_ptr)
         T(Int64(yyjson_get_bool(value_ptr)))
+    else
+        error("Expected a string or number for type `Enum`.")
     end
 end
 
@@ -94,7 +96,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        throw(error("Expected a string for type `Symbol`."))
+        error("Expected a string for type `Symbol`.")
     end
 end
 
@@ -104,7 +106,7 @@ function deser(::NullType, ::Type{Nothing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         nothing
     else
-        throw(error("Expected null for type `Nothing`."))
+        error("Expected a null for type `Nothing`.")
     end
 end
 
@@ -112,19 +114,23 @@ function deser(::NullType, ::Type{Missing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         missing
     else
-        throw(error("Expected null for type `Missing`."))
+        error("Expected a null for type `Missing`.")
     end
 end
 
 function deser(::NullType, ::Type{Union{Nothing,T}}, value_ptr::Ptr{YYJSONVal}) where {T}
     return if yyjson_is_null(value_ptr)
         deser(T, value_ptr)
+    else
+        error("Expected a null for type `Nothing`.")
     end
 end
 
 function deser(::NullType, ::Type{Union{Missing,T}}, value_ptr::Ptr{YYJSONVal}) where {T}
     return if yyjson_is_null(value_ptr)
         deser(T, value_ptr)
+    else
+        error("Expected a null for type `Missing`.")
     end
 end
 
@@ -133,6 +139,8 @@ end
 function deser(::NTupleType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:NamedTuple}
     return if yyjson_is_obj(value_ptr)
         (; deser(Dict{Symbol,Any}, value_ptr)...)
+    else
+        error("Expected an object for type `NamedTuple`.")
     end
 end
 
@@ -141,6 +149,8 @@ end
 function deser(::DictType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {N,T<:AbstractSet{N}}
     return if yyjson_is_arr(value_ptr)
         T(deser(Vector{N}, value_ptr))
+    else
+        error("Expected an array for type `AbstractSet`.")
     end
 end
 
@@ -159,6 +169,8 @@ function deser(::DictType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {K,V,T<:A
             end
         end
         dict_elements
+    else
+        error("Expected an object for type `AbstractDict`.")
     end
 end
 
@@ -178,6 +190,8 @@ function deser(::ArrayType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Abst
             end
         end
         array_elements
+    else
+        error("Expected an array for type `AbstractVector`.")
     end
 end
 
@@ -199,6 +213,8 @@ function deser(::ArrayType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Tupl
             end
             T(tuple_elements)
         end
+    else
+        error("Expected an array for type `Tuple`.")
     end
 end
 
@@ -220,22 +236,22 @@ function deser_arr(::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
     end
 end
 
-function typeof_yyjson_val(val_ptr::Ptr{YYJSONVal})
-    return if yyjson_is_str(val_ptr)
+function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
+    return if yyjson_is_str(value_ptr)
         String
-    elseif yyjson_is_raw(val_ptr)
+    elseif yyjson_is_raw(value_ptr)
         String
-    elseif yyjson_is_real(val_ptr)
+    elseif yyjson_is_real(value_ptr)
         Float64
-    elseif yyjson_is_int(val_ptr)
+    elseif yyjson_is_int(value_ptr)
         Int
-    elseif yyjson_is_bool(val_ptr)
+    elseif yyjson_is_bool(value_ptr)
         Bool
-    elseif yyjson_is_obj(val_ptr)
+    elseif yyjson_is_obj(value_ptr)
         Dict{String,Any}
-    elseif yyjson_is_arr(val_ptr)
+    elseif yyjson_is_arr(value_ptr)
         Vector{Any}
-    elseif yyjson_is_null(val_ptr)
+    elseif yyjson_is_null(value_ptr)
         Nothing
     else
         Any
@@ -309,6 +325,8 @@ function deser(type::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
         deser_arr(type, T, value_ptr)
     elseif yyjson_is_obj(value_ptr)
         deser_obj(type, T, value_ptr)
+    else
+        error("Expected an array or object.")
     end
 end
 
