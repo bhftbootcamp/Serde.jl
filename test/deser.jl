@@ -659,7 +659,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' value 'Ptr{YYJSONVal}' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
             Message{Nothing},
             exp_str,
         )
@@ -722,6 +722,21 @@ using Test, Dates
         @test Serde.deser(Tuples, exp_kvs).a == exp_obj.a
         @test Serde.deser(Tuples, exp_kvs).b == exp_obj.b
         @test Serde.deser(Tuples, exp_kvs).c == exp_obj.c
+
+        exp_str2 = """
+        [
+            ["1", "2", "3"],
+            ["1", "2"],
+            ["a", "b", "c"],
+            ["s", "1"],
+            ["0.01", "1"]
+        ]
+        """
+        @test Serde.deser_json(DifferentTuples, exp_str2).a == Tuple(("1", "2", "3"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).b == NTuple{2}(("1", "2"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).c == Tuple{String,String,String}(("a", "b", "c"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).d == Tuple{String,Int64}(("s", 1))
+        @test Serde.deser_json(DifferentTuples, exp_str2).e == Tuple{Float64,Int64}((0.01, 1))
     end
 
     @testset "Case №40: Custom deserialization" begin

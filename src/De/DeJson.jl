@@ -59,6 +59,8 @@ end
 function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Number}
     return if yyjson_is_real(value_ptr) || yyjson_is_int(value_ptr)
         T(yyjson_get_num(value_ptr))
+    elseif yyjson_is_str(value_ptr)
+        tryparse(T, unsafe_string(yyjson_get_str(value_ptr)))
     elseif yyjson_is_null(value_ptr)
         nothing
     else
@@ -218,7 +220,29 @@ function deser_arr(::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
     end
 end
 
-function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
+function typeof_yyjson_val(val_ptr::Ptr{YYJSONVal})
+    return if yyjson_is_str(val_ptr)
+        String
+    elseif yyjson_is_raw(val_ptr)
+        String
+    elseif yyjson_is_real(val_ptr)
+        Float64
+    elseif yyjson_is_int(val_ptr)
+        Int
+    elseif yyjson_is_bool(val_ptr)
+        Bool
+    elseif yyjson_is_obj(val_ptr)
+        Dict{String,Any}
+    elseif yyjson_is_arr(val_ptr)
+        Vector{Any}
+    elseif yyjson_is_null(val_ptr)
+        Nothing
+    else
+        Any
+    end
+end
+
+function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E<:Any}
     E isa Union && E.a == Nothing && return eldeser(T, E.b, key, value_ptr)
     return try
         if yyjson_is_str(value_ptr) && <:(E, AbstractString)
@@ -243,11 +267,11 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_
             deser(T, E, deser(Any, value_ptr))
         end
     catch e
-        val = deser(Any, value_ptr)
-        if isnothing(val)
+        value_type = typeof_yyjson_val(value_ptr)
+        if yyjson_is_null(value_ptr)
             throw(ParamError("$key::$E"))
         elseif (e isa MethodError) || (e isa InexactError) || (e isa ArgumentError)
-            throw(WrongType(T, key, val, typeof(val), E))
+            throw(WrongType(T, key, "Ptr{YYJSONVal}", value_type, E))
         else
             rethrow(e)
         end
