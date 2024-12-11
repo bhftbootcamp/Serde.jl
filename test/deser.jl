@@ -659,7 +659,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' value 'Ptr{YYJSONVal}' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
             Message{Nothing},
             exp_str,
         )
@@ -722,5 +722,120 @@ using Test, Dates
         @test Serde.deser(Tuples, exp_kvs).a == exp_obj.a
         @test Serde.deser(Tuples, exp_kvs).b == exp_obj.b
         @test Serde.deser(Tuples, exp_kvs).c == exp_obj.c
+
+        exp_str2 = """
+        [
+            ["1", "2", "3"],
+            ["1", "2"],
+            ["a", "b", "c"],
+            ["s", "1"],
+            ["0.01", "1"]
+        ]
+        """
+        @test Serde.deser_json(DifferentTuples, exp_str2).a == Tuple(("1", "2", "3"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).b == NTuple{2}(("1", "2"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).c == Tuple{String,String,String}(("a", "b", "c"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).d == Tuple{String,Int64}(("s", 1))
+        @test Serde.deser_json(DifferentTuples, exp_str2).e == Tuple{Float64,Int64}((0.01, 1))
+    end
+
+    @testset "Case №40: Custom deserialization" begin
+        struct SubType
+            y::String
+        end
+        struct MyType
+            x::SubType
+        end
+        json_str = """
+            {
+                "x":{
+                    "y":{
+                        "z":[1, 2, 3]
+                    }
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractDict)
+            return "test"
+        end
+        exp_obj = MyType(SubType("test"))
+        @test deser_json(MyType, json_str) == exp_obj
+
+        json_str2 = """
+            {
+                "x":{
+                    "y":[1, 2, 3]
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractVector)
+            return "test2"
+        end
+        exp_obj2 = MyType(SubType("test2"))
+        @test deser_json(MyType, json_str2) == exp_obj2
+    end
+
+    @testset "Case №41: Deserialization Vector to Struct" begin
+        struct Point
+            x::Int
+            y::Int
+        end
+        struct Line
+            a::Point
+            b::Point
+        end
+        struct Arrow
+            label::String
+            segments::Vector{Line}
+            dashed::Bool
+        end
+        json_str = """{
+            "label": "Hello",
+            "segments": [
+                 {"a": {"x": 1, "y": 1}, "b": {"x": 2, "y": 2}},
+                 {"a": {"x": 2, "y": 2}, "b": {"x": 3, "y": 3}}
+             ],
+             "dashed": false
+        }"""
+
+        exp_obj = Arrow("Hello", Line[Line(Point(1, 1), Point(2, 2)), Line(Point(2, 2), Point(3, 3))], false)
+        calc_obj = deser_json(Arrow, json_str)
+        @test calc_obj.label == exp_obj.label
+        @test calc_obj.segments[1] == exp_obj.segments[1]
+        @test calc_obj.segments[2] == exp_obj.segments[2]
+        @test calc_obj.dashed == exp_obj.dashed
+    end
+
+    @testset "Case №42: Deserialization Inf" begin
+        exp_str1 = """{"bool":true,"number":101.101,"nan":null,"inf":null,"_missing":null,"_nothing":null}"""
+        struct JsonBar3
+            bool::Bool
+            number::Float64
+            nan::Nothing
+            inf::Float64
+            _missing::Missing
+            _nothing::Nothing
+        end
+
+        @test_throws "ParamError: parameter 'inf::Float64' was not passed or has the value 'nothing'" deser_json(JsonBar3, exp_str1)
+
+        exp_str2 = """{"bool":true,"number":101.101,"nan":null,"inf":"Inf","_missing":null,"_nothing":null}"""
+
+        exp_obj = JsonBar3(true, 101.101, nothing, Inf, missing, nothing)
+        @test deser_json(JsonBar3, exp_str2) == exp_obj
+    end
+
+    @testset "Case №43: Deserialization to Union" begin
+        struct UnionType
+            union_value::Union{Float64, String}
+        end
+
+        exp_str1 = "{\"union_value\":100.0}"
+        exp_obj1 = UnionType(100.0)
+        @test deser_json(UnionType, exp_str1) == exp_obj1
+
+        exp_str2 = "{\"union_value\":\"100\"}"
+        exp_obj2 = UnionType("100")
+        @test deser_json(UnionType, exp_str2) == exp_obj2
     end
 end
