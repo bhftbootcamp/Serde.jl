@@ -838,4 +838,16 @@ using Test, Dates
         exp_obj2 = UnionType("100")
         @test deser_json(UnionType, exp_str2) == exp_obj2
     end
+
+    @testset "Case №44: Deserialization to from String and Vector{UInt8}" begin
+        struct MyType44
+            value1::Float64
+            value2::String
+        end
+
+        exp_str = "{\"value1\":100.0, \"value2\": \"100\"}"
+        exp_obj = MyType44(100.0, "100")
+        @test deser_json(MyType44, exp_str) == exp_obj
+        @test deser_json(MyType44, collect(codeunits(exp_str))) == exp_obj
+    end
 end

@@ -358,7 +358,7 @@ function read_json_doc(json; kw...)
     err = YYJSONReadErr()
     doc_ptr = yyjson_read_opts(
         json,
-        length(json),
+        ncodeunits(json),
         bitwise_read_flag(; kw...),
         C_NULL,
         pointer_from_objref(err),
@@ -392,13 +392,17 @@ julia> deser_json(Data, json)
 Data(100, "json", Record(100.0))
 ```
 """
-function deser_json(::Type{T}, x; kw...) where {T}
+function deser_json(::Type{T}, x::AbstractString; kw...) where {T}
     doc_ptr = read_json_doc(x; kw...)
     try
         return deser(T, yyjson_doc_get_root(doc_ptr))
     finally
         yyjson_doc_free(doc_ptr)
     end
+end
+
+function deser_json(::Type{T}, json::AbstractVector{UInt8}; kw...) where {T}
+    return deser_json(T, unsafe_string(pointer(json), length(json)); kw...)
 end
 
 deser_json(::Type{Nothing}, _) = nothing
