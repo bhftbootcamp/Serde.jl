@@ -3,6 +3,7 @@ module DeJson
 export deser_json
 
 using YYJSON
+import YYJSON: read_json_doc, open_json_doc
 import ..Serde
 import ..Serde: deser, eldeser, isempty, custom_name, default_value, nulltype
 import ..Serde: WrongType, CustomType, NullType, PrimitiveType, ArrayType, DictType, NTupleType, ParamError
@@ -27,6 +28,8 @@ function deser(::Type{Any}, value_ptr::Ptr{YYJSONVal})
         deser(Vector{Any}, value_ptr)
     elseif yyjson_is_null(value_ptr)
         nothing
+    else
+        error("Unsupported JSON type for `Any`.")
     end
 end
 
@@ -331,42 +334,6 @@ function deser(type::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
 end
 
 #__ Deser
-
-function bitwise_read_flag(;
-    in_situ::Bool = false,
-    number_as_raw::Bool = false,
-    bignum_as_raw::Bool = false,
-    stop_when_done::Bool = false,
-    allow_comments::Bool = false,
-    allow_inf_and_nan::Bool = false,
-    allow_invalid_unicode::Bool = false,
-    allow_trailing_commas::Bool = false,
-)
-    flag = YYJSON_READ_NOFLAG
-    flag |= in_situ               ? YYJSON_READ_INSITU                : flag
-    flag |= number_as_raw         ? YYJSON_READ_NUMBER_AS_RAW         : flag
-    flag |= bignum_as_raw         ? YYJSON_READ_BIGNUM_AS_RAW         : flag
-    flag |= stop_when_done        ? YYJSON_READ_STOP_WHEN_DONE        : flag
-    flag |= allow_comments        ? YYJSON_READ_ALLOW_COMMENTS        : flag
-    flag |= allow_inf_and_nan     ? YYJSON_READ_ALLOW_INF_AND_NAN     : flag
-    flag |= allow_invalid_unicode ? YYJSON_READ_ALLOW_INVALID_UNICODE : flag
-    flag |= allow_trailing_commas ? YYJSON_READ_ALLOW_TRAILING_COMMAS : flag
-    return flag
-end
-
-function read_json_doc(json; kw...)
-    err = YYJSONReadErr()
-    doc_ptr = yyjson_read_opts(
-        json,
-        ncodeunits(json),
-        bitwise_read_flag(; kw...),
-        C_NULL,
-        pointer_from_objref(err),
-    )
-    doc_ptr == C_NULL && throw(YYJSONError("Failed to parse JSON."))
-    return doc_ptr
-end
-
 """
     deser_json(::Type{T}, x; kw...) -> T
 
