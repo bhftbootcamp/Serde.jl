@@ -659,7 +659,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' value 'Ptr{YYJSONVal}' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' got wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
             Message{Nothing},
             exp_str,
         )
