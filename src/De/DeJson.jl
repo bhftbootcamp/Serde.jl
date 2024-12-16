@@ -372,8 +372,10 @@ function deser_json(::Type{T}, json::AbstractVector{UInt8}; kw...) where {T}
     return deser_json(T, unsafe_string(pointer(json), length(json)); kw...)
 end
 
-deser_json(::Type{Nothing}, _) = nothing
-deser_json(::Type{Missing}, _) = missing
+deser_json(::Type{Nothing}, ::AbstractVector{UInt8}) = nothing
+deser_json(::Type{Nothing}, ::AbstractString) = nothing
+deser_json(::Type{Missing}, ::AbstractVector{UInt8}) = missing
+deser_json(::Type{Missing}, ::AbstractString) = missing
 
 function deser_json(f::Function, x; kw...)
     object = Serde.parse_json(x; kw...)
