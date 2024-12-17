@@ -239,7 +239,7 @@ function deser_arr(::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
     end
 end
 
-function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
+@inline function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_str(value_ptr)
         String
     elseif yyjson_is_raw(value_ptr)
@@ -261,7 +261,7 @@ function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
     end
 end
 
-function check_types(::Type{E}, ::Type{T}) where {E,T}
+@inline function issubtype(::Type{E}, ::Type{T}) where {E,T}
     return if E isa Union
         any(x -> x <: T, Base.uniontypes(E))
     else
@@ -271,36 +271,40 @@ end
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
     return try
-        if yyjson_is_str(value_ptr) && check_types(E, AbstractString)
+        if yyjson_is_str(value_ptr) && issubtype(E, AbstractString)
             unsafe_string(yyjson_get_str(value_ptr))
-        elseif yyjson_is_raw(value_ptr) && check_types(E, AbstractString)
+        elseif yyjson_is_raw(value_ptr) && issubtype(E, AbstractString)
             unsafe_string(yyjson_get_raw(value_ptr))
-        elseif yyjson_is_real(value_ptr) && check_types(E, Number)
+        elseif yyjson_is_real(value_ptr) && issubtype(E, Number)
             yyjson_get_real(value_ptr)
-        elseif yyjson_is_int(value_ptr) && check_types(E, Number)
+        elseif yyjson_is_int(value_ptr) && issubtype(E, Number)
             yyjson_get_int(value_ptr)
-        elseif yyjson_is_bool(value_ptr) && check_types(E, Number)
+        elseif yyjson_is_bool(value_ptr) && issubtype(E, Number)
             yyjson_get_bool(value_ptr)
-        elseif yyjson_is_obj(value_ptr) && check_types(E, AbstractDict)
+        elseif yyjson_is_obj(value_ptr) && issubtype(E, AbstractDict)
             deser(E, value_ptr)
-        elseif yyjson_is_arr(value_ptr) && check_types(E, AbstractVector)
+        elseif yyjson_is_arr(value_ptr) && issubtype(E, AbstractVector)
             deser(E, value_ptr)
-        elseif yyjson_is_null(value_ptr) && check_types(E, Nothing)
+        elseif yyjson_is_null(value_ptr) && issubtype(E, Nothing)
             nothing
-        elseif yyjson_is_null(value_ptr) && check_types(E, Missing)
+        elseif yyjson_is_null(value_ptr) && issubtype(E, Missing)
             missing
         else
             deser(T, E, deser(Any, value_ptr))
         end
     catch e
-        value_type = typeof_yyjson_val(value_ptr)
-        if yyjson_is_null(value_ptr)
-            throw(ParamError("$key::$E"))
-        elseif (e isa MethodError) || (e isa InexactError) || (e isa ArgumentError)
-            throw(WrongType(T, key, "Ptr{YYJSONVal}", value_type, E))
-        else
-            rethrow(e)
-        end
+        handle_deser_error(e, key, value_ptr, T, E)
+    end
+end
+
+@inline function handle_deser_error(e, key, value_ptr, struct_type, expected_type)
+    value_type = typeof_yyjson_val(value_ptr)
+    if yyjson_is_null(value_ptr)
+        throw(ParamError("$key::$expected_type"))
+    elseif e isa MethodError || e isa InexactError || e isa ArgumentError
+        throw(WrongType(struct_type, key, "Ptr{YYJSONVal}", value_type, expected_type))
+    else
+        rethrow(e)
     end
 end
 
