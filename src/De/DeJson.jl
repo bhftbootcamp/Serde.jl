@@ -73,13 +73,13 @@ end
 
 function deser(h::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Enum}
     return if yyjson_is_str(value_ptr)
-        str = unsafe_string(yyjson_get_str(value_ptr))
-        num = tryparse(Int64, str)
-        isnothing(num) ? deser(h, T, Symbol(str)) : deser(h, T, num)
+        value_str = unsafe_string(yyjson_get_str(value_ptr))
+        parsed_val = tryparse(Int64, value_str)
+        isnothing(parsed_val) ? deser(h, T, Symbol(value_str)) : deser(h, T, parsed_val)
     elseif yyjson_is_raw(value_ptr)
-        str = unsafe_string(yyjson_get_raw(value_ptr))
-        num = tryparse(Int64, str)
-        isnothing(num) ? deser(h, T, Symbol(str)) : deser(h, T, num)
+        value_str = unsafe_string(yyjson_get_raw(value_ptr))
+        parsed_val = tryparse(Int64, value_str)
+        isnothing(parsed_val) ? deser(h, T, Symbol(value_str)) : deser(h, T, parsed_val)
     elseif yyjson_is_real(value_ptr)
         T(Int64(yyjson_get_num(value_ptr)))
     elseif yyjson_is_int(value_ptr)
@@ -262,7 +262,11 @@ end
 end
 
 @inline function issubtype(::Type{E}, ::Type{T}) where {E,T}
-    return E isa Union ? any(e -> e <: T, Base.uniontypes(E)) : (E <: T)
+    if E isa Union
+        return issubtype(E.a, T) || issubtype(E.b, T)
+    else
+        return E <: T
+    end
 end
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
