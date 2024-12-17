@@ -262,11 +262,7 @@ end
 end
 
 @inline function issubtype(::Type{E}, ::Type{T}) where {E,T}
-    return if E isa Union
-        any(x -> x <: T, Base.uniontypes(E))
-    else
-        <:(E, T)
-    end
+    return E isa Union ? any(e -> e <: T, Base.uniontypes(E)) : (E <: T)
 end
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
@@ -293,18 +289,14 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_
             deser(T, E, deser(Any, value_ptr))
         end
     catch e
-        handle_deser_error(e, key, value_ptr, T, E)
-    end
-end
-
-@inline function handle_deser_error(e, key, value_ptr, struct_type, expected_type)
-    value_type = typeof_yyjson_val(value_ptr)
-    if yyjson_is_null(value_ptr)
-        throw(ParamError("$key::$expected_type"))
-    elseif e isa MethodError || e isa InexactError || e isa ArgumentError
-        throw(WrongType(struct_type, key, "Ptr{YYJSONVal}", value_type, expected_type))
-    else
-        rethrow(e)
+        value_type = typeof_yyjson_val(value_ptr)
+        if yyjson_is_null(value_ptr)
+            throw(ParamError("$key::$E"))
+        elseif e isa MethodError || e isa InexactError || e isa ArgumentError
+            throw(WrongType(T, key, "Ptr{YYJSONVal}", value_type, E))
+        else
+            rethrow(e)
+        end
     end
 end
 
@@ -338,6 +330,7 @@ function deser(type::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
 end
 
 #__ Deser
+
 """
     deser_json(::Type{T}, x; kw...) -> T
 
