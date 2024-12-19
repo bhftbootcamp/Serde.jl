@@ -37,10 +37,6 @@ function deser(::Type{T}, ::Type{Union{Nothing,E}}, value_ptr::Ptr{YYJSONVal}) w
     return deser(T, E, value_ptr)
 end
 
-function deser(::Type{T}, ::Type{Nothing}, value_ptr::Ptr{YYJSONVal}) where {T}
-    return deser(Nothing, value_ptr)
-end
-
 function deser(::Type{T}, ::Type{E}, value_ptr::Ptr{YYJSONVal}) where {T,E}
     return deser(E, value_ptr)
 end
@@ -72,14 +68,9 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
 end
 
 function deser(h::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Enum}
-    return if yyjson_is_str(value_ptr)
+    return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         value_str = unsafe_string(yyjson_get_str(value_ptr))
-        parsed_val = tryparse(Int64, value_str)
-        isnothing(parsed_val) ? deser(h, T, Symbol(value_str)) : deser(h, T, parsed_val)
-    elseif yyjson_is_raw(value_ptr)
-        value_str = unsafe_string(yyjson_get_raw(value_ptr))
-        parsed_val = tryparse(Int64, value_str)
-        isnothing(parsed_val) ? deser(h, T, Symbol(value_str)) : deser(h, T, parsed_val)
+        deser(h, T, value_str)
     elseif yyjson_is_real(value_ptr)
         T(Int64(yyjson_get_num(value_ptr)))
     elseif yyjson_is_int(value_ptr)
@@ -105,6 +96,10 @@ end
 
 # NullType
 
+deser(::Type{Nothing}, value_ptr::Ptr{YYJSONVal}) = deser(NullType(), Nothing, value_ptr)
+
+deser(::Type{Missing}, value_ptr::Ptr{YYJSONVal}) = deser(NullType(), Missing, value_ptr)
+
 function deser(::NullType, ::Type{Nothing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         nothing
@@ -116,22 +111,6 @@ end
 function deser(::NullType, ::Type{Missing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         missing
-    else
-        error("Expected a null for type `Missing`.")
-    end
-end
-
-function deser(::NullType, ::Type{Union{Nothing,T}}, value_ptr::Ptr{YYJSONVal}) where {T}
-    return if yyjson_is_null(value_ptr)
-        deser(T, value_ptr)
-    else
-        error("Expected a null for type `Nothing`.")
-    end
-end
-
-function deser(::NullType, ::Type{Union{Missing,T}}, value_ptr::Ptr{YYJSONVal}) where {T}
-    return if yyjson_is_null(value_ptr)
-        deser(T, value_ptr)
     else
         error("Expected a null for type `Missing`.")
     end
@@ -223,22 +202,6 @@ end
 
 # CustomType
 
-function deser_arr(::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
-    iter = YYJSONArrIter()
-    iter_ref = Ref(iter)
-    iter_ptr = Base.unsafe_convert(Ptr{YYJSONArrIter}, iter_ref)
-    GC.@preserve iter begin
-        yyjson_arr_iter_init(value_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
-        type_elements = Vector{Any}(undef, fieldcount(T))
-        for (i, field_type) in zip(eachindex(type_elements), fieldtypes(T))
-            field_ptr = yyjson_arr_iter_next(iter_ptr)
-            value = field_ptr == C_NULL ? nulltype(field_type) : deser(T, field_type, field_ptr)
-            type_elements[i] = isempty(T, value) ? nulltype(field_type) : value
-        end
-        return T(type_elements...)
-    end
-end
-
 @inline function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_str(value_ptr)
         String
@@ -301,6 +264,31 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_
         else
             rethrow(e)
         end
+    end
+end
+
+function deser_arr(::CustomType, ::Type{T}, arr_ptr::Ptr{YYJSONVal}) where {T}
+    iter = YYJSONArrIter()
+    iter_ref = Ref(iter)
+    iter_ptr = Base.unsafe_convert(Ptr{YYJSONArrIter}, iter_ref)
+    GC.@preserve iter begin
+        yyjson_arr_iter_init(arr_ptr, iter_ptr) || throw(YYJSONError("Failed to initialize array iterator."))
+        type_elements = Vector{Any}(undef, fieldcount(T))
+        for (i, field_type, field_name) in zip(eachindex(type_elements), fieldtypes(T), fieldnames(T))
+            key = custom_name(T, Val(field_name))
+            value_ptr = yyjson_arr_iter_next(iter_ptr)
+            value = if value_ptr == C_NULL
+                default_value(T, Val(field_name))
+            else
+                eldeser(T, field_type, key, value_ptr)
+            end
+            type_elements[i] = if isnothing(value) || ismissing(value) || isempty(T, value)
+                nulltype(field_type)
+            else
+                value
+            end
+        end
+        return T(type_elements...)
     end
 end
 

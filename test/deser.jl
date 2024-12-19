@@ -459,10 +459,6 @@ using Test, Dates
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
 
-        exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "1")
-        exp_obj = Journey(150.0, 100.0, Right)
-        @test Serde.deser(Journey, exp_kvs) == exp_obj
-
         exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "Right")
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
@@ -856,5 +852,42 @@ using Test, Dates
         @test isnothing(deser_json(Nothing, ""))
         @test ismissing(deser_json(Missing, UInt8[]))
         @test ismissing(deser_json(Missing, ""))
+    end
+
+    @testset "Case №46: JSON deserialization Nothing, Missing" begin
+        exp_str = """ [null,null] """
+        struct MyType46_1
+            value1::Nothing
+            value2::Missing
+        end
+
+        exp_obj = MyType46_1(nothing, missing)
+        @test Serde.deser_json(MyType46_1, exp_str) == exp_obj
+
+        exp_str = """ {"v":[null,null]} """;
+        struct MyType46_2
+            v::Vector{Nothing}
+        end
+        exp_obj = Serde.deser_json(MyType46_2, exp_str) 
+        @time length(exp_obj.v) == 2
+        @time all(isnothing, exp_obj.v)
+    end
+
+    @testset "Case №47: JSON deserialization Enum" begin
+        @enum MyEnum a = 0
+        
+        struct MyType47 
+            v::MyEnum
+        end
+        exp_obj = MyType47(MyEnum(0))
+
+        exp_str1 = """ [ "a" ] """
+        @test Serde.deser_json(MyType47, exp_str1) == exp_obj
+
+        exp_str2 = """ [ 0 ] """
+        @test Serde.deser_json(MyType47, exp_str2) == exp_obj
+
+        exp_str3 = """ [ "0" ] """
+        @test_throws "WrongType: for 'MyType47' got wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
     end
 end
