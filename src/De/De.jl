@@ -30,10 +30,17 @@ struct WrongType <: DeserError
 end
 
 function Base.show(io::IO, e::WrongType)
-    return print(
-        io,
-        "WrongType: for '$(e.maintype)' value '$(e.value)' has wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'",
-    )
+    return if e.value == "Ptr{YYJSONVal}"
+            print(
+                io,
+                "WrongType: for '$(e.maintype)' got wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'",
+            )
+        else
+            print(
+                io,
+                "WrongType: for '$(e.maintype)' value '$(e.value)' has wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'",
+            )
+        end
 end
 
 include("Deser.jl")
