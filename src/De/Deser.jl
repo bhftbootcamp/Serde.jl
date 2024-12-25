@@ -201,12 +201,7 @@ end
 # to Enum
 
 function deser(h::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:AbstractString}
-    n = tryparse(Int64, data)
-    if isnothing(n)
-        deser(h, T, Symbol(data))
-    else
-        deser(h, T, n)
-    end
+    deser(h, T, Symbol(data))
 end
 
 function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Integer}
@@ -483,6 +478,8 @@ Computer("N/A", "N/A")
 ```
 """
 (nulltype(::Type{T})::Nothing) where {T<:Any} = nothing
+
+(nulltype(::Type{Missing})) = missing
 
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
 
