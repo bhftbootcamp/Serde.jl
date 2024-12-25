@@ -12,10 +12,8 @@ import ..to_deser
 # Any
 
 function deser(::Type{Any}, value_ptr::Ptr{YYJSONVal})
-    return if yyjson_is_str(value_ptr)
+    return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         unsafe_string(yyjson_get_str(value_ptr))
-    elseif yyjson_is_raw(value_ptr)
-        unsafe_string(yyjson_get_raw(value_ptr))
     elseif yyjson_is_real(value_ptr)
         yyjson_get_real(value_ptr)
     elseif yyjson_is_int(value_ptr)
@@ -44,10 +42,8 @@ end
 # PrimitiveType
 
 function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:AbstractString}
-    return if yyjson_is_str(value_ptr)
+    return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         unsafe_string(yyjson_get_str(value_ptr))
-    elseif yyjson_is_raw(value_ptr)
-        unsafe_string(yyjson_get_raw(value_ptr))
     elseif yyjson_is_null(value_ptr)
         nothing
     else
@@ -71,22 +67,18 @@ function deser(h::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<
     return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         value_str = unsafe_string(yyjson_get_str(value_ptr))
         deser(h, T, value_str)
-    elseif yyjson_is_real(value_ptr)
-        T(Int64(yyjson_get_num(value_ptr)))
-    elseif yyjson_is_int(value_ptr)
-        T(Int64(yyjson_get_num(value_ptr)))
+    elseif yyjson_is_real(value_ptr) || yyjson_is_int(value_ptr)
+        T(yyjson_get_num(value_ptr))
     elseif yyjson_is_bool(value_ptr)
-        T(Int64(yyjson_get_bool(value_ptr)))
+        T(yyjson_get_bool(value_ptr))
     else
         error("Expected a string or number for type `Enum`.")
     end
 end
 
 function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Symbol}
-    return if yyjson_is_str(value_ptr)
+    return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         Symbol(unsafe_string(yyjson_get_str(value_ptr)))
-    elseif yyjson_is_raw(value_ptr)
-        Symbol(unsafe_string(yyjson_get_raw(value_ptr)))
     elseif yyjson_is_null(value_ptr)
         nothing
     else
@@ -203,9 +195,7 @@ end
 # CustomType
 
 @inline function typeof_yyjson_val(value_ptr::Ptr{YYJSONVal})
-    return if yyjson_is_str(value_ptr)
-        String
-    elseif yyjson_is_raw(value_ptr)
+    return if yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)
         String
     elseif yyjson_is_real(value_ptr)
         Float64
@@ -234,10 +224,8 @@ end
 
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
     return try
-        if yyjson_is_str(value_ptr) && issubtype(E, AbstractString)
+        if (yyjson_is_str(value_ptr) || yyjson_is_raw(value_ptr)) && issubtype(E, AbstractString)
             unsafe_string(yyjson_get_str(value_ptr))
-        elseif yyjson_is_raw(value_ptr) && issubtype(E, AbstractString)
-            unsafe_string(yyjson_get_raw(value_ptr))
         elseif yyjson_is_real(value_ptr) && issubtype(E, Number)
             yyjson_get_real(value_ptr)
         elseif yyjson_is_int(value_ptr) && issubtype(E, Number)
