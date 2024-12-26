@@ -655,7 +655,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' got wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
             Message{Nothing},
             exp_str,
         )
@@ -869,8 +869,8 @@ using Test, Dates
             v::Vector{Nothing}
         end
         exp_obj = Serde.deser_json(MyType46_2, exp_str) 
-        @time length(exp_obj.v) == 2
-        @time all(isnothing, exp_obj.v)
+        @test length(exp_obj.v) == 2
+        @test all(isnothing, exp_obj.v)
     end
 
     @testset "Case №47: JSON deserialization Enum" begin
@@ -888,6 +888,6 @@ using Test, Dates
         @test Serde.deser_json(MyType47, exp_str2) == exp_obj
 
         exp_str3 = """ [ "0" ] """
-        @test_throws "WrongType: for 'MyType47' got wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
+        @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
     end
 end
