@@ -890,4 +890,32 @@ using Test, Dates
         exp_str3 = """ [ "0" ] """
         @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
     end
+
+    @testset "Case №48: JSON deserialization NamedTuple" begin
+        struct MyType48_1
+            count::NamedTuple
+        end
+        
+        exp_str1 = """ { "count": {"a":"1", "b":"2", "c":"3"} } """
+        exp_obj1 = MyType48_1((a="1", b="2", c="3"))
+        @test Serde.deser_json(MyType48_1, exp_str1) == exp_obj1
+
+        struct MyType48_2
+            count::@NamedTuple{a::Int64, b::String}
+        end
+        
+        exp_str2 = """ { "count": {"a":1, "b":"2"} } """
+        exp_obj2 = MyType48_2((a=1, b="2"))
+        @test Serde.deser_json(MyType48_2, exp_str2) == exp_obj2
+    end
+
+    @testset "Case №49: JSON deserialization Set" begin 
+        struct MyType49
+            count::Set{Any}
+        end
+
+        exp_str = """ {  "count": ["1", 2, 3.0] } """
+        exp_obj = MyType49(Set(Any["1", 2, 3.0]))
+        @test Serde.deser_json(MyType49, exp_str).count == exp_obj.count
+    end
 end
