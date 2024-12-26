@@ -9,6 +9,14 @@ import ..Serde: deser, eldeser, isempty, custom_name, default_value, nulltype
 import ..Serde: WrongType, CustomType, NullType, PrimitiveType, ArrayType, DictType, NTupleType, ParamError
 import ..to_deser
 
+struct DeJsonError <: Exception
+    message::AbstractString
+end
+
+function Base.show(io::IO, e::DeJsonError)
+    return print(io, e.message)
+end
+
 # Any
 
 function deser(::Type{Any}, value_ptr::Ptr{YYJSONVal})
@@ -27,7 +35,7 @@ function deser(::Type{Any}, value_ptr::Ptr{YYJSONVal})
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        error("Unsupported JSON type for `Any`.")
+        throw(DeJsonError("Unsupported JSON type for `Any`."))
     end
 end
 
@@ -47,7 +55,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        error("Expected a string for type `AbstractString`.")
+        throw(DeJsonError("Expected a string for type `AbstractString`."))
     end
 end
 
@@ -59,7 +67,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        error("Expected a number for type `Number`.")
+        throw(DeJsonError("Expected a number for type `Number`."))
     end
 end
 
@@ -72,7 +80,7 @@ function deser(h::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<
     elseif yyjson_is_bool(value_ptr)
         T(yyjson_get_bool(value_ptr))
     else
-        error("Expected a string or number for type `Enum`.")
+        throw(DeJsonError("Expected a string or number for type `Enum`."))
     end
 end
 
@@ -82,7 +90,7 @@ function deser(::PrimitiveType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:
     elseif yyjson_is_null(value_ptr)
         nothing
     else
-        error("Expected a string for type `Symbol`.")
+        throw(DeJsonError("Expected a string for type `Symbol`."))
     end
 end
 
@@ -95,7 +103,7 @@ function deser(::NullType, ::Type{Nothing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         nothing
     else
-        error("Expected a null for type `Nothing`.")
+        throw(DeJsonError("Expected a null for type `Nothing`."))
     end
 end
 
@@ -103,7 +111,7 @@ function deser(::NullType, ::Type{Missing}, value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_null(value_ptr)
         missing
     else
-        error("Expected a null for type `Missing`.")
+        throw(DeJsonError("Expected a null for type `Missing`."))
     end
 end
 
@@ -113,7 +121,7 @@ function deser(::NTupleType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Nam
     return if yyjson_is_obj(value_ptr)
         (; deser(Dict{Symbol,Any}, value_ptr)...)
     else
-        error("Expected an object for type `NamedTuple`.")
+        throw(DeJsonError("Expected an object for type `NamedTuple`."))
     end
 end
 
@@ -123,7 +131,7 @@ function deser(::DictType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {N,T<:Abs
     return if yyjson_is_arr(value_ptr)
         T(deser(Vector{N}, value_ptr))
     else
-        error("Expected an array for type `AbstractSet`.")
+        throw(DeJsonError("Expected an array for type `AbstractSet`."))
     end
 end
 
@@ -143,7 +151,7 @@ function deser(::DictType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {K,V,T<:A
         end
         dict_elements
     else
-        error("Expected an object for type `AbstractDict`.")
+        throw(DeJsonError("Expected an object for type `AbstractDict`."))
     end
 end
 
@@ -164,7 +172,7 @@ function deser(::ArrayType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Abst
         end
         array_elements
     else
-        error("Expected an array for type `AbstractVector`.")
+        throw(DeJsonError("Expected an array for type `AbstractVector`."))
     end
 end
 
@@ -187,7 +195,7 @@ function deser(::ArrayType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T<:Tupl
             T(tuple_elements)
         end
     else
-        error("Expected an array for type `Tuple`.")
+        throw(DeJsonError("Expected an array for type `Tuple`."))
     end
 end
 
@@ -245,7 +253,7 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_
     catch e
         if yyjson_is_null(value_ptr)
             throw(ParamError("$key::$E"))
-        elseif e isa MethodError || e isa ArgumentError || e isa InexactError
+        elseif e isa MethodError || e isa ArgumentError || e isa InexactError || e isa DeJsonError
             throw(WrongType(T, key, deser(Any, value_ptr), typeof_yyjson_val(value_ptr), E))
         else
             rethrow(e)
@@ -303,7 +311,7 @@ function deser(type::CustomType, ::Type{T}, value_ptr::Ptr{YYJSONVal}) where {T}
     elseif yyjson_is_obj(value_ptr)
         deser_obj(type, T, value_ptr)
     else
-        error("Expected an array or object.")
+        throw(DeJsonError("Expected an array or object."))
     end
 end
 
