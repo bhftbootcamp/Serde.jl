@@ -89,7 +89,6 @@ end
 # NullType
 
 deser(::Type{Nothing}, value_ptr::Ptr{YYJSONVal}) = deser(NullType(), Nothing, value_ptr)
-
 deser(::Type{Missing}, value_ptr::Ptr{YYJSONVal}) = deser(NullType(), Missing, value_ptr)
 
 function deser(::NullType, ::Type{Nothing}, value_ptr::Ptr{YYJSONVal})
@@ -244,11 +243,10 @@ function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_
             deser(T, E, deser(Any, value_ptr))
         end
     catch e
-        value_type = typeof_yyjson_val(value_ptr)
         if yyjson_is_null(value_ptr)
             throw(ParamError("$key::$E"))
-        elseif e isa MethodError || e isa InexactError || e isa ArgumentError
-            throw(WrongType(T, key, "Ptr{YYJSONVal}", value_type, E))
+        elseif e isa MethodError || e isa ArgumentError || e isa InexactError
+            throw(WrongType(T, key, deser(Any, value_ptr), typeof_yyjson_val(value_ptr), E))
         else
             rethrow(e)
         end
