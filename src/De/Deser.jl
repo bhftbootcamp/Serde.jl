@@ -23,43 +23,34 @@ struct NTupleType <: ClassType end
 
 ClassType(::T) where {T} = ClassType(T)
 
-# CustomType
-
+# Custom Types
 ClassType(::Type{T}) where {T<:Any} = CustomType()
 
-# ExcludeType
-
-ClassType(::Type{T}) where {T<:Function} = throw("non-deserializable type")
-
-# PrimitiveType
-
+# Primitive Types
 ClassType(::Type{T}) where {T<:AbstractString} = PrimitiveType()
 ClassType(::Type{T}) where {T<:AbstractChar} = PrimitiveType()
 ClassType(::Type{T}) where {T<:Number} = PrimitiveType()
 ClassType(::Type{T}) where {T<:Enum} = PrimitiveType()
 ClassType(::Type{T}) where {T<:Symbol} = PrimitiveType()
 
-# Null
-
+# Null Types
 ClassType(::Type{T}) where {T<:Nothing} = NullType()
 ClassType(::Type{T}) where {T<:Missing} = NullType()
 
-# ArrayType
-
+# Array Types
 ClassType(::Type{T}) where {T<:AbstractArray} = ArrayType()
 ClassType(::Type{T}) where {T<:Tuple} = ArrayType()
 
-# DictType
-
+# Dict Types
 ClassType(::Type{T}) where {T<:AbstractDict} = DictType()
 ClassType(::Type{T}) where {T<:AbstractSet} = DictType()
 ClassType(::Type{T}) where {T<:Pair} = DictType()
 
-# NTupleType
-
+# NTuple Types
 ClassType(::Type{T}) where {T<:NamedTuple} = NTupleType()
 
-# deser type
+# Exclude Types
+ClassType(::Type{T}) where {T<:Function} = throw("non-deserializable type")
 
 """
     Serde.deser(::Type{T}, data) -> T
@@ -176,14 +167,12 @@ function deser(::PrimitiveType, ::Type{T}, data::T)::T where {T<:Any}
     return data
 end
 
-# to Symbol
-
+# Primitive Symbol
 function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Symbol,D<:AbstractString}
     return Symbol(data)
 end
 
-# to Numbers
-
+# Primitive Numbers
 function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Number,D<:AbstractString}
     return tryparse(T, data)
 end
@@ -192,21 +181,14 @@ function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Number,D<:Numbe
     return T(data)
 end
 
-# to AbstractFloat
-
+# Primitive AbstractFloat
 function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractFloat,D<:Integer}
     return data
 end
 
-# to Enum
-
+# Primitive Enum
 function deser(h::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:AbstractString}
-    n = tryparse(Int64, data)
-    if isnothing(n)
-        deser(h, T, Symbol(data))
-    else
-        deser(h, T, n)
-    end
+    deser(h, T, Symbol(data))
 end
 
 function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Integer}
@@ -222,8 +204,7 @@ function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Symbol}
     return nothing
 end
 
-# to String
-
+# String Types
 function deser(
     ::PrimitiveType,
     ::Type{T},
@@ -240,8 +221,7 @@ function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractString,
     return string(data)
 end
 
-# to NullType
-
+# Null Types
 function deser(::Type{T}, data::D)::T where {T<:Nothing,D<:Any}
     return throw(MethodError(deser, (T, data)))
 end
@@ -258,24 +238,20 @@ function deser(::NullType, ::Type{T}, data::D)::Missing where {T<:Missing,D<:Not
     return missing
 end
 
-# NTupleType
-
+# NTuple Types
 function deser(
     ::NTupleType,
     ::Type{D},
     data::AbstractDict{K,V},
 )::D where {D<:NamedTuple,K<:Any,V<:Any}
     out::Dict{Symbol,V} = Dict{Symbol,V}()
-
     for (k, v) in data
         out[Symbol(k)] = v
     end
-
     return (; out...)
 end
 
-# DictType
-
+# Dict Types
 function deser(
     ::DictType,
     ::Type{T},
@@ -294,24 +270,21 @@ function deser(
     data::AbstractDict{K,V},
 )::D where {D<:AbstractDict,K<:Any,V<:Any}
     out::D = D()
-
     for (k, v) in data
         try
             out[deser(keytype(out), k)] = deser(valtype(out), v)
         catch e
-            if (e isa MethodError)
+            if e isa MethodError
                 throw(WrongType(D, k, v, typeof(v), valtype(out)))
             else
                 rethrow(e)
             end
         end
     end
-
     return out
 end
 
-# ArrayType
-
+# Array Types
 function deser(
     ::ArrayType,
     ::Type{T},
@@ -483,23 +456,20 @@ Computer("N/A", "N/A")
 ```
 """
 (nulltype(::Type{T})::Nothing) where {T<:Any} = nothing
-
+(nulltype(::Type{Missing})) = missing
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
-
 (nulltype(::Type{Union{Missing,T}})::Missing) where {T<:Any} = missing
 
 _field_types(::Type{T}) where {T} = Tuple(fieldtype(T, x) for x in fieldnames(T))
 
 function deser(::CustomType, ::Type{D}, data::AbstractVector{A})::D where {D<:Any,A<:Any}
     vals = Any[]
-
     for (index, type) in enumerate(_field_types(D))
         val = get(data, index, nulltype(type))
         val = isempty(D, val) ? nulltype(type) : val
         val = !(val isa type) ? deser(D, type, val) : val
         push!(vals, val)
     end
-
     return D(vals...)
 end
 
@@ -518,7 +488,7 @@ function eldeser(
     catch e
         if isnothing(val)
             throw(ParamError("$(key)::$(elmtype)"))
-        elseif (e isa MethodError) || (e isa InexactError) || (e isa ArgumentError)
+        elseif e isa MethodError || e isa ArgumentError || e isa InexactError
             throw(WrongType(structtype, key, val, typeof(val), elmtype))
         else
             rethrow(e)
@@ -532,26 +502,22 @@ function deser(
     data::AbstractDict{K,V},
 )::D where {D<:Any,K<:Union{AbstractString,Symbol},V<:Any}
     vals = Any[]
-
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
         val = get(data, K(key), default_value(D, Val(name)))
         val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
         push!(vals, eldeser(D, type, key, val))
     end
-
     return D(vals...)
 end
 
 function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
     vals = Any[]
-
     for (type, name) in zip(_field_types(D), fieldnames(D))
         key = custom_name(D, Val(name))
         val = get(data, key, default_value(D, Val(name)))
         val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
         push!(vals, eldeser(D, type, key, val))
     end
-
     return D(vals...)
 end

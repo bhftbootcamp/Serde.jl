@@ -459,10 +459,6 @@ using Test, Dates
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
 
-        exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "1")
-        exp_obj = Journey(150.0, 100.0, Right)
-        @test Serde.deser(Journey, exp_kvs) == exp_obj
-
         exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "Right")
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
@@ -722,5 +718,204 @@ using Test, Dates
         @test Serde.deser(Tuples, exp_kvs).a == exp_obj.a
         @test Serde.deser(Tuples, exp_kvs).b == exp_obj.b
         @test Serde.deser(Tuples, exp_kvs).c == exp_obj.c
+
+        exp_str2 = """
+        [
+            ["1", "2", "3"],
+            ["1", "2"],
+            ["a", "b", "c"],
+            ["s", "1"],
+            ["0.01", "1"]
+        ]
+        """
+        @test Serde.deser_json(DifferentTuples, exp_str2).a == Tuple(("1", "2", "3"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).b == NTuple{2}(("1", "2"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).c == Tuple{String,String,String}(("a", "b", "c"))
+        @test Serde.deser_json(DifferentTuples, exp_str2).d == Tuple{String,Int64}(("s", 1))
+        @test Serde.deser_json(DifferentTuples, exp_str2).e == Tuple{Float64,Int64}((0.01, 1))
+    end
+
+    @testset "Case №40: Custom deserialization" begin
+        struct SubType
+            y::String
+        end
+        struct MyType
+            x::SubType
+        end
+        json_str = """
+            {
+                "x":{
+                    "y":{
+                        "z":[1, 2, 3]
+                    }
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractDict)
+            return "test"
+        end
+        exp_obj = MyType(SubType("test"))
+        @test deser_json(MyType, json_str) == exp_obj
+
+        json_str2 = """
+            {
+                "x":{
+                    "y":[1, 2, 3]
+                }
+            }
+        """
+        function Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractVector)
+            return "test2"
+        end
+        exp_obj2 = MyType(SubType("test2"))
+        @test deser_json(MyType, json_str2) == exp_obj2
+    end
+
+    @testset "Case №41: Deserialization Vector to Struct" begin
+        struct Point
+            x::Int
+            y::Int
+        end
+        struct Line
+            a::Point
+            b::Point
+        end
+        struct Arrow
+            label::String
+            segments::Vector{Line}
+            dashed::Bool
+        end
+        json_str = """{
+            "label": "Hello",
+            "segments": [
+                 {"a": {"x": 1, "y": 1}, "b": {"x": 2, "y": 2}},
+                 {"a": {"x": 2, "y": 2}, "b": {"x": 3, "y": 3}}
+             ],
+             "dashed": false
+        }"""
+
+        exp_obj = Arrow("Hello", Line[Line(Point(1, 1), Point(2, 2)), Line(Point(2, 2), Point(3, 3))], false)
+        calc_obj = deser_json(Arrow, json_str)
+        @test calc_obj.label == exp_obj.label
+        @test calc_obj.segments[1] == exp_obj.segments[1]
+        @test calc_obj.segments[2] == exp_obj.segments[2]
+        @test calc_obj.dashed == exp_obj.dashed
+    end
+
+    @testset "Case №42: Deserialization Inf" begin
+        exp_str1 = """{"bool":true,"number":101.101,"nan":null,"inf":null,"_missing":null,"_nothing":null}"""
+        struct JsonBar3
+            bool::Bool
+            number::Float64
+            nan::Nothing
+            inf::Float64
+            _missing::Missing
+            _nothing::Nothing
+        end
+
+        @test_throws "ParamError: parameter 'inf::Float64' was not passed or has the value 'nothing'" deser_json(JsonBar3, exp_str1)
+
+        exp_str2 = """{"bool":true,"number":101.101,"nan":null,"inf":"Inf","_missing":null,"_nothing":null}"""
+
+        exp_obj = JsonBar3(true, 101.101, nothing, Inf, missing, nothing)
+        @test deser_json(JsonBar3, exp_str2) == exp_obj
+    end
+
+    @testset "Case №43: Deserialization to Union" begin
+        struct UnionType
+            union_value::Union{Float64, String}
+        end
+
+        exp_str1 = "{\"union_value\":100.0}"
+        exp_obj1 = UnionType(100.0)
+        @test deser_json(UnionType, exp_str1) == exp_obj1
+
+        exp_str2 = "{\"union_value\":\"100\"}"
+        exp_obj2 = UnionType("100")
+        @test deser_json(UnionType, exp_str2) == exp_obj2
+    end
+
+    @testset "Case №44: Deserialization from String and Vector{UInt8}" begin
+        struct MyType44
+            value1::Float64
+            value2::String
+        end
+
+        exp_str = "{\"value1\":100.0, \"value2\": \"100\"}"
+        exp_obj = MyType44(100.0, "100")
+        @test deser_json(MyType44, exp_str) == exp_obj
+        @test deser_json(MyType44, collect(codeunits(exp_str))) == exp_obj
+    end
+
+    @testset "Case №45: Deserialization to Nothing, Missing" begin
+        @test isnothing(deser_json(Nothing, UInt8[]))
+        @test isnothing(deser_json(Nothing, ""))
+        @test ismissing(deser_json(Missing, UInt8[]))
+        @test ismissing(deser_json(Missing, ""))
+    end
+
+    @testset "Case №46: JSON deserialization Nothing, Missing" begin
+        exp_str = """ [null,null] """
+        struct MyType46_1
+            value1::Nothing
+            value2::Missing
+        end
+
+        exp_obj = MyType46_1(nothing, missing)
+        @test Serde.deser_json(MyType46_1, exp_str) == exp_obj
+
+        exp_str = """ {"v":[null,null]} """;
+        struct MyType46_2
+            v::Vector{Nothing}
+        end
+        exp_obj = Serde.deser_json(MyType46_2, exp_str) 
+        @test length(exp_obj.v) == 2
+        @test all(isnothing, exp_obj.v)
+    end
+
+    @testset "Case №47: JSON deserialization Enum" begin
+        @enum MyEnum a = 0
+        
+        struct MyType47 
+            v::MyEnum
+        end
+        exp_obj = MyType47(MyEnum(0))
+
+        exp_str1 = """ [ "a" ] """
+        @test Serde.deser_json(MyType47, exp_str1) == exp_obj
+
+        exp_str2 = """ [ 0 ] """
+        @test Serde.deser_json(MyType47, exp_str2) == exp_obj
+
+        exp_str3 = """ [ "0" ] """
+        @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
+    end
+
+    @testset "Case №48: JSON deserialization NamedTuple" begin
+        struct MyType48_1
+            count::NamedTuple
+        end
+        
+        exp_str1 = """ { "count": {"a":"1", "b":"2", "c":"3"} } """
+        exp_obj1 = MyType48_1((a="1", b="2", c="3"))
+        @test Serde.deser_json(MyType48_1, exp_str1) == exp_obj1
+
+        struct MyType48_2
+            count::@NamedTuple{a::Int64, b::String}
+        end
+        
+        exp_str2 = """ { "count": {"a":1, "b":"2"} } """
+        exp_obj2 = MyType48_2((a=1, b="2"))
+        @test Serde.deser_json(MyType48_2, exp_str2) == exp_obj2
+    end
+
+    @testset "Case №49: JSON deserialization Set" begin 
+        struct MyType49
+            count::Set{Any}
+        end
+
+        exp_str = """ {  "count": ["1", 2, 3.0] } """
+        exp_obj = MyType49(Set(Any["1", 2, 3.0]))
+        @test Serde.deser_json(MyType49, exp_str).count == exp_obj.count
     end
 end
