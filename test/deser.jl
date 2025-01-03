@@ -655,7 +655,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" Serde.deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::AbstractDict', must be 'payload::Nothing'" Serde.deser_json(
             Message{Nothing},
             exp_str,
         )
@@ -888,7 +888,7 @@ using Test, Dates
         @test Serde.deser_json(MyType47, exp_str2) == exp_obj
 
         exp_str3 = """ [ "0" ] """
-        @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
+        @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::AbstractString', must be 'v::MyEnum'" Serde.deser_json(MyType47, exp_str3)
     end
 
     @testset "Case №48: JSON deserialization NamedTuple" begin
@@ -911,11 +911,11 @@ using Test, Dates
 
     @testset "Case №49: JSON deserialization Set" begin 
         struct MyType49
-            count::Set{Any}
+            count::Set{Number}
         end
 
-        exp_str = """ {  "count": ["1", 2, 3.0] } """
-        exp_obj = MyType49(Set(Any["1", 2, 3.0]))
+        exp_str = """ {  "count": [1, 2, 3.0] } """
+        exp_obj = MyType49(Set(Number[1, 2, 3.0]))
         @test Serde.deser_json(MyType49, exp_str).count == exp_obj.count
     end
 end

@@ -41,27 +41,27 @@ end
 
 @inline function typeof_yyjson(value_ptr::Ptr{YYJSONVal})
     return if yyjson_is_str(value_ptr)
-        String
+        AbstractString
     elseif yyjson_is_real(value_ptr)
-        Float64
+        Real
     elseif yyjson_is_int(value_ptr)
-        Int
+        Integer
     elseif yyjson_is_bool(value_ptr)
         Bool
     elseif yyjson_is_obj(value_ptr)
-        Dict{String,Any}
+        AbstractDict
     elseif yyjson_is_arr(value_ptr)
-        Vector{Any}
+        AbstractVector
     elseif yyjson_is_null(value_ptr)
-        Nothing
+        Union{Nothing,Missing}
     elseif yyjson_is_raw(value_ptr)
-        String
+        AbstractString
     else
         Any
     end
 end
 
-@inline function issubtype(::Type{E}, ::Type{T}) where {E,T}
+function issubtype(::Type{E}, ::Type{T}) where {E,T}
     if E isa Union
         return issubtype(E.a, T) || issubtype(E.b, T)
     else
@@ -114,6 +114,8 @@ end
         T(yyjson_get_num(value_ptr))
     elseif yyjson_is_str(value_ptr)
         tryparse(T, unsafe_string(yyjson_get_str(value_ptr)))
+    elseif yyjson_is_bool(value_ptr)
+        T(yyjson_get_bool(value_ptr))
     else
         throw(TypeMismatchError(T, typeof_yyjson(value_ptr)))
     end
@@ -234,7 +236,7 @@ end
     if yyjson_is_null(value_ptr)
         throw(ParamError("$key::$E"))
     elseif e isa TypeMismatchError
-        throw(WrongType(e.actual_type, key, deser(Any, value_ptr), e.expected_type, E))
+        throw(WrongType(T, key, deser(Any, value_ptr), e.actual_type, E))
     elseif e isa MethodError || e isa ArgumentError || e isa InexactError
         throw(WrongType(T, key, deser(Any, value_ptr), typeof_yyjson(value_ptr), E))
     else
@@ -245,20 +247,8 @@ end
 function eldeser(::Type{T}, ::Type{E}, key::Union{AbstractString,Symbol}, value_ptr::Ptr{YYJSONVal}) where {T,E}
     value_type = typeof_yyjson(value_ptr)
     try
-        if value_type == String && issubtype(E, AbstractString)
-            unsafe_string(yyjson_get_str(value_ptr))
-        elseif value_type == Float64 && issubtype(E, Number)
-            yyjson_get_real(value_ptr)
-        elseif value_type == Int && issubtype(E, Number)
-            yyjson_get_int(value_ptr)
-        elseif value_type == Bool && issubtype(E, Number)
-            yyjson_get_bool(value_ptr)
-        elseif value_type == Dict{String,Any} && issubtype(E, Union{AbstractDict,NamedTuple})
+        if issubtype(E, value_type)
             deser(E, value_ptr)
-        elseif value_type == Vector{Any} && issubtype(E, Union{AbstractVector,Tuple,AbstractSet})
-            deser(E, value_ptr)
-        elseif value_type == Nothing
-            issubtype(E, Missing) ? missing : nothing
         else
             deser(T, E, deser(Any, value_ptr))
         end
@@ -277,15 +267,16 @@ function deser_arr(::CustomType, ::Type{T}, arr_ptr::Ptr{YYJSONVal}) where {T}
         for (i, field_type, field_name) in zip(eachindex(type_elements), fieldtypes(T), fieldnames(T))
             key = custom_name(T, Val(field_name))
             value_ptr = yyjson_arr_iter_next(iter_ptr)
-            value = if value_ptr === YYJSONVal_NULL
-                default_value(T, Val(field_name))
+            type_elements[i] = if value_ptr === YYJSONVal_NULL || yyjson_is_null(value_ptr)
+                v = default_value(T, Val(field_name))
+                v = if isnothing(v) || ismissing(v) || isempty(T, v)
+                    nulltype(field_type)
+                else
+                    v
+                end
+                eldeser(T, field_type, key, v)
             else
                 eldeser(T, field_type, key, value_ptr)
-            end
-            type_elements[i] = if isnothing(value) || ismissing(value) || isempty(T, value)
-                nulltype(field_type)
-            else
-                value
             end
         end
         return T(type_elements...)
@@ -297,15 +288,16 @@ function deser_obj(::CustomType, ::Type{T}, obj_ptr::Ptr{YYJSONVal}) where {T}
     for (index, field_type, field_name) in zip(eachindex(field_values), fieldtypes(T), fieldnames(T))
         key = custom_name(T, Val(field_name))
         value_ptr = yyjson_obj_get(obj_ptr, key)
-        value = if value_ptr === YYJSONVal_NULL
-            default_value(T, Val(field_name))
+        field_values[index] = if value_ptr === YYJSONVal_NULL || yyjson_is_null(value_ptr)
+            v = default_value(T, Val(field_name))
+            v = if isnothing(v) || ismissing(v) || isempty(T, v)
+                nulltype(field_type)
+            else
+                v
+            end
+            eldeser(T, field_type, key, v)
         else
             eldeser(T, field_type, key, value_ptr)
-        end
-        field_values[index] = if isnothing(value) || ismissing(value) || isempty(T, value)
-            nulltype(field_type)
-        else
-            value
         end
     end
     return T(field_values...)
