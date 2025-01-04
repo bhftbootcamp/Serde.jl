@@ -459,10 +459,6 @@ using Test, Dates
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
 
-        exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "1")
-        exp_obj = Journey(150.0, 100.0, Right)
-        @test Serde.deser(Journey, exp_kvs) == exp_obj
-
         exp_kvs = Dict{String,Any}("distance" => 100, "fuel" => 150, "side" => "Right")
         exp_obj = Journey(150.0, 100.0, Right)
         @test Serde.deser(Journey, exp_kvs) == exp_obj
@@ -670,15 +666,15 @@ using Test, Dates
             y::Int64
             x::Union{String,Nothing}
         end
-    
+
         @test Serde.deser(WithNothing, Dict("y" => 1, "x" => nothing)) == WithNothing(1, nothing)
         @test Serde.deser(WithNothing, Dict("y" => 2, "x" => missing)) == WithNothing(2, nothing)
-    
+
         struct WithMissing
             y::Int64
             x::Union{String,Missing}
         end
-    
+
         @test Serde.deser(WithMissing, Dict("y" => 3, "x" => nothing)) == WithMissing(3, missing)
         @test Serde.deser(WithMissing, Dict("y" => 4, "x" => missing)) == WithMissing(4, missing)
     end

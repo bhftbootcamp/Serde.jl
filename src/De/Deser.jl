@@ -23,15 +23,7 @@ struct NTupleType <: ClassType end
 
 ClassType(::T) where {T} = ClassType(T)
 
-# CustomType
-
 ClassType(::Type{T}) where {T<:Any} = CustomType()
-
-# ExcludeType
-
-ClassType(::Type{T}) where {T<:Function} = throw("non-deserializable type")
-
-# PrimitiveType
 
 ClassType(::Type{T}) where {T<:AbstractString} = PrimitiveType()
 ClassType(::Type{T}) where {T<:AbstractChar} = PrimitiveType()
@@ -39,298 +31,19 @@ ClassType(::Type{T}) where {T<:Number} = PrimitiveType()
 ClassType(::Type{T}) where {T<:Enum} = PrimitiveType()
 ClassType(::Type{T}) where {T<:Symbol} = PrimitiveType()
 
-# Null
-
 ClassType(::Type{T}) where {T<:Nothing} = NullType()
 ClassType(::Type{T}) where {T<:Missing} = NullType()
 
-# ArrayType
-
 ClassType(::Type{T}) where {T<:AbstractArray} = ArrayType()
 ClassType(::Type{T}) where {T<:Tuple} = ArrayType()
-
-# DictType
 
 ClassType(::Type{T}) where {T<:AbstractDict} = DictType()
 ClassType(::Type{T}) where {T<:AbstractSet} = DictType()
 ClassType(::Type{T}) where {T<:Pair} = DictType()
 
-# NTupleType
-
 ClassType(::Type{T}) where {T<:NamedTuple} = NTupleType()
 
-# deser type
-
-"""
-    Serde.deser(::Type{T}, data) -> T
-
-Main function of this module which can construct an object of type `T` from another object `data`.
-Can deserialize complex object with a deep nesting.
-
-Function `deser` supports:
-- Deserialization from `Dict` and `Vector` to `Struct`
-- Deserialization from `Dict` and `Vector` to Vector of `Struct`
-- Deserialization from `Dict` to `Dict`
-- Typecasting during deserialization
-- Default value for struct arguments (see [`Serde.default_value`](@ref))
-- Custom name for struct arguments (see [`Serde.custom_name`](@ref))
-- Empty type definition (see [`Serde.isempty`](@ref))
-- Deserializing `missing` and `nothing` (see [`Serde.nulltype`](@ref))
-
-## Examples:
-
-```julia-repl
-julia> struct Info
-           id::Int64
-           salary::Int64
-       end
-
-julia> struct Person
-           name::String
-           age::Int64
-           info::Info
-       end
-
-julia> info_data = Dict("id" => 12, "salary" => 2500);
-
-julia> person_data = Dict("name" => "Michael", "age" => 25, "info" => info_data);
-
-julia> Serde.deser(Person, person_data)
-Person("Michael", 25, Info(12, 2500))
-```
-"""
-deser(::Type, ::Any)
-
-"""
-    Serde.deser(::Type{T}, ::Type{E}, data::D) -> E
-
-Internal function that is used to deserialize `data` to fields with type `E` of custom type `T`.
-Supports user overriding for custom types.
-
-!!! note
-    This function is not used explicitly and can only be overridden for the deserialization process.
-
-## Examples:
-
-Let's make a custom type `Order` with fields `price` and `date`.
-```julia
-using Dates
-
-struct Order
-    price::Int64
-    date::DateTime
-end
-```
-Now, we define a new method `Serde.deser` for the custom type `Order`.
-This method will be called for each field of `Order` that is of type `DateTime` and has been passed a `String` value.
-```julia
-function Serde.deser(
-    ::Type{T},
-    ::Type{E},
-    x::String
-)::E where {T<:Order,E<:DateTime}
-    return DateTime(x)
-end
-```
-After that, if we try to deserialize a dictionary that has a key `date` with a `String` value, it will correctly convert the `String` to a `DateTime` value.
-```julia-repl
-julia> Serde.deser(Order, Dict("price" => 1000, "date" => "2024-01-01T10:20:30"))
-Order(1000, DateTime("2024-01-01T10:20:30"))
-```
-"""
-deser(::Type, ::Type, ::Any)
-
-function deser(
-    ::Type{StructType},
-    ::Type{Union{Nothing,ElType}},
-    data::D,
-) where {StructType<:Any,ElType<:Any,D<:Any}
-    return deser(StructType, ElType, data)
-end
-
-function deser(
-    ::Type{StructType},
-    ::Type{ElType},
-    data::D,
-) where {StructType<:Any,ElType<:Any,D<:Any}
-    return deser(ElType, data)
-end
-
-function deser(::Type{StructType}, ::Type{Nothing}, data::D) where {StructType<:Any,D<:Any}
-    return deser(Nothing, data)
-end
-
-function deser(::Type{T}, data::D) where {T<:Any,D<:Any}
-    return deser(ClassType(T), T, data)
-end
-
-function deser(::Type{Union{Nothing,T}}, data::D)::T where {T<:Any,D<:Any}
-    return deser(T, data)
-end
-
-function deser(::Type{Union{Missing,T}}, data::D)::T where {T<:Any,D<:Any}
-    return deser(T, data)
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::T)::T where {T<:Any}
-    return data
-end
-
-# to Symbol
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Symbol,D<:AbstractString}
-    return Symbol(data)
-end
-
-# to Numbers
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Number,D<:AbstractString}
-    return tryparse(T, data)
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Number,D<:Number}
-    return T(data)
-end
-
-# to AbstractFloat
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractFloat,D<:Integer}
-    return data
-end
-
-# to Enum
-
-function deser(h::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:AbstractString}
-    n = tryparse(Int64, data)
-    if isnothing(n)
-        deser(h, T, Symbol(data))
-    else
-        deser(h, T, n)
-    end
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Integer}
-    return T(data)
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Symbol}
-    for (index, name) in Base.Enums.namemap(T)
-        if name === data
-            return T(index)
-        end
-    end
-    return nothing
-end
-
-# to String
-
-function deser(
-    ::PrimitiveType,
-    ::Type{T},
-    data::D,
-)::T where {T<:AbstractString,D<:AbstractString}
-    return T(data)
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractString,D<:Symbol}
-    return string(data)
-end
-
-function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:AbstractString,D<:Number}
-    return string(data)
-end
-
-# to NullType
-
-function deser(::Type{T}, data::D)::T where {T<:Nothing,D<:Any}
-    return throw(MethodError(deser, (T, data)))
-end
-
-function deser(::Type{T}, data::D)::T where {T<:Missing,D<:Any}
-    return throw(MethodError(deser, (T, data)))
-end
-
-function deser(::NullType, ::Type{T}, data::D)::Nothing where {T<:Nothing,D<:Nothing}
-    return nothing
-end
-
-function deser(::NullType, ::Type{T}, data::D)::Missing where {T<:Missing,D<:Nothing}
-    return missing
-end
-
-# NTupleType
-
-function deser(
-    ::NTupleType,
-    ::Type{D},
-    data::AbstractDict{K,V},
-)::D where {D<:NamedTuple,K<:Any,V<:Any}
-    out::Dict{Symbol,V} = Dict{Symbol,V}()
-
-    for (k, v) in data
-        out[Symbol(k)] = v
-    end
-
-    return (; out...)
-end
-
-# DictType
-
-function deser(
-    ::DictType,
-    ::Type{T},
-    data::AbstractArray{D},
-)::T where {N<:Any,T<:AbstractSet{N},D<:Any}
-    return T(deser(Vector{N}, data))
-end
-
-function deser(::DictType, ::Type{T}, data::Tuple)::T where {T<:AbstractSet}
-    return T(data)
-end
-
-function deser(
-    ::DictType,
-    ::Type{D},
-    data::AbstractDict{K,V},
-)::D where {D<:AbstractDict,K<:Any,V<:Any}
-    out::D = D()
-
-    for (k, v) in data
-        try
-            out[deser(keytype(out), k)] = deser(valtype(out), v)
-        catch e
-            if (e isa MethodError)
-                throw(WrongType(D, k, v, typeof(v), valtype(out)))
-            else
-                rethrow(e)
-            end
-        end
-    end
-
-    return out
-end
-
-# ArrayType
-
-function deser(
-    ::ArrayType,
-    ::Type{T},
-    data::D,
-)::T where {T<:AbstractVector{R} where {R<:Any},D<:AbstractVector{R} where {R<:Any}}
-    return map(x -> deser(eltype(T), x), data)
-end
-
-function deser(
-    ::ArrayType,
-    ::Type{T},
-    x::D,
-)::T where {T<:Tuple,D<:Union{Tuple,AbstractVector}}
-    if (T === Tuple) || isa(T, UnionAll)
-        T(x)
-    else
-        T(deser(t, v) for (t, v) in zip(fieldtypes(T), x))
-    end
-end
+ClassType(::Type{T}) where {T<:Function} = throw("non-deserializable type")
 
 """
     Serde.custom_name(::Type{T}, ::Val{x}) -> x
@@ -483,75 +196,208 @@ Computer("N/A", "N/A")
 ```
 """
 (nulltype(::Type{T})::Nothing) where {T<:Any} = nothing
-
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
-
 (nulltype(::Type{Union{Missing,T}})::Missing) where {T<:Any} = missing
 
-_field_types(::Type{T}) where {T} = Tuple(fieldtype(T, x) for x in fieldnames(T))
+"""
+    Serde.deser(::Type{T}, data) -> T
 
-function deser(::CustomType, ::Type{D}, data::AbstractVector{A})::D where {D<:Any,A<:Any}
-    vals = Any[]
+Main function of this module which can construct an object of type `T` from another object `data`.
+Can deserialize complex object with a deep nesting.
 
-    for (index, type) in enumerate(_field_types(D))
-        val = get(data, index, nulltype(type))
-        val = isempty(D, val) ? nulltype(type) : val
-        val = !(val isa type) ? deser(D, type, val) : val
-        push!(vals, val)
-    end
+Function `deser` supports:
+- Deserialization from `Dict` and `Vector` to `Struct`
+- Deserialization from `Dict` and `Vector` to Vector of `Struct`
+- Deserialization from `Dict` to `Dict`
+- Typecasting during deserialization
+- Default value for struct arguments (see [`Serde.default_value`](@ref))
+- Custom name for struct arguments (see [`Serde.custom_name`](@ref))
+- Empty type definition (see [`Serde.isempty`](@ref))
+- Deserializing `missing` and `nothing` (see [`Serde.nulltype`](@ref))
 
-    return D(vals...)
+## Examples:
+
+```julia-repl
+julia> struct Info
+           id::Int64
+           salary::Int64
+       end
+
+julia> struct Person
+           name::String
+           age::Int64
+           info::Info
+       end
+
+julia> info_data = Dict("id" => 12, "salary" => 2500);
+
+julia> person_data = Dict("name" => "Michael", "age" => 25, "info" => info_data);
+
+julia> Serde.deser(Person, person_data)
+Person("Michael", 25, Info(12, 2500))
+```
+"""
+deser(::Type, ::Any)
+
+"""
+    Serde.deser(::Type{T}, ::Type{E}, data::D) -> E
+
+Internal function that is used to deserialize `data` to fields with type `E` of custom type `T`.
+Supports user overriding for custom types.
+
+!!! note
+    This function is not used explicitly and can only be overridden for the deserialization process.
+
+## Examples:
+
+Let's make a custom type `Order` with fields `price` and `date`.
+```julia
+using Dates
+
+struct Order
+    price::Int64
+    date::DateTime
+end
+```
+Now, we define a new method `Serde.deser` for the custom type `Order`.
+This method will be called for each field of `Order` that is of type `DateTime` and has been passed a `String` value.
+```julia
+function Serde.deser(
+    ::Type{T},
+    ::Type{E},
+    x::String
+)::E where {T<:Order,E<:DateTime}
+    return DateTime(x)
+end
+```
+After that, if we try to deserialize a dictionary that has a key `date` with a `String` value, it will correctly convert the `String` to a `DateTime` value.
+```julia-repl
+julia> Serde.deser(Order, Dict("price" => 1000, "date" => "2024-01-01T10:20:30"))
+Order(1000, DateTime("2024-01-01T10:20:30"))
+```
+"""
+deser(::Type, ::Type, ::Any)
+
+(deser(::Type{T}, data::D)) where {T<:Any,D<:Any} = deser(ClassType(T), T, data)
+
+(deser(::PrimitiveType, ::Type{T}, data::T)::T) where {T<:Any} = data
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:Symbol,D<:AbstractString} = Symbol(data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:Number,D<:AbstractString} = tryparse(T, data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:Number,D<:Number} = T(data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:AbstractFloat,D<:Integer} = data
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:AbstractString,D<:AbstractString} = T(data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:AbstractString,D<:Symbol} = string(data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:AbstractString,D<:Number} = string(data)
+(deser(::PrimitiveType, ::Type{T}, data::D)::T) where {T<:Enum,D<:Integer} = T(data)
+
+function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:AbstractString}
+    return deser(PrimitiveType(), T, Symbol(data))
 end
 
-function eldeser(
-    structtype::Type,
-    elmtype::Type,
-    key::K,
-    val::V,
-) where {K<:Union{AbstractString,Symbol},V<:Any}
-    return try
-        if val isa elmtype
-            val
-        else
-            deser(structtype, elmtype, val)
+function deser(::PrimitiveType, ::Type{T}, data::D)::T where {T<:Enum,D<:Symbol}
+    for (index, name) in Base.Enums.namemap(T)
+        name === data && return T(index)
+    end
+    return nothing
+end
+
+(deser(::NullType, ::Type{T}, data::D)::Nothing) where {T<:Nothing,D<:Nothing} = nothing
+(deser(::NullType, ::Type{T}, data::D)::Missing) where {T<:Missing,D<:Nothing} = missing
+
+(deser(::Type{Union{Nothing,T}}, data::D)::T) where {T<:Any,D<:Any} = deser(T, data)
+(deser(::Type{Union{Missing,T}}, data::D)::T) where {T<:Any,D<:Any} = deser(T, data)
+
+(deser(::Type{T}, ::Type{Union{Nothing,E}}, data::D)) where {T<:Any,E<:Any,D<:Any} = deser(T, E, data)
+(deser(::Type{T}, ::Type{E}, data::D)) where {T<:Any,E<:Any,D<:Any} = deser(E, data)
+(deser(::Type{T}, ::Type{Nothing}, data::D)) where {T<:Any,D<:Any} = deser(Nothing, data)
+
+(deser(::Type{T}, data::D)::T) where {T<:Nothing,D<:Any} = throw(MethodError(deser, (T, data)))
+(deser(::Type{T}, data::D)::T) where {T<:Missing,D<:Any} = throw(MethodError(deser, (T, data)))
+
+function deser(::NTupleType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:NamedTuple,K,D}
+    target::Dict{Symbol,D} = Dict{Symbol,D}()
+    for (k, v) in data
+        target[Symbol(k)] = v
+    end
+    return (; target...)
+end
+
+function deser(::ArrayType, ::Type{T}, data::D)::T where {T<:AbstractVector{E} where {E<:Any},D<:AbstractVector{E} where {E<:Any}}
+    return map(x -> deser(eltype(T), x), data)
+end
+
+function deser(::ArrayType, ::Type{T}, data::D)::T where {T<:Tuple,D<:Union{Tuple,AbstractVector}}
+    return if (T === Tuple) || isa(T, UnionAll)
+        T(data)
+    else
+        T(deser(t, v) for (t, v) in zip(fieldtypes(T), data))
+    end
+end
+
+function deser(::DictType, ::Type{T}, data::AbstractArray{D})::T where {T<:AbstractSet,D}
+    return T(data)
+end
+
+function deser(::DictType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:AbstractDict,K,D}
+    target = T()
+    for (k, v) in data
+        try
+            target[deser(keytype(target), k)] = deser(valtype(target), v)
+        catch e
+            throw(e isa MethodError ? WrongType(T, k, v, typeof(v), valtype(target)) : e)
         end
+    end
+    return target
+end
+
+@inline function eldeser(ct::Type, ft::Type, key::K, data::D) where {K,D}
+    try
+        return data isa ft ? data : deser(ct, ft, data)
     catch e
-        if isnothing(val)
-            throw(ParamError("$(key)::$(elmtype)"))
-        elseif (e isa MethodError) || (e isa InexactError) || (e isa ArgumentError)
-            throw(WrongType(structtype, key, val, typeof(val), elmtype))
+        if isnothing(data)
+            throw(ParamError("$(key)::$(ft)"))
+        elseif e isa MethodError || e isa ArgumentError || e isa InexactError
+            throw(WrongType(ct, key, data, typeof(data), ft))
         else
             rethrow(e)
         end
     end
 end
 
-function deser(
-    ::CustomType,
-    ::Type{D},
-    data::AbstractDict{K,V},
-)::D where {D<:Any,K<:Union{AbstractString,Symbol},V<:Any}
-    vals = Any[]
-
-    for (type, name) in zip(_field_types(D), fieldnames(D))
-        key = custom_name(D, Val(name))
-        val = get(data, K(key), default_value(D, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
-        push!(vals, eldeser(D, type, key, val))
+function deser(::CustomType, ::Type{T}, data::AbstractVector{A})::T where {T<:Any,A<:Any}
+    target = Vector{Any}(undef, fieldcount(T))
+    index::Int = 0
+    for type in fieldtypes(T)
+        index += 1
+        val = get(data, index, nulltype(type))
+        val = isempty(T, val) ? nulltype(type) : val
+        target[index] = eldeser(T, type, index, val)
     end
-
-    return D(vals...)
+    return T(target...)
 end
 
-function deser(::CustomType, ::Type{D}, data::N)::D where {D<:Any,N<:NamedTuple}
-    vals = Any[]
-
-    for (type, name) in zip(_field_types(D), fieldnames(D))
-        key = custom_name(D, Val(name))
-        val = get(data, key, default_value(D, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(D, val) ? nulltype(type) : val
-        push!(vals, eldeser(D, type, key, val))
+function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:Any,K<:Union{AbstractString,Symbol},D<:Any}
+    target = Vector{Any}(undef, fieldcount(T))
+    index::Int = 0
+    for (type, name) in zip(fieldtypes(T), fieldnames(T))
+        index += 1
+        key = custom_name(T, Val(name))
+        val = get(data, K(key), default_value(T, Val(name)))
+        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
+        target[index] = eldeser(T, type, key, val)
     end
+    return T(target...)
+end
 
-    return D(vals...)
+function deser(::CustomType, ::Type{T}, data::N)::T where {T<:Any,N<:NamedTuple}
+    target = Vector{Any}(undef, fieldcount(T))
+    index::Int = 0
+    for (type, name) in zip(fieldtypes(T), fieldnames(T))
+        index += 1
+        key = custom_name(T, Val(name))
+        val = get(data, key, default_value(T, Val(name)))
+        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
+        target[index] = eldeser(T, type, key, val)
+    end
+    return T(target...)
 end
