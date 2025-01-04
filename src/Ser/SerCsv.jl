@@ -6,7 +6,7 @@ import ..to_flatten, ..issimple
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
-function wrap_value(s::AbstractString)
+function qualify_text(s::AbstractString)
     if any(c -> c in WRAPPED, s)
         escaped_s = replace(s, "\"" => "\"\"")
         return "\"$escaped_s\""
@@ -148,7 +148,7 @@ function to_csv(
         for item in out_data
             for col in out_cols
                 val = get(item, col, nothing)
-                str = val === nothing ? "" : wrap_value(string(val))
+                str = val === nothing ? "" : qualify_text(string(val))
                 print(io, str, col != last_col ? delimiter : "\n")
             end
         end
