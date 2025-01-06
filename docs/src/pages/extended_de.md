@@ -41,8 +41,16 @@ Serde.default_value
 
 ## Null types handling
 
-Finally, we can determine the 'nulltype' for custom types when they are empty or not specified at all.
+We can also determine the 'nulltype' for custom types when they are empty or not specified at all.
 
 ```@docs
 Serde.nulltype
+```
+
+## Ignore fields
+
+Finally, we can specify which fields should be ignored during deserialization.
+
+```@docs
+Serde.isignored_name
 ```
