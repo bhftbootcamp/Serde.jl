@@ -90,7 +90,7 @@ Initially, all values are set to `nothing`.
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.isempty`](@ref), [`Serde.nulltype`](@ref).
+See also [`Serde.isempty`](@ref), [`Serde.nulltype`](@ref), [`Serde.isignored_name`](@ref).
 
 ## Examples:
 Let's make a custom type `TimeZone` with the field `gmt`.
@@ -125,7 +125,7 @@ Initially, all values are set to `false`.
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref).
+See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref), [`Serde.isignored_name`](@ref).
 
 ## Examples:
 
@@ -167,7 +167,7 @@ Initially, for all types, it is set to `nothing` (in case of type `Missing`, it 
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.isempty`](@ref), [`Serde.default_value`](@ref).
+See also [`Serde.isempty`](@ref), [`Serde.default_value`](@ref), [`Serde.isignored_name`](@ref).
 
 ## Examples
 Let's make a custom type `Computer` with the following fields.
@@ -195,9 +195,53 @@ julia> Serde.deser(Computer, Dict{String,Any}())
 Computer("N/A", "N/A")
 ```
 """
-(nulltype(::Type{T})::Nothing) where {T<:Any} = nothing
+(nulltype(::Type{T})) where {T<:Any} = nothing
+(nulltype(::Type{Missing})) = missing
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
 (nulltype(::Type{Union{Missing,T}})::Missing) where {T<:Any} = missing
+
+"""
+    Serde.isignored_name(::Type{T}, ::Val{x}) -> false
+
+This function allows to mark a field `x` for some custom type `T` as ignored for deserialization.
+Supports user overriding for custom types.
+Initially, all field names are set to `false`.
+
+!!! note
+    This function is not used explicitly and can only be overridden for the deserialization process.
+
+See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref), [`Serde.isempty`](@ref).
+
+## Examples:
+
+Let's make a custom type `Computer` with the following fields and constructor. 
+```julia
+struct Computer
+    cpu::String
+    ram::Int64
+    info::String
+end
+
+function Computer(cpu::String, ram::Int64)
+    return Computer(cpu, ram, string("cpu: ", cpu, " ram: ", ram))
+end
+```
+Now, we define a new method `Serde.isignored_name` for the custom type `Computer`.
+This method will be called for each field of `Computer`.
+```julia
+function Serde.isignored_name(::Type{Computer}, ::Val{:info})
+    return true
+end
+```
+So, if we try to deserialize a dictionary with two keys into a custom type `Computer` with three fields, it will call the constructor that takes two arguments.
+```julia-repl
+julia> Serde.deser(Computer, Dict("cpu" => "i7-12700H", "ram" => 32))
+Computer("i7-12700H", 32, "cpu: i7-12700H ram: 32")
+```
+"""
+function isignored_name(::Type{T}, ::Val{x}) where {T<:Any, x}
+    return false
+end
 
 """
     Serde.deser(::Type{T}, data) -> T
@@ -307,6 +351,9 @@ end
 (deser(::Type{Union{Nothing,T}}, data::D)::T) where {T<:Any,D<:Any} = deser(T, data)
 (deser(::Type{Union{Missing,T}}, data::D)::T) where {T<:Any,D<:Any} = deser(T, data)
 
+(deser(::Type{T}, ::T)::T) where {T<:Nothing} = nothing
+(deser(::Type{T}, ::T)::T) where {T<:Missing} = missing
+
 (deser(::Type{T}, ::Type{Union{Nothing,E}}, data::D)) where {T<:Any,E<:Any,D<:Any} = deser(T, E, data)
 (deser(::Type{T}, ::Type{E}, data::D)) where {T<:Any,E<:Any,D<:Any} = deser(E, data)
 (deser(::Type{T}, ::Type{Nothing}, data::D)) where {T<:Any,D<:Any} = deser(Nothing, data)
@@ -365,39 +412,49 @@ end
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractVector{A})::T where {T<:Any,A<:Any}
-    target = Vector{Any}(undef, fieldcount(T))
+    veclen = fieldcount(T)
+    target = Vector{Any}(undef, veclen)
     index::Int = 0
-    for type in fieldtypes(T)
+    for (type, name) in zip(fieldtypes(T), fieldnames(T))
+        isignored_name(T, Val(name)) && continue
         index += 1
         val = get(data, index, nulltype(type))
-        val = isempty(T, val) ? nulltype(type) : val
-        target[index] = eldeser(T, type, index, val)
+        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
+        target[index] = eldeser(T, type, name, val)
     end
+    veclen != index && resize!(target, index)
     return T(target...)
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:Any,K<:Union{AbstractString,Symbol},D<:Any}
-    target = Vector{Any}(undef, fieldcount(T))
+    veclen = fieldcount(T)
+    target = Vector{Any}(undef, veclen)
     index::Int = 0
     for (type, name) in zip(fieldtypes(T), fieldnames(T))
+        isignored_name(T, Val(name)) && continue
         index += 1
         key = custom_name(T, Val(name))
-        val = get(data, K(key), default_value(T, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
-        target[index] = eldeser(T, type, key, val)
-    end
-    return T(target...)
-end
-
-function deser(::CustomType, ::Type{T}, data::N)::T where {T<:Any,N<:NamedTuple}
-    target = Vector{Any}(undef, fieldcount(T))
-    index::Int = 0
-    for (type, name) in zip(fieldtypes(T), fieldnames(T))
-        index += 1
-        key = custom_name(T, Val(name))
+        key = isa(key, K) ? key : deser(K, key)
         val = get(data, key, default_value(T, Val(name)))
         val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
         target[index] = eldeser(T, type, key, val)
     end
+    veclen != index && resize!(target, index)
+    return T(target...)
+end
+
+function deser(::CustomType, ::Type{T}, data::N)::T where {T<:Any,N<:NamedTuple}
+    veclen = fieldcount(T)
+    target = Vector{Any}(undef, veclen)
+    index::Int = 0
+    for (type, name) in zip(fieldtypes(T), fieldnames(T))
+        isignored_name(T, Val(name)) && continue
+        index += 1
+        key = custom_name(T, Val(name))
+        val = get(data, Symbol(key), default_value(T, Val(name)))
+        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
+        target[index] = eldeser(T, type, key, val)
+    end
+    veclen != index && resize!(target, index)
     return T(target...)
 end
