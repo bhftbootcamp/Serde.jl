@@ -14,6 +14,7 @@ For more details:
 """
 abstract type ClassType end
 
+struct AbstractType <: ClassType end
 struct CustomType <: ClassType end
 struct NullType <: ClassType end
 struct PrimitiveType <: ClassType end
@@ -214,7 +215,7 @@ See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref), [`Serde.isempt
 
 ## Examples:
 
-Let's make a custom type `Computer` with the following fields and constructor. 
+Let's make a custom type `Computer` with the following fields and constructor.
 ```julia
 struct Computer
     cpu::String
@@ -409,6 +410,25 @@ end
             rethrow(e)
         end
     end
+end
+
+function subtype_key(::Type{T}) where {T<:Any}
+    error("Define `subtype_key(::Type{$T})::Union{String,Symbol}` to specify the subtype field.")
+end
+
+function subtypes(::Type{T}) where {T<:Any}
+    error("Define `get_subtypes(::Type{$T})::Vector{Type}` to specify the available subtypes.")
+end
+
+function deser(::AbstractType, ::Type{T}, data::AbstractDict{K,D})::T where {T,K,D}
+    key = subtype_key(T)::Union{String,Symbol}
+    key_val = Symbol(data[K(key)])
+    for sub in subtypes(T)
+        if nameof(sub) == key_val
+            return deser(CustomType(), sub, data)
+        end
+    end
+    throw(MissingKeyError(key))
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractVector{A})::T where {T<:Any,A<:Any}
