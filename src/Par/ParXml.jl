@@ -23,43 +23,38 @@ function Base.show(io::IO, e::XmlSyntaxError)
     return print(io, e.message, ", caused by: ", e.exception)
 end
 
-function _xml2dict(xml::AbstractString; kw...)
+function _parse_xml_node(xml::AbstractString; kw...)
     doc = EzXML.parsexml(xml)
-    return _xml2dict(root(doc); kw...)
+    return _parse_xml_node(root(doc); kw...)
 end
 
-function _has_content(node::EzXML.Node)::Bool
+function _has_text_content(node::EzXML.Node)::Bool
     is_content = istext(node) || iscdata(node) || !haselement(node)
     is_empty = isempty(nodecontent(node)) || all(isspace, nodecontent(node))
     return is_content && !is_empty
 end
 
-function _xml2dict(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
+function _parse_xml_node(node::EzXML.Node; dict_type::Type{D}, force_array::Bool) where {D<:AbstractDict}
     xml_dict = D()
-
-    if _has_content(node)
+    if _has_text_content(node)
         xml_dict["_"] = nodecontent(node)
     end
-
     for attr in attributes(node)
         xml_dict[nodename(attr)] = nodecontent(attr)
     end
-
     for child in elements(node)
         child_name = nodename(child)
-        child_dict = _xml2dict(child; dict_type = dict_type)
-
+        child_dict = _parse_xml_node(child; dict_type = dict_type, force_array = force_array)
         if haskey(xml_dict, child_name)
-            if isa(xml_dict[child_name], AbstractVector)
+            if force_array || isa(xml_dict[child_name], AbstractVector)
                 push!(xml_dict[child_name], child_dict)
             else
                 xml_dict[child_name] = [xml_dict[child_name], child_dict]
             end
         else
-            xml_dict[child_name] = child_dict
+            xml_dict[child_name] = force_array ? [child_dict] : child_dict
         end
     end
-
     return xml_dict
 end
 
@@ -70,7 +65,10 @@ end
 Parse an XML string `x` (or vector of UInt8) into a dictionary.
 
 ## Keyword arguments
-- `dict_type::Type{<:AbstractDict} = Dict`: The type of the dictionary to be returned.
+- `dict_type::Type{<:AbstractDict} = Dict`: The type of dictionary to return.
+- `force_array::Bool = false`:
+    - If `false` (default), elements with a single occurrence remain as a dictionary.
+    - If `true`, all elements are converted into an array, even if only one instance exists.
 
 ## Examples
 
@@ -98,9 +96,14 @@ Dict{String, Any} with 5 entries:
 """
 function parse_xml end
 
-function parse_xml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
+function parse_xml(
+    x::S;
+    dict_type::Type{D} = Dict{String,Any},
+    force_array::Bool = false,
+    kw...,
+) where {S<:AbstractString,D<:AbstractDict}
     try
-        _xml2dict(x; dict_type = dict_type, kw...)
+        _parse_xml_node(x; dict_type = dict_type, force_array = force_array, kw...)
     catch e
         throw(XmlSyntaxError("invalid XML syntax", e))
     end
