@@ -29,19 +29,17 @@
   </body>
 </html><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>To install Serde, simply use the Julia package manager:</p><pre><code class="language-julia hljs">] add Serde</code></pre><h2 id="Usage"><a class="docs-heading-anchor" href="#Usage">Usage</a><a id="Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Usage" title="Permalink"></a></h2><p>Let&#39;s look at some of the most used cases</p><h3 id="Deserialization"><a class="docs-heading-anchor" href="#Deserialization">Deserialization</a><a id="Deserialization-1"></a><a class="docs-heading-anchor-permalink" href="#Deserialization" title="Permalink"></a></h3><p>The following is an example of how you can deserialize various formats, like JSON, TOML, Query and CSV into a custom structure <code>JuliaCon</code>. The deserialization process was also modified to correctly process <code>start_date</code> and <code>end_date</code> by adding the method <code>Serde.deser</code></p><pre><code class="language-julia hljs">using Dates, Serde
 
-# Define a struct to hold JuliaCon information
 struct JuliaCon
     title::String
     start_date::Date
     end_date::Date
 end
 
-# Custom deserialization function for the JuliaCon struct
 function Serde.deser(::Type{JuliaCon}, ::Type{Date}, v::String)
     return Dates.Date(v, &quot;U d, yyyy&quot;)
 end
 
-# JSON deserialization example
+# JSON deserialization
 json = &quot;&quot;&quot;
 {
   &quot;title&quot;: &quot;JuliaCon 2024&quot;,
@@ -50,40 +48,36 @@ json = &quot;&quot;&quot;
 }
 &quot;&quot;&quot;
 
-# Deserialize JSON to a JuliaCon object
 julia&gt; juliacon = deser_json(JuliaCon, json)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# TOML deserialization example
+# TOML deserialization
 toml = &quot;&quot;&quot;
 title = &quot;JuliaCon 2024&quot;
 start_date = &quot;July 9, 2024&quot;
 end_date = &quot;July 13, 2024&quot;
 &quot;&quot;&quot;
 
-# Deserialize TOML to a JuliaCon object
 julia&gt; juliacon = deser_toml(JuliaCon, toml)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# URL query string deserialization example
+# URL query string deserialization
 query = &quot;title=JuliaCon 2024&amp;start_date=July 9, 2024&amp;end_date=July 13, 2024&quot;
 
-# Deserialize query string to a JuliaCon object
 julia&gt; juliacon = deser_query(JuliaCon, query)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# CSV deserialization example
+# CSV deserialization
 csv = &quot;&quot;&quot;
 title,start_date,end_date
 &quot;JuliaCon 2024&quot;,&quot;July 9, 2024&quot;,&quot;July 13, 2024&quot;
 &quot;&quot;&quot;
 
-# Deserialize CSV to a vector of JuliaCon objects
 julia&gt; juliacon = deser_csv(JuliaCon, csv)
 1-element Vector{JuliaCon}:
  JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# YAML deserialization example
+# YAML deserialization
 yaml = &quot;&quot;&quot;
 ---
 title: JuliaCon 2024
@@ -91,69 +85,60 @@ start_date: 2024-07-09
 end_date: 2024-07-13
 &quot;&quot;&quot;
 
-# Deserialize YAML to a JuliaCon object
 julia&gt; juliacon = deser_yaml(JuliaCon, yaml)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# XML deserialization example
+# XML deserialization
 xml = &quot;&quot;&quot;
 &lt;xml title=&quot;JuliaCon 2024&quot; start_date=&quot;July 9, 2024&quot; end_date=&quot;July 13, 2024&quot; /&gt;
 &quot;&quot;&quot;
 
-# Deserialize XML to a JuliaCon object
 julia&gt; juliacon = deser_xml(JuliaCon, xml)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))</code></pre><p>If you want to see more deserialization options, then take a look at the corresponding <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_de/">section</a> of the documentation</p><h3 id="Serialization"><a class="docs-heading-anchor" href="#Serialization">Serialization</a><a id="Serialization-1"></a><a class="docs-heading-anchor-permalink" href="#Serialization" title="Permalink"></a></h3><p>The following example shows how an object <code>juliacon</code> of custom type <code>JuliaCon</code> can be serialized into various formats, like JSON, TOML, XML, etc. In that case, all dates will be correctly converted into strings of the required format by overloaded function <code>ser_type</code></p><pre><code class="language-julia hljs">using Dates, Serde
 
-# Define the struct to hold the JuliaCon conference details
 struct JuliaCon
     title::String
     start_date::Date
     end_date::Date
 end
 
-# Create an instance of JuliaCon with the specified details
 juliacon = JuliaCon(&quot;JuliaCon 2024&quot;, Date(2024, 7, 9), Date(2024, 7, 13))
 
-# Define serialization for JuliaCon struct to JSON format
+# JSON serialization
 function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, &quot;U d, yyyy&quot;)
 end
 
-# Serialize the JuliaCon instance to JSON and print it
 julia&gt; to_json(juliacon) |&gt; print
 {&quot;title&quot;:&quot;JuliaCon 2024&quot;,&quot;start_date&quot;:&quot;July 9, 2024&quot;,&quot;end_date&quot;:&quot;July 13, 2024&quot;}
 
-# Define serialization for JuliaCon struct to TOML format
+# TOML serialization
 function Serde.SerToml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, &quot;yyyy-mm-dd&quot;)
 end
 
-# Serialize the JuliaCon instance to TOML and print it
 julia&gt; to_toml(juliacon) |&gt; print
 title = &quot;JuliaCon 2024&quot;
 start_date = &quot;2024-07-09&quot;
 end_date = &quot;2024-07-13&quot;
 
-# Define serialization for JuliaCon struct to XML format
+# XML serialization
 function Serde.SerXml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, &quot;yyyy-mm-dd&quot;)
 end
 
-# Serialize the JuliaCon instance to XML and print it
 julia&gt; to_xml(juliacon) |&gt; print
 &lt;xml title=&quot;JuliaCon 2024&quot; start_date=&quot;2024-07-09&quot; end_date=&quot;2024-07-13&quot;/&gt;
 
-# Define serialization for JuliaCon struct to YAML format
-function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
+# YAML serialization
+function Serde.SerYaml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, &quot;U d, yyyy&quot;)
 end
 
-# Serialize the JuliaCon instance to YAML and print it
 julia&gt; to_yaml(juliacon) |&gt; print
 title: &quot;JuliaCon 2024&quot;
 start_date: &quot;2024-07-09&quot;
-end_date: &quot;2024-07-13&quot;
-</code></pre><p>If you want to see more serialization options, then take a look at the corresponding <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/">section</a> of the documentation</p><h3 id="User-friendly-(de)serialization"><a class="docs-heading-anchor" href="#User-friendly-(de)serialization">User friendly (de)serialization</a><a id="User-friendly-(de)serialization-1"></a><a class="docs-heading-anchor-permalink" href="#User-friendly-(de)serialization" title="Permalink"></a></h3><p>That&#39;s not all, work is currently underway on macro functionality that allows for more fine-grained and simpler customization of the (de)serialization process. You can choose from various available decorators that will allow you to unleash all the possibilities of Serde. More information can be found in the <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/utils/#Serde.@serde">documentation</a></p><pre><code class="language-julia hljs">using Dates, Serde
+end_date: &quot;2024-07-13&quot;</code></pre><p>If you want to see more serialization options, then take a look at the corresponding <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/">section</a> of the documentation</p><h3 id="User-friendly-(de)serialization"><a class="docs-heading-anchor" href="#User-friendly-(de)serialization">User-friendly (de)serialization</a><a id="User-friendly-(de)serialization-1"></a><a class="docs-heading-anchor-permalink" href="#User-friendly-(de)serialization" title="Permalink"></a></h3><p>That&#39;s not all, work is currently underway on macro functionality that allows for more fine-grained and simpler customization of the (de)serialization process. You can choose from various available decorators that will allow you to unleash all the possibilities of Serde. For more details, check the <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/utils/#Serde.@serde">documentation</a></p><pre><code class="language-julia hljs">using Dates, Serde
 
 @serde @default_value @de_name struct JuliaCon
     title::String    | &quot;JuliaCon 2024&quot;   | &quot;title&quot;
@@ -161,16 +146,14 @@ end_date: &quot;2024-07-13&quot;
     end_date::Date   | Date(2024, 7, 24) | &quot;end&quot;
 end
 
-# Custom deserialization function for the JuliaCon struct
 function Serde.deser(::Type{JuliaCon}, ::Type{Date}, v::String)
     return Dates.Date(v)
 end
 
-# Deserialization from JSON example
 json = &quot;&quot;&quot;{&quot;title&quot;: &quot;JuliaCon 2024&quot;, &quot;start&quot;: &quot;2024-07-22&quot;}&quot;&quot;&quot;
 
 julia&gt; juliacon = deser_json(JuliaCon, json)
 JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-22&quot;), Date(&quot;2024-07-24&quot;))
 
 julia&gt; to_json(juliacon) |&gt; print
-{&quot;title&quot;:&quot;JuliaCon 2024&quot;,&quot;start_date&quot;:&quot;2024-07-22&quot;,&quot;end_date&quot;:&quot;2024-07-24&quot;}</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="pages/json/">JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Wednesday 12 February 2025 16:58">Wednesday 12 February 2025</span>. Using Julia version 1.11.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+{&quot;title&quot;:&quot;JuliaCon 2024&quot;,&quot;start_date&quot;:&quot;2024-07-22&quot;,&quot;end_date&quot;:&quot;2024-07-24&quot;}</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="pages/json/">JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Wednesday 12 February 2025 17:19">Wednesday 12 February 2025</span>. Using Julia version 1.11.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
