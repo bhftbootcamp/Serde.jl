@@ -58,19 +58,17 @@ The deserialization process was also modified to correctly process `start_date` 
 ```julia
 using Dates, Serde
 
-# Define a struct to hold JuliaCon information
 struct JuliaCon
     title::String
     start_date::Date
     end_date::Date
 end
 
-# Custom deserialization function for the JuliaCon struct
 function Serde.deser(::Type{JuliaCon}, ::Type{Date}, v::String)
     return Dates.Date(v, "U d, yyyy")
 end
 
-# JSON deserialization example
+# JSON deserialization
 json = """
 {
   "title": "JuliaCon 2024",
@@ -79,40 +77,36 @@ json = """
 }
 """
 
-# Deserialize JSON to a JuliaCon object
 julia> juliacon = deser_json(JuliaCon, json)
 JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
-# TOML deserialization example
+# TOML deserialization
 toml = """
 title = "JuliaCon 2024"
 start_date = "July 9, 2024"
 end_date = "July 13, 2024"
 """
 
-# Deserialize TOML to a JuliaCon object
 julia> juliacon = deser_toml(JuliaCon, toml)
 JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
-# URL query string deserialization example
+# URL query string deserialization
 query = "title=JuliaCon 2024&start_date=July 9, 2024&end_date=July 13, 2024"
 
-# Deserialize query string to a JuliaCon object
 julia> juliacon = deser_query(JuliaCon, query)
 JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
-# CSV deserialization example
+# CSV deserialization
 csv = """
 title,start_date,end_date
 "JuliaCon 2024","July 9, 2024","July 13, 2024"
 """
 
-# Deserialize CSV to a vector of JuliaCon objects
 julia> juliacon = deser_csv(JuliaCon, csv)
 1-element Vector{JuliaCon}:
  JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
-# YAML deserialization example
+# YAML deserialization
 yaml = """
 ---
 title: JuliaCon 2024
@@ -120,16 +114,14 @@ start_date: 2024-07-09
 end_date: 2024-07-13
 """
 
-# Deserialize YAML to a JuliaCon object
 julia> juliacon = deser_yaml(JuliaCon, yaml)
 JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 
-# XML deserialization example
+# XML deserialization
 xml = """
 <xml title="JuliaCon 2024" start_date="July 9, 2024" end_date="July 13, 2024" />
 """
 
-# Deserialize XML to a JuliaCon object
 julia> juliacon = deser_xml(JuliaCon, xml)
 JuliaCon("JuliaCon 2024", Date("2024-07-09"), Date("2024-07-13"))
 ```
@@ -144,65 +136,58 @@ In that case, all dates will be correctly converted into strings of the required
 ```julia
 using Dates, Serde
 
-# Define the struct to hold the JuliaCon conference details
 struct JuliaCon
     title::String
     start_date::Date
     end_date::Date
 end
 
-# Create an instance of JuliaCon with the specified details
 juliacon = JuliaCon("JuliaCon 2024", Date(2024, 7, 9), Date(2024, 7, 13))
 
-# Define serialization for JuliaCon struct to JSON format
+# JSON serialization
 function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, "U d, yyyy")
 end
 
-# Serialize the JuliaCon instance to JSON and print it
 julia> to_json(juliacon) |> print
 {"title":"JuliaCon 2024","start_date":"July 9, 2024","end_date":"July 13, 2024"}
 
-# Define serialization for JuliaCon struct to TOML format
+# TOML serialization
 function Serde.SerToml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, "yyyy-mm-dd")
 end
 
-# Serialize the JuliaCon instance to TOML and print it
 julia> to_toml(juliacon) |> print
 title = "JuliaCon 2024"
 start_date = "2024-07-09"
 end_date = "2024-07-13"
 
-# Define serialization for JuliaCon struct to XML format
+# XML serialization
 function Serde.SerXml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, "yyyy-mm-dd")
 end
 
-# Serialize the JuliaCon instance to XML and print it
 julia> to_xml(juliacon) |> print
 <xml title="JuliaCon 2024" start_date="2024-07-09" end_date="2024-07-13"/>
 
-# Define serialization for JuliaCon struct to YAML format
-function Serde.SerJson.ser_type(::Type{JuliaCon}, v::Date)
+# YAML serialization
+function Serde.SerYaml.ser_type(::Type{JuliaCon}, v::Date)
     return Dates.format(v, "U d, yyyy")
 end
 
-# Serialize the JuliaCon instance to YAML and print it
 julia> to_yaml(juliacon) |> print
 title: "JuliaCon 2024"
 start_date: "2024-07-09"
 end_date: "2024-07-13"
-
 ```
 
 If you want to see more serialization options, then take a look at the corresponding [section](https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/) of the documentation
 
-### User friendly (de)serialization
+### User-friendly (de)serialization
 
 That's not all, work is currently underway on macro functionality that allows for more fine-grained and simpler customization of the (de)serialization process.
 You can choose from various available decorators that will allow you to unleash all the possibilities of Serde.
-More information can be found in the [documentation](https://bhftbootcamp.github.io/Serde.jl/stable/pages/utils/#Serde.@serde)
+For more details, check the [documentation](https://bhftbootcamp.github.io/Serde.jl/stable/pages/utils/#Serde.@serde)
 
 ```julia
 using Dates, Serde
@@ -213,12 +198,10 @@ using Dates, Serde
     end_date::Date   | Date(2024, 7, 24) | "end"
 end
 
-# Custom deserialization function for the JuliaCon struct
 function Serde.deser(::Type{JuliaCon}, ::Type{Date}, v::String)
     return Dates.Date(v)
 end
 
-# Deserialization from JSON example
 json = """{"title": "JuliaCon 2024", "start": "2024-07-22"}"""
 
 julia> juliacon = deser_json(JuliaCon, json)
