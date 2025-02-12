@@ -34,7 +34,7 @@ function _has_text_content(node::EzXML.Node)::Bool
     return is_content && !is_empty
 end
 
-function _parse_xml_node(node::EzXML.Node; dict_type::Type{D}) where {D<:AbstractDict}
+function _parse_xml_node(node::EzXML.Node; dict_type::Type{D}, force_array::Bool) where {D<:AbstractDict}
     xml_dict = D()
     if _has_text_content(node)
         xml_dict["_"] = nodecontent(node)
@@ -44,15 +44,15 @@ function _parse_xml_node(node::EzXML.Node; dict_type::Type{D}) where {D<:Abstrac
     end
     for child in elements(node)
         child_name = nodename(child)
-        child_dict = _parse_xml_node(child; dict_type = dict_type)
+        child_dict = _parse_xml_node(child; dict_type = dict_type, force_array = force_array)
         if haskey(xml_dict, child_name)
-            if isa(xml_dict[child_name], AbstractVector)
+            if force_array || isa(xml_dict[child_name], AbstractVector)
                 push!(xml_dict[child_name], child_dict)
             else
                 xml_dict[child_name] = [xml_dict[child_name], child_dict]
             end
         else
-            xml_dict[child_name] = child_dict
+            xml_dict[child_name] = force_array ? [child_dict] : child_dict
         end
     end
     return xml_dict
@@ -65,7 +65,10 @@ end
 Parse an XML string `x` (or vector of UInt8) into a dictionary.
 
 ## Keyword arguments
-- `dict_type::Type{<:AbstractDict} = Dict`: The type of the dictionary to be returned.
+- `dict_type::Type{<:AbstractDict} = Dict`: The type of dictionary to return.
+- `force_array::Bool = false`:
+    - If `false` (default), elements with a single occurrence remain as a dictionary.
+    - If `true`, all elements are converted into an array, even if only one instance exists.
 
 ## Examples
 
@@ -96,10 +99,11 @@ function parse_xml end
 function parse_xml(
     x::S;
     dict_type::Type{D} = Dict{String,Any},
+    force_array::Bool = false,
     kw...,
 ) where {S<:AbstractString,D<:AbstractDict}
     try
-        _parse_xml_node(x; dict_type = dict_type, kw...)
+        _parse_xml_node(x; dict_type = dict_type, force_array = force_array, kw...)
     catch e
         throw(XmlSyntaxError("invalid XML syntax", e))
     end
