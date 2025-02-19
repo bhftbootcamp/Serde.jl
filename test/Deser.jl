@@ -955,21 +955,4 @@ using Test, Dates
         exp_obj = MyType49(Set(Number[1, 2, 3.0]))
         @test deser_json(MyType49, exp_str).count == exp_obj.count
     end
-
-    @testset "Case №50: Deserialization with ignoring field" begin
-        struct MyType50
-            a::String
-            b::Int64
-            c::Float64
-        end
-
-        MyType50(a::String, c::Float64) = MyType50(a, 1, c)
-
-        exp_kvs = Dict("a" => "test", "b" => 2, "c" => 3.14)
-        @test Serde.deser(MyType50, exp_kvs) == MyType50("test", 2, 3.14)
-
-        Serde.isignored_name(::Type{MyType50}, ::Val{:b}) = true
-
-        @test Serde.deser(MyType50, exp_kvs) == MyType50("test", 1, 3.14)
-    end
 end

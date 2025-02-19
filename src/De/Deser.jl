@@ -90,7 +90,7 @@ Initially, all values are set to `nothing`.
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.isempty`](@ref), [`Serde.nulltype`](@ref), [`Serde.isignored_name`](@ref).
+See also [`Serde.isempty`](@ref), [`Serde.nulltype`](@ref).
 
 ## Examples:
 Let's make a custom type `TimeZone` with the field `gmt`.
@@ -125,7 +125,7 @@ Initially, all values are set to `false`.
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref), [`Serde.isignored_name`](@ref).
+See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref).
 
 ## Examples:
 
@@ -167,7 +167,7 @@ Initially, for all types, it is set to `nothing` (in case of type `Missing`, it 
 !!! note
     This function is not used explicitly and can only be overridden for the deserialization process.
 
-See also [`Serde.isempty`](@ref), [`Serde.default_value`](@ref), [`Serde.isignored_name`](@ref).
+See also [`Serde.isempty`](@ref), [`Serde.default_value`](@ref).
 
 ## Examples
 Let's make a custom type `Computer` with the following fields.
@@ -199,49 +199,6 @@ Computer("N/A", "N/A")
 (nulltype(::Type{Missing})) = missing
 (nulltype(::Type{Union{Nothing,T}})::Nothing) where {T<:Any} = nothing
 (nulltype(::Type{Union{Missing,T}})::Missing) where {T<:Any} = missing
-
-"""
-    Serde.isignored_name(::Type{T}, ::Val{x}) -> false
-
-This function allows to mark a field `x` for some custom type `T` as ignored for deserialization.
-Supports user overriding for custom types.
-Initially, all field names are set to `false`.
-
-!!! note
-    This function is not used explicitly and can only be overridden for the deserialization process.
-
-See also [`Serde.nulltype`](@ref), [`Serde.default_value`](@ref), [`Serde.isempty`](@ref).
-
-## Examples:
-
-Let's make a custom type `Computer` with the following fields and constructor. 
-```julia
-struct Computer
-    cpu::String
-    ram::Int64
-    info::String
-end
-
-function Computer(cpu::String, ram::Int64)
-    return Computer(cpu, ram, string("cpu: ", cpu, " ram: ", ram))
-end
-```
-Now, we define a new method `Serde.isignored_name` for the custom type `Computer`.
-This method will be called for each field of `Computer`.
-```julia
-function Serde.isignored_name(::Type{Computer}, ::Val{:info})
-    return true
-end
-```
-So, if we try to deserialize a dictionary with two keys into a custom type `Computer` with three fields, it will call the constructor that takes two arguments.
-```julia-repl
-julia> Serde.deser(Computer, Dict("cpu" => "i7-12700H", "ram" => 32))
-Computer("i7-12700H", 32, "cpu: i7-12700H ram: 32")
-```
-"""
-function isignored_name(::Type{T}, ::Val{x}) where {T<:Any, x}
-    return false
-end
 
 """
     Serde.deser(::Type{T}, data) -> T
@@ -412,49 +369,78 @@ end
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractVector{A})::T where {T<:Any,A<:Any}
-    veclen = fieldcount(T)
-    target = Vector{Any}(undef, veclen)
-    index::Int = 0
-    for (type, name) in zip(fieldtypes(T), fieldnames(T))
-        isignored_name(T, Val(name)) && continue
-        index += 1
-        val = get(data, index, nulltype(type))
-        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
-        target[index] = eldeser(T, type, name, val)
+    N = fieldcount(T)
+    constructor = (args...) -> T(args...)
+    Base.@nexprs 32 i -> begin
+        F_i = fieldtype(T, i)
+        name_i = fieldnames(T)[i]
+        key_i = i
+        val_i = get(data, key_i, nulltype(F_i))
+        val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
+        x_i = eldeser(T, F_i, name_i, val_i)
+        N == i && return Base.@ncall i constructor x
     end
-    veclen != index && resize!(target, index)
-    return T(target...)
+    others = Any[]
+    for i in 33:N
+        F_i = fieldtype(T, i)
+        val_i = get(data, i, nulltype(F_i))
+        push!(others, eldeser(T, F_i, i, val_i))
+    end
+    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:Any,K<:Union{AbstractString,Symbol},D<:Any}
-    veclen = fieldcount(T)
-    target = Vector{Any}(undef, veclen)
-    index::Int = 0
-    for (type, name) in zip(fieldtypes(T), fieldnames(T))
-        isignored_name(T, Val(name)) && continue
-        index += 1
-        key = custom_name(T, Val(name))
-        key = isa(key, K) ? key : deser(K, key)
-        val = get(data, key, default_value(T, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
-        target[index] = eldeser(T, type, key, val)
+    N = fieldcount(T)
+    constructor = (args...) -> T(args...)
+    Base.@nexprs 32 i -> begin
+        F_i = fieldtype(T, i)
+        name_i = fieldnames(T)[i]
+        key_i = custom_name(T, Val(name_i))
+        key_i = isa(key_i, K) ? key_i : deser(K, key_i)
+        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
+        x_i = eldeser(T, F_i, key_i, val_i)
+        N == i && return Base.@ncall i constructor x
     end
-    veclen != index && resize!(target, index)
-    return T(target...)
+    others = Any[]
+    for i in 33:N
+        F_i = fieldtype(T, i)
+        name_i = fieldnames(T)[i]
+        key_i = custom_name(T, Val(name_i))
+        key_i = isa(key_i, K) ? key_i : deser(K, key_i)
+        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
+        push!(others, eldeser(T, F_i, key_i, val_i))
+    end
+    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
 end
 
-function deser(::CustomType, ::Type{T}, data::N)::T where {T<:Any,N<:NamedTuple}
-    veclen = fieldcount(T)
-    target = Vector{Any}(undef, veclen)
-    index::Int = 0
-    for (type, name) in zip(fieldtypes(T), fieldnames(T))
-        isignored_name(T, Val(name)) && continue
-        index += 1
-        key = custom_name(T, Val(name))
-        val = get(data, Symbol(key), default_value(T, Val(name)))
-        val = isnothing(val) || ismissing(val) || isempty(T, val) ? nulltype(type) : val
-        target[index] = eldeser(T, type, key, val)
+function deser(::CustomType, ::Type{T}, data::NamedTuple)::T where {T}
+    N = fieldcount(T)
+    constructor = (args...) -> T(args...)
+    Base.@nexprs 32 i -> begin
+        F_i = fieldtype(T, i)
+        name_i = fieldnames(T)[i]
+        key_i = Symbol(custom_name(T, Val(name_i)))
+        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
+        x_i = eldeser(T, F_i, key_i, val_i)
+        N == i && return Base.@ncall i constructor x
     end
-    veclen != index && resize!(target, index)
-    return T(target...)
+    others = Any[]
+    for i in 33:N
+        F_i = fieldtype(T, i)
+        name_i = fieldnames(T)[i]
+        key_i = Symbol(custom_name(T, Val(name_i)))
+        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
+        push!(others, eldeser(T, F_i, key_i, val_i))
+    end
+    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
 end
