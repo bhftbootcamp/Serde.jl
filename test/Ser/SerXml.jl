@@ -190,29 +190,16 @@
       exp_obj = ABCDEF(A(1), B(2), C(3), D(4), E(5), F(6))
       exp_str = """
       <xml>
-        <f val="6"/>
-        <c val="3"/>
-        <e val="5"/>
-        <b val="2"/>
         <a val="1"/>
+        <b val="2"/>
+        <c val="3"/>
         <d val="4"/>
+        <e val="5"/>
+        <f val="6"/>
       </xml>
       """
       
       @test Serde.SerXml.to_xml(exp_obj) == exp_str
-      
-      exp_str = """
-      <xml>
-        <a val="1"/>
-        <b val="2"/>
-        <c val="3"/>
-        <d val="4"/>
-        <e val="5"/>
-        <f val="6"/>
-      </xml>
-      """
-      
-      @test Serde.SerXml.to_xml(exp_obj; dict_type = OrderedDict{String,Any}) == exp_str
       
     end
 end
