@@ -8,74 +8,72 @@ using ..Serde
 
 const CONTENT_WORD = "_"
 
-function shift(level::Int64)::String
+@inline function shift(level::Int64)::String
     return "  "^level
 end
 
-# support function
+@inline issimple(::Any)::Bool = false
+@inline issimple(::AbstractString)::Bool = true
+@inline issimple(::Symbol)::Bool = true
+@inline issimple(::AbstractChar)::Bool = true
+@inline issimple(::Number)::Bool = true
+@inline issimple(::Enum)::Bool = true
+@inline issimple(::Type)::Bool = true
+@inline issimple(::Dates.TimeType)::Bool = true
+@inline issimple(::UUID)::Bool = true
 
-issimple(::Any)::Bool = false
-issimple(::AbstractString)::Bool = true
-issimple(::Symbol)::Bool = true
-issimple(::AbstractChar)::Bool = true
-issimple(::Number)::Bool = true
-issimple(::Enum)::Bool = true
-issimple(::Type)::Bool = true
-issimple(::Dates.TimeType)::Bool = true
-issimple(::UUID)::Bool = true
-
-function attributes(node::AbstractDict)
+function _xml_attributes(node::AbstractDict)
     return filter(pair -> issimple(pair[2]) && pair[1] != CONTENT_WORD, node)
 end
 
-function nodes(node::AbstractDict)
-    df = empty(node)
+function _child_nodes(node::AbstractDict)
+    child = empty(node)
     for pair in node
         if pair.first != CONTENT_WORD && !issimple(pair.second)
-            df[pair.first] = pair.second
+            child[pair.first] = pair.second
         end
     end
-    return df
+    return child
 end
 
-function content(node::AbstractDict)::String
+function _node_content(node::AbstractDict)::String
     if haskey(node, CONTENT_WORD)
-        cont = getindex(node, CONTENT_WORD)
-        if issimple(cont)
-            return string(cont)
+        node_text = getindex(node, CONTENT_WORD)
+        if issimple(node_text)
+            return string(node_text)
         end
     end
     return ""
 end
 
-function attribute_xml(node::T) where {T}
-    return join([" $n=\"$v\"" for (n, v) in attributes(node)])
+function _xml_attributes_string(node::T) where {T}
+    return join([" $n=\"$v\"" for (n, v) in _xml_attributes(node)])
 end
 
-# value
+#__ value
 
-xml_value(val::AbstractString; _...)::String = string(val)
-xml_value(val::Number; _...)::String = string(isnan(val) ? "nan" : val)
-xml_value(val::Symbol; kw...)::String = xml_value(string(val); kw...)
-xml_value(val::AbstractChar; kw...)::String = xml_value(string(val); kw...)
-xml_value(val::Bool; _...)::String = val ? "true" : "false"
-xml_value(val::Enum; kw...)::String = xml_value(string(val); kw...)
-xml_value(val::Type; kw...)::String = xml_value(string(val); kw...)
-xml_value(val::Dates.TimeType; kw...)::String = xml_value(string(val); kw...)
-xml_value(val::Dates.DateTime; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
-xml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
-xml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
-xml_value(val::UUID; _...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::AbstractString; _...)::String = string(val)
+@inline xml_value(val::Number; _...)::String = string(isnan(val) ? "nan" : val)
+@inline xml_value(val::Symbol; kw...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::AbstractChar; kw...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::Bool; _...)::String = val ? "true" : "false"
+@inline xml_value(val::Enum; kw...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::Type; kw...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::Dates.TimeType; kw...)::String = xml_value(string(val); kw...)
+@inline xml_value(val::Dates.DateTime; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
+@inline xml_value(val::Dates.Time; _...)::String = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
+@inline xml_value(val::Dates.Date; _...)::String = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
+@inline xml_value(val::UUID; _...)::String = xml_value(string(val); kw...)
 
-# key
+#__ key
 
-xml_key(val::AbstractString; _...) = val
-xml_key(val::Integer; _...)::String = string(val)
-xml_key(val::Bool; _...)::String = val ? "true" : "false"
-xml_key(val::AbstractChar; kw...)::String = xml_key(string(val); kw...)
-xml_key(val::Symbol; kw...)::String = xml_key(string(val); kw...)
+@inline xml_key(val::AbstractString; _...) = val
+@inline xml_key(val::Integer; _...)::String = string(val)
+@inline xml_key(val::Bool; _...)::String = val ? "true" : "false"
+@inline xml_key(val::AbstractChar; kw...)::String = xml_key(string(val); kw...)
+@inline xml_key(val::Symbol; kw...)::String = xml_key(string(val); kw...)
 
-# pair
+#__ pair
 
 function xml_pair(key, val::AbstractString; level::Int64, kw...)::String
     return shift(level) *
@@ -117,18 +115,18 @@ function xml_pair(key, val::AbstractVector{T}; level::Int64, kw...)::String wher
 end
 
 function xml_pair(key, val::AbstractDict; level::Int64, kw...)::String
-    tags, cont = nodes(val), content(val)
-    return if isempty(tags) && isempty(cont)
-        shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
-    elseif isempty(cont)
+    child, node_text = _child_nodes(val), _node_content(val)
+    return if isempty(child) && isempty(node_text)
+        shift(level) * "<" * xml_key(key; kw...) * _xml_attributes_string(val) * "/>" * "\n"
+    elseif isempty(node_text)
         shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            "\n" * _to_xml(tags; level = level + 1) * shift(level) *
+        "<" * xml_key(key; kw...) * _xml_attributes_string(val) * ">" *
+            "\n" * _to_xml(child; level = level + 1) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            cont * _to_xml(tags; level = level + 1) *
+        "<" * xml_key(key; kw...) * _xml_attributes_string(val) * ">" *
+            node_text * _to_xml(child; level = level + 1) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
@@ -141,23 +139,23 @@ function xml_pairs(val::AbstractVector{<:Tuple}; kw...)
     return val
 end
 
-(isnull(::Any)::Bool) = false
-(isnull(v::Missing)::Bool) = true
-(isnull(v::Nothing)::Bool) = true
+@inline (isnull(::Any)::Bool) = false
+@inline (isnull(v::Missing)::Bool) = true
+@inline (isnull(v::Nothing)::Bool) = true
 
 function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
-    tags, cont = nodes(val), content(val)
-    return if isempty(tags) && isempty(cont)
-        shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
-    elseif isempty(cont)
+    child, node_text = _child_nodes(val), _node_content(val)
+    return if isempty(child) && isempty(node_text)
+        shift(level) * "<" * xml_key(key; kw...) * _xml_attributes_string(val) * "/>" * "\n"
+    elseif isempty(node_text)
         shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" *
-            _to_xml(tags; level = level + 1) * shift(level) *
+        "<" * xml_key(key; kw...) * _xml_attributes_string(val) * ">" * "\n" *
+            _to_xml(child; level = level + 1) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
-        "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            cont * _to_xml(tags; level = level + 1) *
+        "<" * xml_key(key; kw...) * _xml_attributes_string(val) * ">" *
+            node_text * _to_xml(child; level = level + 1) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
@@ -183,21 +181,19 @@ function xml_pairs(val::T; kw...) where {T}
     return kv
 end
 
-function nodes(node::T; kw...) where {T}
-    return filter(xml_pairs(node; kw...)) do el
-        return !issimple(el[2])
-    end
+function _child_nodes(node::T; kw...) where {T}
+    return filter(pair -> !issimple(pair[2]), xml_pairs(node; kw...))
 end
 
-function attributes(node::T) where {T}
+function _xml_attributes(node::T) where {T}
     return filter(pair -> issimple(pair[2]) && pair[1] != CONTENT_WORD, xml_pairs(node))
 end
 
-function content(node::T)::String where {T}
+function _node_content(node::T)::String where {T}
     if hasfield(T, Symbol(CONTENT_WORD))
-        cont = getfield(node, Symbol(CONTENT_WORD))
-        if issimple(cont)
-            return string(cont)
+        node_text = getfield(node, Symbol(CONTENT_WORD))
+        if issimple(node_text)
+            return string(node_text)
         end
     end
     return ""
