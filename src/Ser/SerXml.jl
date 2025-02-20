@@ -28,7 +28,7 @@ function attributes(node::AbstractDict)
     return filter(pair -> issimple(pair[2]) && pair[1] != CONTENT_WORD, node)
 end
 
-function nodes(node::AbstractDict)
+function nodes(node::AbstractDict; kw...)
     df = empty(node)
     for pair in node
         if pair.first != CONTENT_WORD && !issimple(pair.second)
@@ -117,18 +117,18 @@ function xml_pair(key, val::AbstractVector{T}; level::Int64, kw...)::String wher
 end
 
 function xml_pair(key, val::AbstractDict; level::Int64, kw...)::String
-    tags, cont = nodes(val), content(val)
+    tags, cont = nodes(val; kw...), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
     elseif isempty(cont)
         shift(level) *
         "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            "\n" * _to_xml(tags; level = level + 1) * shift(level) *
+            "\n" * _to_xml(tags; level = level + 1, kw...) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
         "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            cont * _to_xml(tags; level = level + 1) *
+            cont * _to_xml(tags; level = level + 1, kw...) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
@@ -142,18 +142,18 @@ end
 (isnull(v::Nothing)::Bool) = true
 
 function xml_pair(key, val::T; level::Int64, kw...)::String where {T}
-    tags, cont = nodes(val), content(val)
+    tags, cont = nodes(val; kw...), content(val)
     return if isempty(tags) && isempty(cont)
         shift(level) * "<" * xml_key(key; kw...) * attribute_xml(val) * "/>" * "\n"
     elseif isempty(cont)
         shift(level) *
         "<" * xml_key(key; kw...) * attribute_xml(val) * ">" * "\n" *
-            _to_xml(tags; level = level + 1) * shift(level) *
+            _to_xml(tags; level = level + 1, kw...) * shift(level) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     else
         shift(level) *
         "<" * xml_key(key; kw...) * attribute_xml(val) * ">" *
-            cont * _to_xml(tags; level = level + 1) *
+            cont * _to_xml(tags; level = level + 1, kw...) *
         "</" * xml_key(key; kw...) * ">" * "\n"
     end
 end
@@ -179,9 +179,9 @@ function xml_pairs(val::T; kw...) where {T}
     return kv
 end
 
-function nodes(node::T) where {T}
-    result = Dict{String,Any}()
-    for el in xml_pairs(node)
+function nodes(node::T; dict_type::Type{D}, kw...) where {T,D<:AbstractDict}
+    result = dict_type()
+    for el in xml_pairs(node; dict_type, kw...)
         if !issimple(el[2])
             result[el[1]] = el[2]
         end
@@ -208,7 +208,7 @@ function _to_xml(val::T; level::Int64 = 0, kw...)::String where {T}
 end
 
 """
-    to_xml(val; key::String = "xml") -> String
+    to_xml(val; kw...) -> String
 
 Serializes any nested data `val` into an XML string that follows the next rules:
 
@@ -224,7 +224,11 @@ Serializes any nested data `val` into an XML string that follows the next rules:
     - A primitive type field with **a special name "_"** will be used as an element for the current tag.
 
 Thus, this method can serialize all basic data types and can work with any nesting level of a combination of dictionaries and custom data types.
-The `key` keyword specifies the name of the root tag.
+
+## Keyword arguments
+- `key::String = "xml"`: The name of the root tag.
+- `dict_type::AbstractDict = Dict{String,Any}`: Determines what type of dictionary is used when serializing fields of a custom type.
+  To preserve the serialization order of fields, you should use an ordered dictionary (e.g. `OrderedDict{String,Any}` from [OrderedCollections.jl](https://github.com/JuliaCollections/OrderedCollections.jl)).
 
 ## Examples
 ```julia-repl
@@ -247,8 +251,13 @@ julia> to_xml(Data(data_info, Image(200, "profile.png"))) |> print
 </xml>
 ```
 """
-function to_xml(val::T; key::String = "xml", kw...)::String where {T}
-    return _to_xml(Dict{String,Any}(key => val))
+function to_xml(
+    val::T;
+    key::String = "xml",
+    dict_type::Type{D} = Dict{String,Any},
+    kw...,
+)::String where {T,D<:AbstractDict}
+    return _to_xml(dict_type(key => val); dict_type, kw...)
 end
 
 end

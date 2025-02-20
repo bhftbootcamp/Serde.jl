@@ -2,6 +2,7 @@
 
 using Serde
 using Test, Dates, NanoDates, UUIDs
+using OrderedCollections
 
 include("Par/Par.jl")
 include("Ser/Ser.jl")
