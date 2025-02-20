@@ -13,14 +13,6 @@ function Base.show(io::IO, e::ParamError)
     )
 end
 
-struct TagError <: DeserError
-    tag::Any
-end
-
-function Base.show(io::IO, e::TagError)
-    return print(io, "TagError: tag for method '$(e.tag)' is not declared")
-end
-
 struct WrongType <: DeserError
     maintype::DataType
     key::Any
@@ -37,26 +29,6 @@ function Base.show(io::IO, e::WrongType)
 end
 
 include("Deser.jl")
-
-function tag(::Type{T}, ::Val{x}) where {T,x}
-    return throw(TagError(x))
-end
-
-tag(::Type{T}, ::Nothing) where {T} = T
-
-(tag_key(::Type)::Nothing) = nothing
-(tag_val(::Type{T}, ::Nothing, v)::Nothing) where {T} = nothing
-
-function tag_val(::Type{T}, k, v) where {T}
-    try
-        Val(Symbol(v[k]))
-    catch
-        throw(ParamError(k))
-    end
-end
-
-deser_type(::Type{T}, x) where {T} = tag(T, tag_val(T, tag_key(T), x))
-deser_value(::Type{T}, x) where {T} = x
 
 """
     Serde.to_deser(::Type{T}, x) -> T
@@ -84,7 +56,7 @@ julia> Serde.to_deser(Person, person_data)
 Person("Michael", 25, Info(12, 2500))
 ```
 """
-to_deser(::Type{T}, x) where {T} = deser(deser_type(T, x), deser_value(T, x))
+to_deser(::Type{T}, x) where {T} = deser(T, x)
 
 to_deser(::Type{Nothing}, x) = nothing
 to_deser(::Type{Missing}, x) = missing

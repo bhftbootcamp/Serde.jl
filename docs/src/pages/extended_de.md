@@ -46,11 +46,3 @@ We can also determine the 'nulltype' for custom types when they are empty or not
 ```@docs
 Serde.nulltype
 ```
-
-## Ignore fields
-
-Finally, we can specify which fields should be ignored during deserialization.
-
-```@docs
-Serde.isignored_name
-```
