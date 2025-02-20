@@ -43,8 +43,13 @@
     end
 
     @testset "Case №2: XmlVector" begin
-        exp_obj =
-            Dict("vector_elems" => [Dict("_" => 1), Dict("_" => "text"), Dict("Name" => Dict("_" => "Ivan"))])
+        exp_obj = Dict(
+            "vector_elems" => [
+                Dict("_" => 1),
+                Dict("_" => "text"),
+                Dict("Name" => Dict("_" => "Ivan")),
+            ],
+        )
 
         exp_str = """
         <xml>
@@ -154,52 +159,51 @@
     end
 
     @testset "Case №7: Ordered nodes" begin
-      struct A
-          val::Int
-      end
-      
-      struct B
-          val::Int
-      end
-      
-      struct C
-          val::Int
-      end
-      
-      struct D
-          val::Int
-      end
-      
-      struct E
-          val::Int
-      end
-      
-      struct F
-          val::Int
-      end
-      
-      struct ABCDEF
-          a::A
-          b::B
-          c::C
-          d::D
-          e::E
-          f::F
-      end
-      
-      exp_obj = ABCDEF(A(1), B(2), C(3), D(4), E(5), F(6))
-      exp_str = """
-      <xml>
-        <a val="1"/>
-        <b val="2"/>
-        <c val="3"/>
-        <d val="4"/>
-        <e val="5"/>
-        <f val="6"/>
-      </xml>
-      """
-      
-      @test Serde.SerXml.to_xml(exp_obj) == exp_str
-      
+        struct A
+            val::Int
+        end
+
+        struct B
+            val::Int
+        end
+
+        struct C
+            val::Int
+        end
+
+        struct D
+            val::Int
+        end
+
+        struct E
+            val::Int
+        end
+
+        struct F
+            val::Int
+        end
+
+        struct ABCDEF
+            a::A
+            b::B
+            c::C
+            d::D
+            e::E
+            f::F
+        end
+
+        exp_obj = ABCDEF(A(1), B(2), C(3), D(4), E(5), F(6))
+        exp_str = """
+        <xml>
+          <a val="1"/>
+          <b val="2"/>
+          <c val="3"/>
+          <d val="4"/>
+          <e val="5"/>
+          <f val="6"/>
+        </xml>
+        """
+
+        @test Serde.SerXml.to_xml(exp_obj) == exp_str
     end
 end
