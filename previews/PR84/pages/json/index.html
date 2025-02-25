@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>JSON · Serde.jl</title><meta name="title" content="JSON · Serde.jl"/><meta property="og:title" content="JSON · Serde.jl"/><meta property="twitter:title" content="JSON · Serde.jl"/><meta name="description" content="Documentation for Serde.jl."/><meta property="og:description" content="Documentation for Serde.jl."/><meta property="twitter:description" content="Documentation for Serde.jl."/><meta property="og:url" content="https://bhftbootcamp.github.io/Serde.jl/pages/json/"/><meta property="twitter:url" content="https://bhftbootcamp.github.io/Serde.jl/pages/json/"/><link rel="canonical" href="https://bhftbootcamp.github.io/Serde.jl/pages/json/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Serde.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">API Reference</span><ul><li class="is-active"><a class="tocitem" href>JSON</a><ul class="internal"><li><a class="tocitem" href="#Parsing"><span>Parsing</span></a></li><li><a class="tocitem" href="#Deserialization"><span>Deserialization</span></a></li><li><a class="tocitem" href="#Serialization"><span>Serialization</span></a></li></ul></li><li><a class="tocitem" href="../toml/">TOML</a></li><li><a class="tocitem" href="../csv/">CSV</a></li><li><a class="tocitem" href="../query/">Query</a></li><li><a class="tocitem" href="../xml/">XML</a></li><li><a class="tocitem" href="../yaml/">YAML</a></li><li><a class="tocitem" href="../utils/">Utils</a></li></ul></li><li><span class="tocitem">For Developers</span><ul><li><a class="tocitem" href="../extended_ser/">Extended serialization</a></li><li><a class="tocitem" href="../extended_de/">Extended deserialization</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">API Reference</a></li><li class="is-active"><a href>JSON</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>JSON</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl/blob/master/docs/src/pages/json.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="JSON"><a class="docs-heading-anchor" href="#JSON">JSON</a><a id="JSON-1"></a><a class="docs-heading-anchor-permalink" href="#JSON" title="Permalink"></a></h1><h2 id="Parsing"><a class="docs-heading-anchor" href="#Parsing">Parsing</a><a id="Parsing-1"></a><a class="docs-heading-anchor-permalink" href="#Parsing" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Serde.ParJson.parse_json" href="#Serde.ParJson.parse_json"><code>Serde.ParJson.parse_json</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">parse_json(x::AbstractString; kw...) -&gt; Dict{String,Any}
+parse_json(x::Vector{UInt8}; kw...) -&gt; Dict{String,Any}</code></pre><p>Parse a JSON string <code>x</code> (or vector of UInt8) into a dictionary.</p><p><strong>Keyword arguments</strong></p><p>You can see additional keyword arguments in JSON.jl package <a href="https://github.com/JuliaIO/JSON.jl?tab=readme-ov-file#documentation">documentation</a>.</p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; json = &quot;&quot;&quot;
+        {
+            &quot;number&quot;: 123,
+            &quot;vector&quot;: [1, 2, 3],
+            &quot;dictionary&quot;:
+            {
+                &quot;string&quot;: &quot;123&quot;
+            }
+        }
+       &quot;&quot;&quot;;
+
+julia&gt; parse_json(json)
+Dict{String, Any} with 3 entries:
+  &quot;number&quot;     =&gt; 123
+  &quot;vector&quot;     =&gt; Any[1, 2, 3]
+  &quot;dictionary&quot; =&gt; Dict{String, Any}(&quot;string&quot;=&gt;&quot;123&quot;)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/bhftbootcamp/Serde.jl/blob/d6ab3feaaf606e1833d67930ea27789646f02a46/src/Json/Par.jl#L24-L53">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Serde.ParJson.JsonSyntaxError" href="#Serde.ParJson.JsonSyntaxError"><code>Serde.ParJson.JsonSyntaxError</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">JsonSyntaxError &lt;: Exception</code></pre><p>Exception thrown when a <a href="#Serde.ParJson.parse_json"><code>parse_json</code></a> fails due to incorrect JSON syntax or any underlying error that occurs during parsing.</p><p><strong>Fields</strong></p><ul><li><code>message::String</code>: The error message.</li><li><code>exception::Exception</code>: The catched exception.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/bhftbootcamp/Serde.jl/blob/d6ab3feaaf606e1833d67930ea27789646f02a46/src/Json/Par.jl#L8-L16">source</a></section></article><h2 id="Deserialization"><a class="docs-heading-anchor" href="#Deserialization">Deserialization</a><a id="Deserialization-1"></a><a class="docs-heading-anchor-permalink" href="#Deserialization" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Serde.DeJson.deser_json" href="#Serde.DeJson.deser_json"><code>Serde.DeJson.deser_json</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">deser_json(::Type{T}, x; kw...) -&gt; T</code></pre><p>Creates a new object of type <code>T</code> and fill it with values from JSON formated string <code>x</code> (or vector of UInt8).</p><p>Keyword arguments <code>kw</code> is the same as in <a href="#Serde.ParJson.parse_json"><code>parse_json</code></a>.</p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; struct Record
+           count::Float64
+       end
+
+julia&gt; struct Data
+           id::Int64
+           name::String
+           body::Record
+       end
+
+julia&gt; json = &quot;&quot;&quot; {&quot;body&quot;:{&quot;count&quot;:100.0},&quot;name&quot;:&quot;json&quot;,&quot;id&quot;:100} &quot;&quot;&quot;;
+
+julia&gt; deser_json(Data, json)
+Data(100, &quot;json&quot;, Record(100.0))</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/bhftbootcamp/Serde.jl/blob/d6ab3feaaf606e1833d67930ea27789646f02a46/src/Json/De.jl#L8-L32">source</a></section></article><h2 id="Serialization"><a class="docs-heading-anchor" href="#Serialization">Serialization</a><a id="Serialization-1"></a><a class="docs-heading-anchor-permalink" href="#Serialization" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Serde.SerJson.to_json" href="#Serde.SerJson.to_json"><code>Serde.SerJson.to_json</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">to_json([f::Function], data) -&gt; String</code></pre><p>Serializes any <code>data</code> into a flat JSON string. This method support serialization of nested data like dictionaries or custom types.</p><p><strong>Specifying fields for serialization</strong></p><p>If you want to serialize only specific fields of some custom type, you may define a special function <code>f</code>. This function <code>f</code> must lead next signature:</p><pre><code class="language-julia hljs">f(::Type{CustomType}) = (:field_1, :field_2, ...)</code></pre><p>Now <code>to_json(f, CustomType(...))</code> will serialize only specified fields <code>CustomType.field_1</code>, <code>CustomType.field_2</code>, etc. You can also define multiple methods of <code>f</code> for nested custom data types, e.g:</p><pre><code class="language-julia hljs"># Custom type &#39;Foo&#39; containing fields of other custom types &#39;bar::Bar&#39; and &#39;baz::Baz&#39;
+custom_field_names(::Type{Foo}) = (:bar, :baz, ...)
+
+# Another custom types
+custom_field_names(::Type{Bar}) = (:data, ...)
+custom_field_names(::Type{Baz}) = (:another_data, ...)</code></pre><p>See also <a href="#Serde.SerJson.to_pretty_json"><code>to_pretty_json</code></a>.</p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; struct Pet
+           name::String
+           age::Int64
+       end
+
+julia&gt; struct Person
+           info::Dict{String,Any}
+           pet::Pet
+       end
+
+julia&gt; person_info = Dict(&quot;id&quot; =&gt; 42, &quot;marks&quot; =&gt; [&quot;A+&quot;, &quot;B&quot;, &quot;A&quot;]);
+
+julia&gt; to_json(Person(person_info, Pet(&quot;Buddy&quot;, 5))) |&gt; print
+{&quot;info&quot;:{&quot;marks&quot;:[&quot;A+&quot;,&quot;B&quot;,&quot;A&quot;],&quot;id&quot;:42},&quot;pet&quot;:{&quot;name&quot;:&quot;Buddy&quot;,&quot;age&quot;:5}}</code></pre><p>Now, lets select some specific fields from custom type</p><pre><code class="language-julia-repl hljs">julia&gt; struct ManyFields
+           field::Int64
+           another_field::Float64
+           simple_field::String
+           fld::Vector{Bool}
+       end
+
+julia&gt; custom_field_names(::Type{ManyFields}) = (:field, :simple_field)
+
+julia&gt; to_json(custom_field_names, ManyFields(1, 2.0, &quot;a&quot;, [true, false])) |&gt; print
+{&quot;field&quot;:1,&quot;simple_field&quot;:&quot;a&quot;}
+
+# Or you can use a lambda function
+
+julia&gt; to_json(x -&gt; (:field, :simple_field), ManyFields(1, 2.0, &quot;a&quot;, [true, false])) |&gt; print
+{&quot;field&quot;:1,&quot;simple_field&quot;:&quot;a&quot;}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/bhftbootcamp/Serde.jl/blob/d6ab3feaaf606e1833d67930ea27789646f02a46/src/Json/Ser.jl#L174-L242">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Serde.SerJson.to_pretty_json" href="#Serde.SerJson.to_pretty_json"><code>Serde.SerJson.to_pretty_json</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">to_pretty_json([f::Function], data) -&gt; String</code></pre><p>Do the same as <a href="#Serde.SerJson.to_json"><code>to_json</code></a> but return pretty JSON string.</p><pre><code class="language-julia-repl hljs">julia&gt; struct Pet
+           name::String
+           age::Int64
+       end
+
+julia&gt; struct Person
+           info::Dict{String,Any}
+           pet::Pet
+       end
+
+julia&gt; person_info = Dict(&quot;id&quot; =&gt; 42, &quot;marks&quot; =&gt; [&quot;A+&quot;, &quot;B&quot;, &quot;A&quot;]);
+
+julia&gt; to_pretty_json(Person(person_info, Pet(&quot;Buddy&quot;, 5))) |&gt; print
+{
+  &quot;info&quot;:{
+    &quot;marks&quot;:[
+      &quot;A+&quot;,
+      &quot;B&quot;,
+      &quot;A&quot;
+    ],
+    &quot;id&quot;:42
+  },
+  &quot;pet&quot;:{
+    &quot;name&quot;:&quot;Buddy&quot;,
+    &quot;age&quot;:5
+  }
+}</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/bhftbootcamp/Serde.jl/blob/d6ab3feaaf606e1833d67930ea27789646f02a46/src/Json/Ser.jl#L253-L287">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../toml/">TOML »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 25 February 2025 20:38">Tuesday 25 February 2025</span>. Using Julia version 1.11.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
