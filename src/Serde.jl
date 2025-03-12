@@ -1,9 +1,5 @@
 module Serde
 
-function deser end
-function parse_value end
-
-# Ser
 export to_csv,
     to_json,
     to_pretty_json,
@@ -12,7 +8,6 @@ export to_csv,
     to_xml,
     to_yaml
 
-# De
 export deser_csv,
     deser_json,
     deser_query,
@@ -20,7 +15,6 @@ export deser_csv,
     deser_xml,
     deser_yaml
 
-# Par
 export parse_csv,
     parse_json,
     parse_query,
@@ -28,12 +22,14 @@ export parse_csv,
     parse_xml,
     parse_yaml
 
-# Utl
 export @serde,
     @serde_pascal_case,
     @serde_camel_case,
     @serde_kebab_case,
     to_flatten
+
+function deser end
+function parse_value end
 
 include("Utl/Utl.jl")
 
