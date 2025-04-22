@@ -9,7 +9,7 @@
             d_value::String
         end
 
-        exp_obj = [
+        data = [
             SimpleRecord(1, "a", 11, "11.1"),
             SimpleRecord(2, "b", 22, "bb"),
             SimpleRecord(2, "b", 22, "bb"),
@@ -20,7 +20,7 @@
         2,b,22,bb
         2,b,22,bb
         """
-        @test Serde.to_csv(exp_obj) |> strip == exp_str |> strip
+        @test Serde.to_csv(data) |> strip == exp_str |> strip
     end
 
     @testset "Case 2: Normalization with Nested Structures" begin
@@ -40,7 +40,7 @@
             data::SubRecord
         end
 
-        exp_obj = [
+        data = [
             ComplexRecord(1, "Hello", 3, SubRecord(42, NestedDetail("Nested object1"))),
             ComplexRecord(2, "Julia", 5, SubRecord(43, NestedDetail("Nested object2"))),
             ComplexRecord(3, "Coconut", 7, SubRecord(44, NestedDetail("Nested object3"))),
@@ -52,7 +52,7 @@
         3,Coconut,7,44,Nested object3
         """
         @test Serde.to_csv(
-            exp_obj,
+            data,
             headers = ["id", "name", "count", "data_code", "data_nested_detail"],
         ) |> strip == exp_str |> strip
     end
@@ -65,7 +65,7 @@
             value::String
         end
 
-        exp_obj = [
+        data = [
             SpecialCharRecord(1, "a,,,,;", 11, "11.1"),
             SpecialCharRecord(2, "b\nl", 22, "bb\"\""),
             SpecialCharRecord(1, "a,,,,;", 12, "11.1"),
@@ -77,26 +77,26 @@
         l",22,"bb\"\"\"\""
         1,"a,,,,;",12,11.1
         """
-        @test Serde.to_csv(exp_obj, headers = ["id", "text", "count", "value"]) |> strip ==
+        @test Serde.to_csv(data, headers = ["id", "text", "count", "value"]) |> strip ==
               exp_str |> strip
     end
 
     @testset "Case 4: Serializing Dictionaries" begin
-        exp_obj = [
+        data = [
             IdDict("a" => 10, "B" => 20),
             Dict("a" => 15, "B" => 32),
             WeakKeyDict("a" => 10, "B" => 35),
         ]
         expected_csv_with_delimiter = """
-        a;B
-        10;20
-        15;32
-        10;35
+        B;a
+        20;10
+        32;15
+        35;10
         """
-        @test Serde.to_csv(exp_obj; delimiter = ";") |> strip ==
+        @test Serde.to_csv(data; delimiter = ';') |> strip ==
               expected_csv_with_delimiter |> strip
 
-        exp_obj = [
+        data = [
             Dict("a" => 10, "B" => 20, "C" => Dict("cfoo" => "foo", "cbaz" => "baz")),
             Dict(:a => 10, :B => 20),
         ]
@@ -105,14 +105,14 @@
         10,20,baz,foo
         10,20,,
         """
-        @test Serde.to_csv(exp_obj, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = true) |> strip ==
+        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], include_headers = true) |> strip ==
               exp_str |> strip
 
         exp_str = """
         10,20,baz,foo
         10,20,,
         """
-        @test Serde.to_csv(exp_obj, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = false) |> strip ==
+        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], include_headers = false) |> strip ==
               exp_str |> strip
     end
 
