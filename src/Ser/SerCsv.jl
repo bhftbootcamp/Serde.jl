@@ -26,7 +26,7 @@ In case of nested `data`, names of resulting headers will be concatenated by `'_
 # Keyword arguments
 - `delimiter::AbstractChar = ','`: the delimiter that will be used in the returned csv string.
 - `headers::AbstractVector{<:AbstractString} = String[]`: specifies which column headers will be used and in what order.
-- `include_headers::Bool = true`: determines if column headers are included in the CSV output.
+- `with_names::Bool = true`: determines if column headers are included in the CSV output.
 # Examples
 
 Converting a vector of regular dictionaries with fixed headers order:
@@ -88,14 +88,14 @@ function to_csv(
     data::AbstractVector{T};
     delimiter::AbstractChar = ',',
     headers::AbstractVector{<:AbstractString} = String[],
-    include_headers::Bool = true,
+    with_names::Bool = true,
 )::String where {T}
     comp_keys, headers = compkeys_and_headers(T, headers)
 
     io = IOBuffer()
     temp_buff = IOBuffer()
 
-    include_headers && print_csv_headers(io, temp_buff, headers, delimiter)
+    with_names && print_csv_headers(io, temp_buff, headers, delimiter)
 
     Base.ensureroom(io, length(comp_keys) * length(data))
 
@@ -110,13 +110,14 @@ function to_csv(
     data::AbstractVector{<:AbstractDict};
     delimiter::AbstractChar = ',',
     headers::AbstractVector{<:AbstractString} = String[],
-    include_headers::Bool = true,
+    with_names::Bool = true,
 )::String
-    flattened_data, headers = flattened_data_and_headers(data, headers)
+    flattened_data = to_flatten.(data)
+    headers = process_headers(flattened_data, headers)
 
     io = IOBuffer()
 
-    include_headers && print_csv_headers(io, headers, delimiter)
+    with_names && print_csv_headers(io, headers, delimiter)
 
     for item in flattened_data
         print_csv_line(io, item, headers, delimiter)
@@ -130,10 +131,10 @@ function print_csv_headers(
     headers::AbstractVector{<:AbstractString},
     delimiter::AbstractChar,
 )
-    print(io, string_quoted(first(headers), delimiter))
+    print(io, quotestring(first(headers), delimiter))
 
     for i in eachindex(headers)[2:end]
-        print(io, delimiter, string_quoted(headers[i], delimiter))
+        print(io, delimiter, quotestring(headers[i], delimiter))
     end
 
     println(io)
@@ -165,11 +166,11 @@ function print_csv_line(
     delimiter::AbstractChar,
 )
     val = get(item, first(headers), nothing)
-    print(io, string_quoted(val, delimiter))
+    print(io, quotestring(val, delimiter))
 
     for i in eachindex(headers)[2:end]
         val = get(item, headers[i], nothing)
-        print(io, delimiter, string_quoted(val, delimiter))
+        print(io, delimiter, quotestring(val, delimiter))
     end
 
     println(io)
@@ -209,7 +210,7 @@ end
     return body
 end
 
-function string_quoted(x, delimiter::AbstractChar)
+function quotestring(x, delimiter::AbstractChar)
     s = isnothing(x) ? "" : string(x)
     if occursin(delimiter, s) || any(c -> c in WRAPPED, s)
         return string(QUOTE, replace(s, QUOTE => QUOTE^2), QUOTE)
@@ -247,39 +248,36 @@ function copyquoted(dst::IOBuffer, src::IOBuffer, delimiter::AbstractChar)
     return
 end
 
-function flattened_data_and_headers(
-    data::AbstractVector{<:AbstractDict},
-    custom_headers::AbstractVector{<:AbstractString},
-)
-    flattened_data = to_flatten.(data)
-    all_headers = unique(Iterators.flatten(keys.(flattened_data))) |> sort
-    headers = isempty(custom_headers) ? all_headers : custom_headers
-
-    return (flattened_data, headers)
-end
-
 function compkeys_and_headers(
     ::Type{T},
     custom_headers::AbstractVector{<:AbstractString},
 ) where {T}
-    all_comp_keys = composite_keys(T)
-    all_headers = [join(string.(key), '_') for key in all_comp_keys]
+    struct_comp_keys = composite_keys(T)
+    struct_headers = [join(string.(key), '_') for key in struct_comp_keys]
 
     if isempty(custom_headers)
-        return (Tuple(all_comp_keys), all_headers)
+        return (Tuple(struct_comp_keys), struct_headers)
     end
 
     comp_keys = Tuple[]
-    headers = custom_headers
-    headers_idxs_map = Dict(header => i for (i, header) in enumerate(all_headers))
+    headers_idxs_map = Dict(header => i for (i, header) in enumerate(struct_headers))
 
-    for header in headers
+    for header in custom_headers
         idx = get(headers_idxs_map, header, nothing)
         isnothing(idx) && throw(ArgumentError("invalid header name: $(header)"))
-        push!(comp_keys, all_comp_keys[idx])
+        push!(comp_keys, struct_comp_keys[idx])
     end
 
-    return (Tuple(comp_keys), headers)
+    return (Tuple(comp_keys), custom_headers)
+end
+
+function process_headers(
+    flattened_data::AbstractVector{<:Dict{String, Any}},
+    custom_headers::AbstractVector{<:AbstractString},
+)
+    flattened_keys = unique(Iterators.flatten(keys.(flattened_data))) |> sort
+    headers = isempty(custom_headers) ? flattened_keys : custom_headers
+    return headers
 end
 
 function composite_keys(::Type{<:T}) where {T}

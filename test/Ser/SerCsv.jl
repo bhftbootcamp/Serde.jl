@@ -105,14 +105,14 @@
         10,20,baz,foo
         10,20,,
         """
-        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], include_headers = true) |> strip ==
+        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = true) |> strip ==
               exp_str |> strip
 
         exp_str = """
         10,20,baz,foo
         10,20,,
         """
-        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], include_headers = false) |> strip ==
+        @test Serde.to_csv(data, headers = ["a", "B", "C_cbaz", "C_cfoo"], with_names = false) |> strip ==
               exp_str |> strip
     end
 
