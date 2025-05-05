@@ -4,6 +4,7 @@ export to_csv
 
 using Dates
 import ..to_flatten
+import ..rec_valtype
 
 const QUOTE = '"'
 const WRAPPED = [QUOTE, '\n']
@@ -19,14 +20,14 @@ isatomictype(::Type{<:Type}) = true
 isatomictype(::Type{<:TimeType}) = true
 
 """
-    to_csv(data::AbstractVector{T}; kw...) -> String
+    to_csv(data::Vector{T}; kw...) -> String
 
 Uses `data` element values to make csv rows with dictionary key-names or structure field names as columns headers. Type `T` may be a nested dictionary or a custom type.
 In case of nested `data`, names of resulting headers will be concatenated by `'_'` symbol.
 
 # Keyword arguments
-- `delimiter::Union{AbstractChar, AbstractString} = ','`: the delimiter that will be used in the returned csv string.
-- `headers::AbstractVector{<:AbstractString} = String[]`: specifies which column headers will be used and in what order.
+- `delimiter::Union{Char, String} = ','`: the delimiter that will be used in the returned csv string.
+- `headers::Vector{String} = String[]`: specifies which column headers will be used and in what order.
 - `with_names::Bool = true`: determines if column headers are included in the CSV output.
 # Examples
 
@@ -91,10 +92,8 @@ function to_csv(
     headers::AbstractVector{<:AbstractString} = String[],
     with_names::Bool = true,
 ) where {T}
-    delimiter = process_delimiter(delimiter)
-
+    delimiter = parse_delimiter(delimiter)
     base_keys = composite_keys(T)
-
     if isempty(headers)
         selected_keys = base_keys
         headers = flattenkey.(selected_keys)
@@ -103,38 +102,32 @@ function to_csv(
     end
 
     io = IOBuffer()
-
     with_names && print_csv_headers(io, headers, delimiter)
-
     print_csv_body(io, data, Val(Tuple(selected_keys)), delimiter)
 
     return String(take!(io))
 end
 
 function to_csv(
-    data::AbstractVector{<:AbstractDict};
+    data::AbstractVector{T};
     delimiter::Union{AbstractChar, AbstractString} = ',',
     headers::AbstractVector{<:AbstractString} = String[],
     with_names::Bool = true,
-)
-    delimiter = process_delimiter(delimiter)
-
-    flattened_data = to_flatten.(Dict{String, Any}, data)
-
+) where {T <: AbstractDict}
+    delimiter = parse_delimiter(delimiter)
+    flattened_data = to_flatten.(Dict{String, rec_valtype(T)}, data)
     if isempty(headers)
         headers = Iterators.flatten(keys.(flattened_data)) |> unique |> sort
     end
 
     io = IOBuffer()
-
     with_names && print_csv_headers(io, headers, delimiter)
-
     print_csv_body(io, flattened_data, headers, delimiter)
 
     return String(take!(io))
 end
 
-function process_delimiter(delimiter::Union{AbstractChar, AbstractString})
+function parse_delimiter(delimiter::Union{AbstractChar, AbstractString})
     if length(delimiter) != 1 || first(delimiter) in INVALID_DELIMITERS
         throw(ArgumentError("invalid delimiter: `$(repr(delimiter))`"))
     end
@@ -164,14 +157,12 @@ function selectkeys(
     custom_headers::AbstractVector{<:AbstractString},
 )
     headers_to_compkeys_map = Dict(flattenkey(k) => k for k in base_keys)
-
     comp_keys = Tuple[]
     for header in custom_headers
         key = get(headers_to_compkeys_map, header, nothing)
         isnothing(key) && throw(ArgumentError("invalid header: `$(repr(header))`"))
         push!(comp_keys, key)
     end
-
     return comp_keys
 end
 
@@ -181,12 +172,10 @@ function print_csv_headers(
     delimiter::AbstractChar,
 )
     temp_buff = IOBuffer()
-
     for i in eachindex(headers)
         print_csv_value(io, headers[i], temp_buff, delimiter)
         i < lastindex(headers) && print(io, delimiter)
     end
-
     println(io)
     return
 end
@@ -206,21 +195,17 @@ end
     delimiter::AbstractChar,
 ) where {T, CK}
     print_records_exprs = []
-
     for i in eachindex(CK)
         value_expr = getcompkey_expr(:item, CK[i])
-
         push!(print_records_exprs,
             quote print_csv_value(io, $(value_expr), temp_buff, delimiter) end
         )
-
         if i < lastindex(CK)
             push!(print_records_exprs,
                 quote print(io, delimiter) end
             )
         end
     end
-
     push!(print_records_exprs, quote println(io) end)
 
     return quote
@@ -240,7 +225,6 @@ function print_csv_body(
 )
     temp_buff = IOBuffer()
     Base.ensureroom(io, length(headers) * length(data))
-
     for item in data
         for i in eachindex(headers)
             if headers[i] in keys(item)
@@ -250,13 +234,12 @@ function print_csv_body(
         end
         println(io)
     end
-
     return
 end
 
 function print_csv_value(
     io::IOBuffer,
-    value,
+    value::Any,
     temp_buff::IOBuffer,
     delimiter::AbstractChar,
 )
@@ -284,14 +267,12 @@ function copyquoted(dst::IOBuffer, src::IOBuffer, delimiter::AbstractChar)
     Base.ensureroom(dst, nb + quoted * (2 + quotes))
 
     quoted && print(dst, QUOTE)
-
     seekstart(src)
     while !eof(src)
         ch = read(src, Char)
         print(dst, ch)
         ch == QUOTE && print(dst, ch)
     end
-
     quoted && print(dst, QUOTE)
     return
 end

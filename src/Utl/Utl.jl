@@ -11,7 +11,12 @@ issimple(::AbstractChar)::Bool = true
 issimple(::Number)::Bool = true
 issimple(::Enum)::Bool = true
 issimple(::Type)::Bool = true
-issimple(::Dates.TimeType)::Bool = true
+issimple(::TimeType)::Bool = true
+
+rec_valtype(x::T) where {T} = rec_valtype(T)
+rec_valtype(::Type{<:Any}) = Any
+rec_valtype(::Type{<:AbstractDict{<:Any, V}}) where {V} = V
+rec_valtype(::Type{<:AbstractDict{<:Any, V}}) where {V <: AbstractDict} = rec_valtype(V)
 
 """
     to_flatten([dict_type=Dict{String, Any}], data; delimiter = '_') -> dict_type
@@ -72,11 +77,11 @@ function to_flatten(
     ::Type{D},
     data::AbstractDict;
     delimiter::Union{AbstractChar, AbstractString} = '_',
-) where {D <: AbstractDict{String}}
+) where {V, D <: AbstractDict{String, V}}
     result = D()
     for (key, value) in data
         if value isa AbstractDict
-            for (k, v) in to_flatten(D, value; delimiter)
+            for (k, v) in to_flatten(Dict{String, V}, value; delimiter)
                 result[string(key) * delimiter * k] = v
             end
         else
@@ -107,8 +112,8 @@ end
 
 # kwarg dict_type for backward compatibility
 function to_flatten(
-    data;
-    dict_type::Type{D} = Dict{String, Any},
+    data::Any;
+    dict_type::Type{D} = Dict{String, rec_valtype(data)},
     delimiter::Union{AbstractChar, AbstractString} = '_',
 ) where {D <:AbstractDict{String}}
     return to_flatten(D, data; delimiter)
