@@ -26,7 +26,7 @@ Uses `data` element values to make csv rows with dictionary key-names or structu
 In case of nested `data`, names of resulting headers will be concatenated by `'_'` symbol.
 
 # Keyword arguments
-- `delimiter::Union{Char, String} = ','`: the delimiter that will be used in the returned csv string.
+- `delimiter::Union{Char,String} = ','`: the delimiter that will be used in the returned csv string.
 - `headers::Vector{String} = String[]`: specifies which column headers will be used and in what order.
 - `with_names::Bool = true`: determines if column headers are included in the CSV output.
 # Examples
@@ -88,7 +88,7 @@ val,str
 """
 function to_csv(
     data::AbstractVector{T};
-    delimiter::Union{AbstractChar, AbstractString} = ',',
+    delimiter::Union{AbstractChar,AbstractString} = ',',
     headers::AbstractVector{<:AbstractString} = String[],
     with_names::Bool = true,
 ) where {T}
@@ -110,12 +110,12 @@ end
 
 function to_csv(
     data::AbstractVector{T};
-    delimiter::Union{AbstractChar, AbstractString} = ',',
+    delimiter::Union{AbstractChar,AbstractString} = ',',
     headers::AbstractVector{<:AbstractString} = String[],
     with_names::Bool = true,
-) where {T <: AbstractDict}
+) where {T<:AbstractDict}
     delimiter = parse_delimiter(delimiter)
-    flattened_data = to_flatten.(Dict{String, rec_valtype(T)}, data)
+    flattened_data = to_flatten.(Dict{String,rec_valtype(T)}, data)
     if isempty(headers)
         headers = Iterators.flatten(keys.(flattened_data)) |> unique |> sort
     end
@@ -127,7 +127,7 @@ function to_csv(
     return String(take!(io))
 end
 
-function parse_delimiter(delimiter::Union{AbstractChar, AbstractString})
+function parse_delimiter(delimiter::Union{AbstractChar,AbstractString})
     if length(delimiter) != 1 || first(delimiter) in INVALID_DELIMITERS
         throw(ArgumentError("invalid delimiter: `$(repr(delimiter))`"))
     end
@@ -193,7 +193,7 @@ end
     data::AbstractVector{T},
     ::Val{CK},
     delimiter::AbstractChar,
-) where {T, CK}
+) where {T,CK}
     print_records_exprs = []
     for i in eachindex(CK)
         value_expr = getcompkey_expr(:item, CK[i])
