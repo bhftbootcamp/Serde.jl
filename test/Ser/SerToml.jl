@@ -116,6 +116,21 @@
                 UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             ),
         ) == exp_str
+
+        exp_str = """
+        test = 100
+        bar1 = 1
+        bar2 = []
+        uuid = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        """
+        @test Serde.to_toml(
+            Fooo(
+                100,
+                Bar1(100, "ds"),
+                [],
+                UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+            ),
+        ) == exp_str
     end
 
     @testset "Case №3: Vectors witexp_kvs mixed types" begin
