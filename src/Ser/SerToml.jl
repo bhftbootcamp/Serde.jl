@@ -137,7 +137,7 @@ end
 
 function toml_pair(key, val::AbstractVector{T}; level::Int64 = 0, kw...)::String where {T}
     if isempty(val)
-        return indent(level) * "$key = []"
+        return indent(level) * "$key = []" * "\n"
     elseif issimple(val[1])
         return create_simple_vector(key, val; level = level, kw...)
     else
