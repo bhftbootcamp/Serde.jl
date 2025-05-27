@@ -11,10 +11,15 @@ issimple(::AbstractChar)::Bool = true
 issimple(::Number)::Bool = true
 issimple(::Enum)::Bool = true
 issimple(::Type)::Bool = true
-issimple(::Dates.TimeType)::Bool = true
+issimple(::TimeType)::Bool = true
+
+rec_valtype(x::T) where {T} = rec_valtype(T)
+rec_valtype(::Type{<:Any}) = Any
+rec_valtype(::Type{<:AbstractDict{<:Any,V}}) where {V} = V
+rec_valtype(::Type{<:AbstractDict{<:Any,V}}) where {V<:AbstractDict} = rec_valtype(V)
 
 """
-    Serde.to_flatten(data; delimiter = "_") -> Dict{String, Any}
+    to_flatten([dict_type=Dict{String,Any}], data; delimiter = '_') -> dict_type
 
 Transforms a nested dictionary `data` (or custom type) into a single-level dictionary. The keys in the new dictionary are created by joining the nested keys (or fieldnames) with `delimiter` symbol.
 
@@ -33,11 +38,17 @@ julia> nested_dict = Dict(
            ),
        );
 
-julia> Serde.to_flatten(nested_dict; delimiter = "__")
+julia> to_flatten(nested_dict; delimiter = "__")
 Dict{String, Any} with 3 entries:
-  :bar__baz__foo => 3
-  :foo           => 1
-  :bar__foo      => 2
+  "bar__foo"      => 2
+  "bar__baz__foo" => 3
+  "foo"           => 1
+
+julia> to_flatten(Dict{String,Int}, nested_dict; delimiter = "__")
+Dict{String, Int64} with 3 entries:
+  "bar__foo"      => 2
+  "bar__baz__foo" => 3
+  "foo"           => 1
 ```
 
 Flatten the nested structure.
@@ -55,22 +66,22 @@ julia> struct Foo
 
 julia> nested_struct = Foo(1, "a", Bar(1.0));
 
-julia> Serde.to_flatten(nested_struct)
+julia> to_flatten(nested_struct)
 Dict{String, Any} with 3 entries:
-  :bar_num => 1.0
-  :val   => 1
-  :str   => "a"
+  "str"     => "a"
+  "bar_num" => 1.0
+  "val"     => 1
 ```
 """
 function to_flatten(
-    data::AbstractDict{K,V};
-    delimiter::AbstractString = "_",
-    dict_type::Type{<:AbstractDict} = Dict{String,Any},
-) where {K,V}
-    result = dict_type()
+    ::Type{D},
+    data::AbstractDict;
+    delimiter::Union{AbstractChar,AbstractString} = '_',
+) where {V,D<:AbstractDict{String,V}}
+    result = D()
     for (key, value) in data
-        if isa(value, AbstractDict)
-            for (k, v) in to_flatten(value; delimiter = delimiter, dict_type = dict_type)
+        if value isa AbstractDict
+            for (k, v) in to_flatten(Dict{String,V}, value; delimiter)
                 result[string(key) * delimiter * k] = v
             end
         else
@@ -81,15 +92,15 @@ function to_flatten(
 end
 
 function to_flatten(
+    ::Type{D},
     data::T;
-    delimiter::AbstractString = "_",
-    dict_type::Type{<:AbstractDict} = Dict{String,Any},
-) where {T}
-    result = dict_type()
+    delimiter::Union{AbstractChar,AbstractString} = '_',
+) where {T,V,D<:AbstractDict{String,V}}
+    result = D()
     for key in fieldnames(T)
         value = getproperty(data, key)
         if !issimple(value)
-            for (k, v) in to_flatten(value; delimiter = delimiter, dict_type = dict_type)
+            for (k, v) in to_flatten(Dict{String,V}, value; delimiter)
                 result[string(key) * delimiter * k] = v
             end
         else
@@ -97,4 +108,13 @@ function to_flatten(
         end
     end
     return result
+end
+
+# kwarg dict_type for backward compatibility
+function to_flatten(
+    data::Any;
+    dict_type::Type{D} = Dict{String,rec_valtype(data)},
+    delimiter::Union{AbstractChar,AbstractString} = '_',
+) where {D<:AbstractDict{String}}
+    return to_flatten(D, data; delimiter)
 end
