@@ -1,9 +1,0 @@
-# .JuliaFormatter.toml
-
-margin = 92                            # The maximum line length for code
-short_to_long_function_def = true      # Whether to use short or long function definitions
-always_use_return = true               # Whether to always use the return keyword in functions
-separate_kwargs_with_semicolon = false # Whether to separate keyword arguments with semicolons instead of commas
-join_lines_based_on_source = false     # Whether to join lines based on source code instead of formatting rules
-whitespace_in_kwargs = true            # Whether to include whitespace around keyword argument separators
-remove_extra_newlines = true           # Whether to remove extra newlines in code
