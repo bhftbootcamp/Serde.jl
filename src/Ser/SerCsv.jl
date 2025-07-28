@@ -75,7 +75,7 @@ Jack,1
 Bob,2
 ```
 
-Converting a vector of nested dictionaries with custom separator symbol.
+Converting a vector of nested dictionaries with custom delimiter symbol.
 
 ```julia-repl
 julia> data = [
@@ -91,7 +91,7 @@ julia> data = [
            Dict(:level => 1),
        ];
 
-julia> to_csv(data, separator = "|") |> print
+julia> to_csv(data, delimiter = "|") |> print
 level|sub_level|sub_sub_level
 1|2|3
 1||
