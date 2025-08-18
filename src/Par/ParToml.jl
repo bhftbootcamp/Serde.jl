@@ -19,7 +19,7 @@ struct TomlSyntaxError <: Exception
     exception::Exception
 end
 
-Base.show(io::IO, e::TomlSyntaxError) = print(io, e.message)
+Base.show(io::IO, e::TomlSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
 
 """
     parse_toml(x::AbstractString) -> Dict{String,Any}

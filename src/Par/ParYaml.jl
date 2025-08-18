@@ -19,7 +19,7 @@ struct YamlSyntaxError <: Exception
     exception::YAML.ParserError
 end
 
-Base.show(io::IO, e::YamlSyntaxError) = print(io, e.message)
+Base.show(io::IO, e::YamlSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
 
 """
     parse_yaml(x::AbstractString; kw...) -> Dict{String,Any}

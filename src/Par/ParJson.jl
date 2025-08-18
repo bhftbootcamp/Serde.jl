@@ -19,7 +19,7 @@ struct JsonSyntaxError <: Exception
     exception::Exception
 end
 
-Base.show(io::IO, e::JsonSyntaxError) = print(io, e.message)
+Base.show(io::IO, e::JsonSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
 
 """
     parse_json(x::AbstractString; kw...) -> Dict{String,Any}

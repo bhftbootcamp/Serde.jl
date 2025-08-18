@@ -19,7 +19,7 @@ struct CSVSyntaxError <: Exception
     exception::Exception
 end
 
-Base.show(io::IO, e::CSVSyntaxError) = print(io, e.message)
+Base.show(io::IO, e::CSVSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
 
 """
     parse_csv(x::AbstractString; kw...) -> Vector{NamedTuple}

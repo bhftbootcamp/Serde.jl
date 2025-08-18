@@ -25,7 +25,7 @@ struct EscapeError <: Exception
     message::String
 end
 
-Base.show(io::IO, e::QuerySyntaxError) = print(io, e.message)
+Base.show(io::IO, e::QuerySyntaxError) = print(io, e.message, ", caused by: ", e.exception)
 Base.show(io::IO, e::QueryParsingError) = print(io, e.message)
 Base.show(io::IO, e::EscapeError) = print(io, e.message)
 
