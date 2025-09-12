@@ -399,7 +399,7 @@ function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:An
         name_i = fieldnames(T)[i]
         key_i = custom_name(T, Val(name_i))
         key_i = isa(key_i, K) ? key_i : deser(K, key_i)
-        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = haskey(data, key_i) ? data[key_i] : default_value(T, Val(name_i))
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         x_i = eldeser(T, F_i, key_i, val_i)
         N == i && return Base.@ncall i constructor x
@@ -410,7 +410,7 @@ function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:An
         name_i = fieldnames(T)[i]
         key_i = custom_name(T, Val(name_i))
         key_i = isa(key_i, K) ? key_i : deser(K, key_i)
-        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = haskey(data, key_i) ? data[key_i] : default_value(T, Val(name_i))
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         push!(others, eldeser(T, F_i, key_i, val_i))
     end
@@ -426,7 +426,7 @@ function deser(::CustomType, ::Type{T}, data::NamedTuple)::T where {T}
         F_i = fieldtype(T, i)
         name_i = fieldnames(T)[i]
         key_i = Symbol(custom_name(T, Val(name_i)))
-        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = haskey(data, key_i) ? data[key_i] : default_value(T, Val(name_i))
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         x_i = eldeser(T, F_i, key_i, val_i)
         N == i && return Base.@ncall i constructor x
@@ -436,7 +436,7 @@ function deser(::CustomType, ::Type{T}, data::NamedTuple)::T where {T}
         F_i = fieldtype(T, i)
         name_i = fieldnames(T)[i]
         key_i = Symbol(custom_name(T, Val(name_i)))
-        val_i = get(data, key_i, default_value(T, Val(name_i)))
+        val_i = haskey(data, key_i) ? data[key_i] : default_value(T, Val(name_i))
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         push!(others, eldeser(T, F_i, key_i, val_i))
     end
