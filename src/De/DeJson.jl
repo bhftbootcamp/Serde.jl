@@ -31,7 +31,7 @@ Data(100, "json", Record(100.0))
 ```
 """
 function deser_json(::Type{T}, x; kw...) where {T}
-    return to_deser(T, parse_json(x; kw...))
+    return to_deser(T, parse_json(x; number_as_raw = true, bignum_as_raw = true, kw...))
 end
 
 deser_json(::Type{Nothing}, _) = nothing

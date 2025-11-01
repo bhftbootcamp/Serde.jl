@@ -42,8 +42,12 @@ function json_value!(io::IOBuffer, f::Function, val::Bool; kw...)::Nothing
     return print(io, val)
 end
 
-function json_value!(io::IOBuffer, f::Function, val::Number; kw...)::Nothing
-    return isnan(val) || isinf(val) ? print(io, JSON_NULL) : print(io, val)
+function json_value!(io::IOBuffer, f::Function, val::Integer; kw...)::Nothing
+    return print(io, string(val))
+end
+
+function json_value!(io::IOBuffer, f::Function, val::AbstractFloat; kw...)::Nothing
+    return (isnan(val) || isinf(val)) ? print(io, JSON_NULL) : print(io, val)
 end
 
 function json_value!(io::IOBuffer, f::Function, val::Enum; kw...)::Nothing

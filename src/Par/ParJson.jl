@@ -3,12 +3,12 @@ module ParJson
 export JsonSyntaxError
 export parse_json
 
-using JSON
+using YYJSON
 
 """
     JsonSyntaxError <: Exception
 
-Exception thrown when a [`parse_json`](@ref) fails due to incorrect JSON syntax or any underlying error that occurs during parsing.
+Exception thrown when a [`parse_json`](@ref) fails due to incorrect YYJSON syntax or any underlying error that occurs during parsing.
 
 ## Fields
 - `message::String`: The error message.
@@ -25,10 +25,10 @@ Base.show(io::IO, e::JsonSyntaxError) = print(io, e.message, ", caused by: ", e.
     parse_json(x::AbstractString; kw...) -> Dict{String,Any}
     parse_json(x::Vector{UInt8}; kw...) -> Dict{String,Any}
 
-Parse a JSON string `x` (or vector of UInt8) into a dictionary.
+Parse a YYJSON string `x` (or vector of UInt8) into a dictionary.
 
 ## Keyword arguments
-You can see additional keyword arguments in JSON.jl package [documentation](https://github.com/JuliaIO/JSON.jl?tab=readme-ov-file#documentation).
+You can see additional keyword arguments in YYJSON.jl package [documentation](https://github.com/bhftbootcamp/YYJSON.jl?tab=readme-ov-file#documentation).
 
 ## Examples
 
@@ -55,7 +55,7 @@ function parse_json end
 
 function parse_json(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
     try
-        JSON.parse(x; dicttype = dict_type, kw...)
+        YYJSON.parse_json(x; dict_type = dict_type, kw...)
     catch e
         throw(JsonSyntaxError("invalid JSON syntax", e))
     end
