@@ -78,3 +78,6 @@ using .DeXml
 
 include("DeYaml.jl")
 using .DeYaml
+
+include("DeParquet.jl")
+using .DeParquet
