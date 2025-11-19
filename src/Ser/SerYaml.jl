@@ -5,6 +5,7 @@ export to_yaml
 using Dates
 using UUIDs
 using ..Serde
+using ..Strategy
 
 const YAML_NULL = "null"
 const INDENT = "  "

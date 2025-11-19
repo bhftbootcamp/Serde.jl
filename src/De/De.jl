@@ -1,31 +1,33 @@
 # De/De
 
-abstract type DeserError <: Exception end
 
-struct ParamError <: DeserError
-    key::Any
+
+struct FormatRegistry
+    strategies::Dict{Symbol, AbstractParsingStrategy}
+    special_handling::Dict{Symbol, NamedTuple}
 end
 
-function Base.show(io::IO, e::ParamError)
-    return print(
-        io,
-        "ParamError: parameter '$(e.key)' was not passed or has the value 'nothing'",
-    )
+const FORMAT_REGISTRY = FormatRegistry(
+    Dict{Symbol, AbstractParsingStrategy}(),
+    Dict{Symbol, NamedTuple}()
+)
+
+function register_format!(registry::FormatRegistry, format::Symbol, strategy::AbstractParsingStrategy;
+                         vector_result::Bool = false, extra_kwargs::NamedTuple = NamedTuple())
+    registry.strategies[format] = strategy
+    if vector_result || !isempty(extra_kwargs)
+        registry.special_handling[format] = (; vector_result, extra_kwargs)
+    end
 end
 
-struct WrongType <: DeserError
-    maintype::DataType
-    key::Any
-    value::Any
-    from_type::Any
-    to_type::Any
+function get_strategy(registry::FormatRegistry, format::Symbol)
+    get(registry.strategies, format) do
+        throw(ArgumentError("Unknown format: $format"))
+    end
 end
 
-function Base.show(io::IO, e::WrongType)
-    return print(
-        io,
-        "WrongType: for '$(e.maintype)' value '$(e.value)' has wrong type '$(e.key)::$(e.from_type)', must be '$(e.key)::$(e.to_type)'",
-    )
+function get_special_handling(registry::FormatRegistry, format::Symbol)
+    get(registry.special_handling, format, (; vector_result = false, extra_kwargs = NamedTuple()))
 end
 
 include("Deser.jl")
@@ -76,5 +78,26 @@ using .DeCsv
 include("DeXml.jl")
 using .DeXml
 
+register_format!(FORMAT_REGISTRY, :json, default_json_strategy())
+
+register_format!(FORMAT_REGISTRY, :toml, default_toml_strategy())
+
+register_format!(FORMAT_REGISTRY, :query, default_query_strategy())
+
+register_format!(FORMAT_REGISTRY, :csv, default_csv_strategy(), vector_result = true)
+
+register_format!(FORMAT_REGISTRY, :xml, default_xml_strategy())
+
 include("DeYaml.jl")
-using .DeYaml
+register_format!(FORMAT_REGISTRY, :yaml, default_yaml_strategy())
+
+using ..Strategy
+
+function deser(::Type{T}, parser::Strategy.AbstractParserStrategy, x; kw...) where {T}
+    return to_deser(T, Strategy.parse(parser, x; kw...))
+end
+
+function deser(f::Function, parser::Strategy.AbstractParserStrategy, x; kw...)
+    object = Strategy.parse(parser, x; kw...)
+    return to_deser(f(object), object)
+end

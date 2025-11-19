@@ -5,6 +5,7 @@ export to_toml
 using Dates
 using UUIDs
 using ..Serde
+using ..Strategy
 
 const DOUBLE_QUOTE = '"'
 

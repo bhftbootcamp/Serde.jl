@@ -1,9 +1,12 @@
 module ParXml
 
-export XmlSyntaxError
 export parse_xml
 
 using EzXML
+using ..Strategy
+import ..DeserSyntaxError
+import ..XmlParsingStrategy
+import ..default_xml_strategy
 
 """
     XmlSyntaxError <: Exception
@@ -23,40 +26,6 @@ function Base.show(io::IO, e::XmlSyntaxError)
     return print(io, e.message, ", caused by: ", e.exception)
 end
 
-function _parse_xml_node(xml::AbstractString; kw...)
-    doc = EzXML.parsexml(xml)
-    return _parse_xml_node(root(doc); kw...)
-end
-
-function _has_text_content(node::EzXML.Node)::Bool
-    is_content = istext(node) || iscdata(node) || !haselement(node)
-    is_empty = isempty(nodecontent(node)) || all(isspace, nodecontent(node))
-    return is_content && !is_empty
-end
-
-function _parse_xml_node(node::EzXML.Node; dict_type::Type{D}, force_array::Bool) where {D<:AbstractDict}
-    xml_dict = D()
-    if _has_text_content(node)
-        xml_dict["_"] = nodecontent(node)
-    end
-    for attr in attributes(node)
-        xml_dict[nodename(attr)] = nodecontent(attr)
-    end
-    for child in elements(node)
-        child_name = nodename(child)
-        child_dict = _parse_xml_node(child; dict_type = dict_type, force_array = force_array)
-        if haskey(xml_dict, child_name)
-            if force_array || isa(xml_dict[child_name], AbstractVector)
-                push!(xml_dict[child_name], child_dict)
-            else
-                xml_dict[child_name] = [xml_dict[child_name], child_dict]
-            end
-        else
-            xml_dict[child_name] = force_array ? [child_dict] : child_dict
-        end
-    end
-    return xml_dict
-end
 
 """
     parse_xml(x::AbstractString; kw...) -> Dict{String,Any}
@@ -97,20 +66,17 @@ Dict{String, Any} with 5 entries:
 function parse_xml end
 
 function parse_xml(
-    x::S;
+    x::AbstractString;
+    strategy::XmlParsingStrategy = default_xml_strategy(),
     dict_type::Type{D} = Dict{String,Any},
     force_array::Bool = false,
     kw...,
-) where {S<:AbstractString,D<:AbstractDict}
-    try
-        _parse_xml_node(x; dict_type = dict_type, force_array = force_array, kw...)
-    catch e
-        throw(XmlSyntaxError("invalid XML syntax", e))
-    end
+) where {D<:AbstractDict}
+    return strategy.parser(x; dict_type = dict_type, force_array = force_array, kw...)
 end
 
-function parse_xml(x::Vector{UInt8}; kw...)
-    return parse_xml(unsafe_string(pointer(x), length(x)); kw...)
+function parse_xml(x::Vector{UInt8}; strategy::XmlParsingStrategy = default_xml_strategy(), kw...)
+    return parse_xml(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
 end
 
 end

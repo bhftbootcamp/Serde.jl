@@ -1,7 +1,11 @@
 module ParQuery
 
-export QuerySyntaxError
 export parse_query
+
+using ..Strategy
+import ..DeserSyntaxError
+import ..QueryParsingStrategy
+import ..default_query_strategy
 
 """
     QuerySyntaxError <: Exception
@@ -185,28 +189,25 @@ Dict{String, Union{String, Vector{String}}} with 2 entries:
 function parse_query end
 
 function parse_query(
-    x::S;
+    x::AbstractString;
+    strategy::QueryParsingStrategy = default_query_strategy(),
     backbone::Type = Nothing,
     dict_type::Type{D} = Dict{String,Any},
     kw...,
-) where {S<:AbstractString,D<:AbstractDict}
-    return try
-        parsed = ParQuery.parse(x; dict_type = dict_type, kw...)
-        for (key, value) in parsed
-            value = length(value) == 1 ? value[begin] : value
-            if backbone != Nothing
-                value = parse_value(backbone, fieldtype(backbone, Symbol(key)), value)
-            end
-            parsed[key] = value
+) where {D<:AbstractDict}
+    parsed = strategy.parser(x; dict_type = dict_type, kw...)
+    for (key, value) in parsed
+        value = length(value) == 1 ? value[begin] : value
+        if backbone != Nothing
+            value = parse_value(backbone, fieldtype(backbone, Symbol(key)), value)
         end
-        parsed
-    catch e
-        throw(QuerySyntaxError("invalid Query syntax", e))
+        parsed[key] = value
     end
+    return parsed
 end
 
-function parse_query(x::Vector{UInt8}; kw...)
-    return parse_query(unsafe_string(pointer(x), length(x)); kw...)
+function parse_query(x::Vector{UInt8}; strategy::QueryParsingStrategy = default_query_strategy(), kw...)
+    return parse_query(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
 end
 
 end

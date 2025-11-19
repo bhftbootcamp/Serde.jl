@@ -6,6 +6,7 @@ export to_pretty_json
 using Dates
 using UUIDs
 using ..Serde
+using ..Strategy
 
 const JSON_NULL = "null"
 const INDENT = "  "

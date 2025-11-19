@@ -1,34 +1,22 @@
 module ParJson
 
-export JsonSyntaxError
 export parse_json
 
 using JSON
+using ..Strategy
+import ..DeserSyntaxError
+import ..JsonParsingStrategy
+import ..default_json_strategy
 
 """
-    JsonSyntaxError <: Exception
+    parse_json(x::AbstractString; strategy::JsonParsingStrategy, kw...) -> Dict{String,Any}
+    parse_json(x::Vector{UInt8}; strategy::JsonParsingStrategy, kw...) -> Dict{String,Any}
 
-Exception thrown when a [`parse_json`](@ref) fails due to incorrect JSON syntax or any underlying error that occurs during parsing.
+Parse a JSON string `x` (or vector of UInt8) into a dictionary using the provided parsing strategy.
 
-## Fields
-- `message::String`: The error message.
-- `exception::Exception`: The catched exception.
-"""
-struct JsonSyntaxError <: Exception
-    message::String
-    exception::Exception
-end
-
-Base.show(io::IO, e::JsonSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
-
-"""
-    parse_json(x::AbstractString; kw...) -> Dict{String,Any}
-    parse_json(x::Vector{UInt8}; kw...) -> Dict{String,Any}
-
-Parse a JSON string `x` (or vector of UInt8) into a dictionary.
-
-## Keyword arguments
-You can see additional keyword arguments in JSON.jl package [documentation](https://github.com/JuliaIO/JSON.jl?tab=readme-ov-file#documentation).
+## Arguments
+- `x`: JSON string or vector of UInt8
+- `strategy`: Parsing strategy (defaults to JSON.jl based strategy)
 
 ## Examples
 
@@ -36,33 +24,24 @@ You can see additional keyword arguments in JSON.jl package [documentation](http
 julia> json = \"\"\"
         {
             "number": 123,
-            "vector": [1, 2, 3],
-            "dictionary":
-            {
-                "string": "123"
-            }
+            "vector": [1, 2, 3]
         }
        \"\"\";
 
 julia> parse_json(json)
-Dict{String, Any} with 3 entries:
-  "number"     => 123
-  "vector"     => Any[1, 2, 3]
-  "dictionary" => Dict{String, Any}("string"=>"123")
+Dict{String, Any} with 2 entries:
+  "number" => 123
+  "vector" => Any[1, 2, 3]
 ```
 """
 function parse_json end
 
-function parse_json(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
-    try
-        JSON.parse(x; dicttype = dict_type, kw...)
-    catch e
-        throw(JsonSyntaxError("invalid JSON syntax", e))
-    end
+function parse_json(x::AbstractString; strategy::JsonParsingStrategy = default_json_strategy(), kw...)
+    return strategy.parser(x; kw...)
 end
 
-function parse_json(x::Vector{UInt8}; kw...)
-    return parse_json(unsafe_string(pointer(x), length(x)); kw...)
+function parse_json(x::Vector{UInt8}; strategy::JsonParsingStrategy = default_json_strategy(), kw...)
+    return parse_json(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
 end
 
 end
