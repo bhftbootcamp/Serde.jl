@@ -78,19 +78,14 @@ using .DeCsv
 include("DeXml.jl")
 using .DeXml
 
-include("DeJson.jl")
 register_format!(FORMAT_REGISTRY, :json, default_json_strategy())
 
-include("DeToml.jl")
 register_format!(FORMAT_REGISTRY, :toml, default_toml_strategy())
 
-include("DeQuery.jl")
 register_format!(FORMAT_REGISTRY, :query, default_query_strategy())
 
-include("DeCsv.jl")
 register_format!(FORMAT_REGISTRY, :csv, default_csv_strategy(), vector_result = true)
 
-include("DeXml.jl")
 register_format!(FORMAT_REGISTRY, :xml, default_xml_strategy())
 
 include("DeYaml.jl")
