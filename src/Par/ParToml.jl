@@ -1,31 +1,22 @@
 module ParToml
 
-export TomlSyntaxError
 export parse_toml
 
 using TOML
+using ..Strategy
+import ..DeserSyntaxError
+import ..TomlParsingStrategy
+import ..default_toml_strategy
 
 """
-    TomlSyntaxError <: Exception
+    parse_toml(x::AbstractString; strategy::TomlParsingStrategy) -> Dict{String,Any}
+    parse_toml(x::Vector{UInt8}; strategy::TomlParsingStrategy) -> Dict{String,Any}
 
-Exception thrown when a [`parse_toml`](@ref) fails due to incorrect TOML syntax or any underlying error that occurs during parsing.
+Parses a TOML string `x` (or vector of UInt8) into a dictionary using the provided parsing strategy.
 
-## Fields
-- `message::String`: The error message.
-- `exception::Exception`: The catched exception.
-"""
-struct TomlSyntaxError <: Exception
-    message::String
-    exception::Exception
-end
-
-Base.show(io::IO, e::TomlSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
-
-"""
-    parse_toml(x::AbstractString) -> Dict{String,Any}
-    parse_toml(x::Vector{UInt8}) -> Dict{String,Any}
-
-Parses a TOML string `x` (or vector of UInt8) into a dictionary.
+## Arguments
+- `x`: TOML string or vector of UInt8
+- `strategy`: Parsing strategy (defaults to TOML.jl based strategy)
 
 ## Examples
 
@@ -35,29 +26,22 @@ julia> toml = \"\"\"
        [[points]]
        x = 1
        y = 0
-       [[points]]
-       x = 2
-       y = 3
        \"\"\";
 
 julia> parse_toml(toml)
-Dict{String, Any} with 3 entries:
+Dict{String, Any} with 2 entries:
   "tag"  => "line"
-  "points" => Any[Dict{String, Any}("y"=>0, "x"=>1), Dict{String, Any}("y"=>3, "x"=>2)]
+  "points" => Any[Dict{String, Any}("y"=>0, "x"=>1)]
 ```
 """
 function parse_toml end
 
-function parse_toml(x::S; kw...) where {S<:AbstractString}
-    try
-        TOML.parse(x; kw...)
-    catch e
-        throw(TomlSyntaxError("invalid TOML syntax", e))
-    end
+function parse_toml(x::AbstractString; strategy::TomlParsingStrategy = default_toml_strategy(), kw...)
+    return strategy.parser(x; kw...)
 end
 
-function parse_toml(x::Vector{UInt8}; kw...)
-    return parse_toml(unsafe_string(pointer(x), length(x)); kw...)
+function parse_toml(x::Vector{UInt8}; strategy::TomlParsingStrategy = default_toml_strategy(), kw...)
+    return parse_toml(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
 end
 
 end

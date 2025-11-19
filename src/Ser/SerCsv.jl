@@ -3,6 +3,7 @@ module SerCsv
 export to_csv
 
 import ..to_flatten, ..issimple
+using ..Strategy
 
 const WRAPPED = Set{Char}(['"', ',', ';', '\n'])
 
@@ -157,5 +158,6 @@ function to_csv(
         close(io)
     end
 end
+
 
 end

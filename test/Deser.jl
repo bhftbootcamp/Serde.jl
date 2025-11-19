@@ -651,7 +651,7 @@ using Test, Dates
         end
 
         exp_str = """ {"correlation_id":2,"method":"subscribe.status","payload":{}} """
-        @test_throws "WrongType: for 'Message{Nothing}' value 'Dict{String, Any}()' has wrong type 'payload::Dict{String, Any}', must be 'payload::Nothing'" deser_json(
+        @test_throws "WrongType: for 'Message{Nothing}' value 'JSON.Object{String, Any}()' has wrong type 'payload::JSON.Object{String, Any}', must be 'payload::Nothing'" deser_json(
             Message{Nothing},
             exp_str,
         )
@@ -926,6 +926,10 @@ using Test, Dates
         @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" deser_json(MyType47, exp_str3)
         exp_str33 = "{\"v\": \"0\"}"
         @test_throws "WrongType: for 'MyType47' value '0' has wrong type 'v::String', must be 'v::MyEnum'" deser_json(MyType47, exp_str33)
+
+        exp_str22 = "{\"v\": \"0\"}"
+
+        @test Serde.deser(MyType47, Serde.Strategy.Custom.NumericStringToNumberJsonParser(), exp_str22) == exp_obj
     end
 
     @testset "Case №48: JSON deserialization NamedTuple" begin
@@ -954,5 +958,51 @@ using Test, Dates
         exp_str = "{\"count\": [1, 2, 3.0]}"
         exp_obj = MyType49(Set(Number[1, 2, 3.0]))
         @test deser_json(MyType49, exp_str).count == exp_obj.count
+    end
+
+    @testset "Case №50: Strategy entrypoints" begin
+        struct SrtgFoo
+            a::Int64
+        end
+
+        json = "{\"a\": 1}"
+        @test Serde.parse_json(Serde.Strategy.JsonParser(), json) == Serde.parse_json(json)
+        @test deser_json(SrtgFoo, Serde.Strategy.JsonParser(), json) == deser_json(SrtgFoo, json)
+        @test Serde.deser(SrtgFoo, Serde.Strategy.JsonParser(), json) == SrtgFoo(1)
+
+        @test Serde.to_json(Serde.Strategy.JsonSerializer(), Dict("a" => 1)) == Serde.to_json(Dict("a" => 1))
+        @test Serde.to_json(Serde.Strategy.JsonSerializer(pretty = true), Dict("a" => 1)) == Serde.to_pretty_json(Dict("a" => 1))
+
+        yaml_data = Dict("x" => 1)
+        @test Serde.to_yaml(Serde.Strategy.YamlSerializer(), yaml_data) == Serde.to_yaml(yaml_data)
+
+        toml_data = Dict("x" => 1)
+        @test Serde.to_toml(Serde.Strategy.TomlSerializer(), toml_data) == Serde.to_toml(toml_data)
+
+        query_data = Dict("int" => 1, "strings" => ["a", "b"])
+        @test Serde.to_query(Serde.Strategy.QuerySerializer(), query_data) == Serde.to_query(query_data)
+        @test Serde.parse_query(Serde.Strategy.QueryParser(), "int=1&strings=[a,b]") == Serde.parse_query("int=1&strings=[a,b]")
+
+        csv_data = [Dict("a" => 1), Dict("a" => 2)]
+        @test Serde.to_csv(Serde.Strategy.CsvSerializer(), csv_data) == Serde.to_csv(csv_data)
+    end
+
+    @testset "Case №51: Custom strategies usage" begin
+        struct CamelSnake
+            my_value::Int64
+            second_field::String
+        end
+        json = "{\"myValue\": 1, \"secondField\": \"ok\"}"
+        @test Serde.deser(CamelSnake, Serde.Strategy.Custom.CamelToSnakeJsonParser(), json) == CamelSnake(1, "ok")
+
+        qdata = Dict("b" => 2, "a" => 1)
+        @test Serde.Strategy.serialize(Serde.Strategy.Custom.SortedQuerySerializer(), qdata) == "a=1&b=2"
+
+        struct CsvRow
+            a::Int64
+            b::Int64
+        end
+        csv_out = Serde.Strategy.serialize(Serde.Strategy.Custom.CsvNoHeaderSerializer(), [CsvRow(1,2), CsvRow(3,4)])
+        @test !startswith(csv_out, "a,") && !startswith(csv_out, "b,")
     end
 end

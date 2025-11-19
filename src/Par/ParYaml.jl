@@ -1,9 +1,12 @@
 module ParYaml
 
-export YamlSyntaxError
 export parse_yaml
 
 using YAML
+using ..Strategy
+import ..DeserSyntaxError
+import ..YamlParsingStrategy
+import ..default_yaml_strategy
 
 """
     YamlSyntaxError <: Exception
@@ -68,16 +71,12 @@ Dict{String, Any} with 6 entries:
 """
 function parse_yaml end
 
-function parse_yaml(x::S; dict_type::Type{D} = Dict{String,Any}, kw...) where {S<:AbstractString,D<:AbstractDict}
-    try
-        YAML.load(x; dicttype = dict_type, kw...)
-    catch e
-        throw(YamlSyntaxError("invalid YAML syntax", e))
-    end
+function parse_yaml(x::AbstractString; strategy::YamlParsingStrategy = default_yaml_strategy(), dict_type::Type{D} = Dict{String,Any}, kw...) where {D<:AbstractDict}
+    return strategy.parser(x; dicttype = dict_type, kw...)
 end
 
-function parse_yaml(x::Vector{UInt8}; kw...)
-    return parse_yaml(unsafe_string(pointer(x), length(x)); kw...)
+function parse_yaml(x::Vector{UInt8}; strategy::YamlParsingStrategy = default_yaml_strategy(), kw...)
+    return parse_yaml(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
 end
 
 end

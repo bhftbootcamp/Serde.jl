@@ -1,35 +1,22 @@
 module ParCsv
 
-export CSVSyntaxError
 export parse_csv
 
 using CSV
+using ..Strategy
+import ..DeserSyntaxError
+import ..CsvParsingStrategy
+import ..default_csv_strategy
 
 """
-    CSVSyntaxError <: Exception
+    parse_csv(x::AbstractString; strategy::CsvParsingStrategy, kw...) -> Vector{NamedTuple}
+    parse_csv(x::Vector{UInt8}; strategy::CsvParsingStrategy, kw...) -> Vector{NamedTuple}
 
-Exception thrown when a [`parse_csv`](@ref) fails due to incorrect CSV syntax or any underlying error that occurs during parsing.
+Parse a CSV string `x` (or vector of UInt8) into a vector of named tuples using the provided parsing strategy.
 
-## Fields
-- `message::String`: The error message.
-- `exception::Exception`: The catched exception.
-"""
-struct CSVSyntaxError <: Exception
-    message::String
-    exception::Exception
-end
-
-Base.show(io::IO, e::CSVSyntaxError) = print(io, e.message, ", caused by: ", e.exception)
-
-"""
-    parse_csv(x::AbstractString; kw...) -> Vector{NamedTuple}
-    parse_csv(x::Vector{UInt8}; kw...) -> Vector{NamedTuple}
-
-Parse a CSV string `x` (or vector of UInt8) into a vector of dictionaries, where keys are column names and values are corresponding cell values.
-
-## Keyword arguments
-- `delimiter::AbstractString = ","`: The delimiter that will be used in the parsed csv string.
-- Other keyword arguments can be found in [`CSV.File`](https://csv.juliadata.org/stable/reading.html#CSV.File)
+## Arguments
+- `x`: CSV string or vector of UInt8
+- `strategy`: Parsing strategy (defaults to CSV.jl based strategy)
 
 ## Examples
 
@@ -48,19 +35,17 @@ julia> parse_csv(csv)
 """
 function parse_csv end
 
-function parse_csv(x::Vector{UInt8}; delimiter::AbstractString = ",", kw...)
-    return parse_csv(unsafe_string(pointer(x), length(x)); delimiter = delimiter, kw...)
-end
-
-function parse_csv(x::S; delimiter::AbstractString = ",", kw...) where {S<:AbstractString}
+function parse_csv(x::AbstractString; strategy::CsvParsingStrategy = default_csv_strategy(), delimiter::AbstractString = ",", kw...)
     io = IOBuffer(x)
     try
-        return CSV.File(io; delim = delimiter, types = String, strict = true, kw...) |> CSV.rowtable
-    catch e
-        throw(CSVSyntaxError("invalid CSV syntax", e))
+        return strategy.parser(io; delim = delimiter, kw...)
     finally
         close(io)
     end
+end
+
+function parse_csv(x::Vector{UInt8}; strategy::CsvParsingStrategy = default_csv_strategy(), delimiter::AbstractString = ",", kw...)
+    return parse_csv(unsafe_string(pointer(x), length(x)); strategy = strategy, delimiter = delimiter, kw...)
 end
 
 end

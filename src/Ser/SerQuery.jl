@@ -3,6 +3,7 @@ module SerQuery
 export to_query
 
 using ..Serde
+using ..Strategy
 
 function _bytes end
 function escape_query end

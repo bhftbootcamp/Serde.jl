@@ -78,7 +78,7 @@
 
     @testset "Case №4: Exceptions tests" begin
         exp_str = "vector: [3,,4]"
-        @test_throws Serde.ParYaml.YamlSyntaxError Serde.parse_yaml(exp_str)
+        @test_throws Serde.DeserSyntaxError Serde.parse_yaml(exp_str)
     end
 
     @testset "Case №5: Different Dict type" begin

@@ -5,6 +5,7 @@ export to_xml
 using Dates
 using UUIDs
 using ..Serde
+using ..Strategy
 
 const CONTENT_WORD = "_"
 

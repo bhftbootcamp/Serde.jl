@@ -24,3 +24,6 @@ using .SerXml
 
 include("SerYaml.jl")
 using .SerYaml
+
+serialize(s::Strategy.AbstractSerializerStrategy, data; kw...) = Strategy.serialize(s, data; kw...)
+serialize(s::Strategy.AbstractSerializerStrategy, f::Function, data; kw...) = Strategy.serialize(s, f, data; kw...)
