@@ -1,7 +1,5 @@
 # De/De
 
-
-
 struct FormatRegistry
     strategies::Dict{Symbol, AbstractParsingStrategy}
     special_handling::Dict{Symbol, NamedTuple}
@@ -11,14 +9,6 @@ const FORMAT_REGISTRY = FormatRegistry(
     Dict{Symbol, AbstractParsingStrategy}(),
     Dict{Symbol, NamedTuple}()
 )
-
-function register_format!(registry::FormatRegistry, format::Symbol, strategy::AbstractParsingStrategy;
-                         vector_result::Bool = false, extra_kwargs::NamedTuple = NamedTuple())
-    registry.strategies[format] = strategy
-    if vector_result || !isempty(extra_kwargs)
-        registry.special_handling[format] = (; vector_result, extra_kwargs)
-    end
-end
 
 function get_strategy(registry::FormatRegistry, format::Symbol)
     get(registry.strategies, format) do
@@ -78,20 +68,18 @@ using .DeCsv
 include("DeXml.jl")
 using .DeXml
 
-register_format!(FORMAT_REGISTRY, :json, default_json_strategy())
-
-register_format!(FORMAT_REGISTRY, :toml, default_toml_strategy())
-
-register_format!(FORMAT_REGISTRY, :query, default_query_strategy())
-
-register_format!(FORMAT_REGISTRY, :csv, default_csv_strategy(), vector_result = true)
-
-register_format!(FORMAT_REGISTRY, :xml, default_xml_strategy())
-
 include("DeYaml.jl")
-register_format!(FORMAT_REGISTRY, :yaml, default_yaml_strategy())
 
-using ..Strategy
+include("DeBinaryJson.jl")
+using .DeBinaryJson
+
+include("DeMessagePack.jl")
+using .DeMessagePack
+
+include("DeBinaryStream.jl")
+using .DeBinaryStream
+
+import ..Strategy
 
 function deser(::Type{T}, parser::Strategy.AbstractParserStrategy, x; kw...) where {T}
     return to_deser(T, Strategy.parse(parser, x; kw...))

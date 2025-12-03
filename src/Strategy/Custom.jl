@@ -123,6 +123,3 @@ Strategy.serialize(::CsvNoHeaderSerializer, data::Vector; kw...) =
     SerCsv.to_csv(data; with_names = false, kw...)
 
 end
-
-
-

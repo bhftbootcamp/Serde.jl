@@ -82,13 +82,20 @@ function _parse_xml_node(node; dict_type::Type{D}, force_array::Bool) where {D<:
     return xml_dict
 end
 
+include("BinaryJson.jl")
+include("MessagePack.jl")
+include("BinaryStream.jl")
+
 export AbstractParsingStrategy,
     JsonParsingStrategy,
     XmlParsingStrategy,
     YamlParsingStrategy,
     TomlParsingStrategy,
     CsvParsingStrategy,
-    QueryParsingStrategy
+    QueryParsingStrategy,
+    BinaryJsonParsingStrategy,
+    MessagePackParsingStrategy,
+    BinaryStreamParsingStrategy
 
 abstract type AbstractParsingStrategy end
 
@@ -113,6 +120,18 @@ struct CsvParsingStrategy <: AbstractParsingStrategy
 end
 
 struct QueryParsingStrategy <: AbstractParsingStrategy
+    parser::Function
+end
+
+struct BinaryJsonParsingStrategy <: AbstractParsingStrategy
+    parser::Function
+end
+
+struct MessagePackParsingStrategy <: AbstractParsingStrategy
+    parser::Function
+end
+
+struct BinaryStreamParsingStrategy <: AbstractParsingStrategy
     parser::Function
 end
 
@@ -254,6 +273,70 @@ function default_query_strategy()
     end)
 end
 
+function default_binaryjson_strategy()
+    BinaryJsonParsingStrategy((x; kw...) -> begin
+        try
+            if x isa BinaryJson.BsonSerializer
+                return BinaryJson.deserialize(x)
+            elseif x isa IO
+                return BinaryJson.deserialize(BinaryJson.BsonSerializer(x))
+            else
+                return BinaryJson.deserialize(x)
+            end
+        catch e
+            throw(DeserSyntaxError("binaryjson", "failed to parse BinaryJson input", e))
+        end
+    end)
+end
+
+function default_messagepack_strategy()
+    MessagePackParsingStrategy((x; kw...) -> begin
+        try
+            if x isa MessagePack.MsgPackSerializer
+                return MessagePack.deserialize(x)
+            elseif x isa IO
+                return MessagePack.deserialize(MessagePack.MsgPackSerializer(x))
+            else
+                bytes = x isa AbstractVector{UInt8} ? x : Vector{UInt8}(x)
+                return MessagePack.deserialize(MessagePack.MsgPackSerializer(IOBuffer(bytes)))
+            end
+        catch e
+            throw(DeserSyntaxError("messagepack", "failed to parse MessagePack input", e))
+        end
+    end)
+end
+
+function _binstream_serializer(x)
+    bytes = if x isa BinaryStream.Serializer
+        seekstart(x)
+        readavailable(x)
+    elseif x isa IO
+        read(x)
+    elseif x isa AbstractVector{<:Integer}
+        Vector{UInt8}(x)
+    else
+        Vector{UInt8}(x)
+    end
+    buf = IOBuffer(bytes; read = true, write = false)
+    seekstart(buf)
+    return BinaryStream.Serializer(buf)
+end
+
+function _deserialize_binarystream(s::BinaryStream.Serializer, ::Type{T}) where {T}
+    return BinaryStream.deserialize(s, T)
+end
+
+function default_binarystream_strategy()
+    BinaryStreamParsingStrategy((T, x; kw...) -> begin
+        try
+            serializer = _binstream_serializer(x)
+            return _deserialize_binarystream(serializer, T)
+        catch e
+            throw(DeserSyntaxError("binarystream", "failed to parse BinaryStream input", e))
+        end
+    end)
+end
+
 # Ser
 export to_csv,
     to_json,
@@ -261,7 +344,10 @@ export to_csv,
     to_query,
     to_toml,
     to_xml,
-    to_yaml
+    to_yaml,
+    to_binaryjson,
+    to_messagepack,
+    to_binarystream
 
 # De
 export deser_csv,
@@ -269,7 +355,10 @@ export deser_csv,
     deser_query,
     deser_toml,
     deser_xml,
-    deser_yaml
+    deser_yaml,
+    deser_binaryjson,
+    deser_messagepack,
+    deser_binarystream
 
 # Par
 export parse_csv,
@@ -277,7 +366,10 @@ export parse_csv,
     parse_query,
     parse_toml,
     parse_xml,
-    parse_yaml
+    parse_yaml,
+    parse_binaryjson,
+    parse_messagepack,
+    parse_binarystream
 
 # Utl
 export @serde,

@@ -123,9 +123,9 @@
     end
 
     @testset "Case №6: All hard types" begin
-        @enum Num begin
-            num1
-            num2
+        @enum NumYaml begin
+            yaml_num1
+            yaml_num2
         end
 
         struct YamlFoo6
@@ -135,7 +135,7 @@
             ntuple::NamedTuple
             pair::Pair
             timetype::TimeType
-            enm::Num
+            enm::NumYaml
             set::Set
             uuid::UUID
         end
@@ -147,7 +147,7 @@
             (a = 1, b = 2),
             Pair(:e, 5),
             Date("2022-01-01"),
-            num1,
+            yaml_num1,
             Set([1, 2]),
             UUID("764c061c-fdf6-4149-9924-d3b4b3e416d2"),
         )
@@ -169,7 +169,7 @@
         pair:
           e: 5
         timetype: "2022-01-01"
-        enm: num1
+        enm: yaml_num1
         set:
           - 2
           - 1

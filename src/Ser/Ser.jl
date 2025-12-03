@@ -25,5 +25,16 @@ using .SerXml
 include("SerYaml.jl")
 using .SerYaml
 
+include("SerBinaryJson.jl")
+using .SerBinaryJson
+
+include("SerMessagePack.jl")
+using .SerMessagePack
+
+include("SerBinaryStream.jl")
+using .SerBinaryStream
+
 serialize(s::Strategy.AbstractSerializerStrategy, data; kw...) = Strategy.serialize(s, data; kw...)
 serialize(s::Strategy.AbstractSerializerStrategy, f::Function, data; kw...) = Strategy.serialize(s, f, data; kw...)
+serialize(s::Strategy.AbstractSerializerStrategy, ::Type{T}, data; kw...) where {T} =
+    Strategy.serialize(s, T, data; kw...)
