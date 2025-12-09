@@ -1,24 +1,7 @@
 # De/De
 
-struct FormatRegistry
-    strategies::Dict{Symbol, AbstractParsingStrategy}
-    special_handling::Dict{Symbol, NamedTuple}
-end
 
-const FORMAT_REGISTRY = FormatRegistry(
-    Dict{Symbol, AbstractParsingStrategy}(),
-    Dict{Symbol, NamedTuple}()
-)
-
-function get_strategy(registry::FormatRegistry, format::Symbol)
-    get(registry.strategies, format) do
-        throw(ArgumentError("Unknown format: $format"))
-    end
-end
-
-function get_special_handling(registry::FormatRegistry, format::Symbol)
-    get(registry.special_handling, format, (; vector_result = false, extra_kwargs = NamedTuple()))
-end
+include("DeserChain.jl")
 
 include("Deser.jl")
 
@@ -48,36 +31,6 @@ julia> Serde.to_deser(Person, person_data)
 Person("Michael", 25, Info(12, 2500))
 ```
 """
-to_deser(::Type{T}, x) where {T} = deser(T, x)
-
-to_deser(::Type{Nothing}, x) = nothing
-to_deser(::Type{Missing}, x) = missing
-
-include("DeJson.jl")
-using .DeJson
-
-include("DeToml.jl")
-using .DeToml
-
-include("DeQuery.jl")
-using .DeQuery
-
-include("DeCsv.jl")
-using .DeCsv
-
-include("DeXml.jl")
-using .DeXml
-
-include("DeYaml.jl")
-
-include("DeBinaryJson.jl")
-using .DeBinaryJson
-
-include("DeMessagePack.jl")
-using .DeMessagePack
-
-include("DeBinaryStream.jl")
-using .DeBinaryStream
 
 import ..Strategy
 

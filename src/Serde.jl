@@ -1,10 +1,5 @@
 module Serde
 
-using JSON
-using CSV
-using TOML
-using EzXML
-using YAML
 
 function deser end
 function parse_value end
@@ -47,341 +42,76 @@ function Base.show(io::IO, e::DeserSyntaxError)
     return print(io, "DeserSyntaxError ($(e.format)): $(e.message), caused by: $(e.exception)")
 end
 
-function _has_text_content(node)::Bool
-    is_content = istext(node) || iscdata(node) || !haselement(node)
-    is_empty = isempty(nodecontent(node)) || all(isspace, nodecontent(node))
-    return is_content && !is_empty
-end
-
-function _parse_xml_node(xml::AbstractString; kw...)
-    doc = EzXML.parsexml(xml)
-    return _parse_xml_node(root(doc); kw...)
-end
-
-function _parse_xml_node(node; dict_type::Type{D}, force_array::Bool) where {D<:AbstractDict}
-    xml_dict = D()
-    if _has_text_content(node)
-        xml_dict["_"] = nodecontent(node)
-    end
-    for attr in attributes(node)
-        xml_dict[nodename(attr)] = nodecontent(attr)
-    end
-    for child in elements(node)
-        child_name = nodename(child)
-        child_dict = _parse_xml_node(child; dict_type = dict_type, force_array = force_array)
-        if haskey(xml_dict, child_name)
-            if force_array || isa(xml_dict[child_name], AbstractVector)
-                push!(xml_dict[child_name], child_dict)
-            else
-                xml_dict[child_name] = [xml_dict[child_name], child_dict]
-            end
-        else
-            xml_dict[child_name] = force_array ? [child_dict] : child_dict
-        end
-    end
-    return xml_dict
-end
-
-include("BinaryJson.jl")
-include("MessagePack.jl")
-include("BinaryStream.jl")
-
-export AbstractParsingStrategy,
-    JsonParsingStrategy,
-    XmlParsingStrategy,
-    YamlParsingStrategy,
-    TomlParsingStrategy,
-    CsvParsingStrategy,
-    QueryParsingStrategy,
-    BinaryJsonParsingStrategy,
-    MessagePackParsingStrategy,
-    BinaryStreamParsingStrategy
-
+export AbstractParsingStrategy
 abstract type AbstractParsingStrategy end
 
-struct JsonParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct XmlParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct YamlParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct TomlParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct CsvParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct QueryParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct BinaryJsonParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct MessagePackParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-struct BinaryStreamParsingStrategy <: AbstractParsingStrategy
-    parser::Function
-end
-
-function default_json_strategy()
-    JsonParsingStrategy((x; kw...) -> begin
-        try
-            JSON.parse(x; kw...)
-        catch e
-            throw(DeserSyntaxError("json", "failed to parse JSON input", e))
-        end
-    end)
-end
-
-function default_xml_strategy()
-    XmlParsingStrategy((x; dict_type = Dict{String,Any}, force_array::Bool = false, kw...) -> begin
-        try
-            _parse_xml_node(x; dict_type = dict_type, force_array = force_array, kw...)
-        catch e
-            throw(DeserSyntaxError("xml", "failed to parse XML input", e))
-        end
-    end)
-end
-
-function default_yaml_strategy()
-    YamlParsingStrategy((x; kw...) -> begin
-        try
-            YAML.load(x; kw...)
-        catch e
-            throw(DeserSyntaxError("yaml", "failed to parse YAML input", e))
-        end
-    end)
-end
-
-function default_toml_strategy()
-    TomlParsingStrategy((x; kw...) -> begin
-        try
-            TOML.parse(x; kw...)
-        catch e
-            throw(DeserSyntaxError("toml", "failed to parse TOML input", e))
-        end
-    end)
-end
-
-function default_csv_strategy()
-    CsvParsingStrategy((io; kw...) -> begin
-        try
-            CSV.File(io; types=String, strict=true, kw...) |> CSV.rowtable
-        catch e
-            throw(DeserSyntaxError("csv", "failed to parse CSV input", e))
-        end
-    end)
-end
-
-function default_query_strategy()
-    QueryParsingStrategy((x; dict_type = Dict{String,Any}, kw...) -> begin
-        try
-            parts = split(x, get(kw, :delimiter, "&"))
-            parsed = dict_type()
-            for part in parts
-                if isempty(part)
-                    continue
-                end
-                key, value = let
-                    index = findfirst("=", part)
-                    if !isnothing(index)
-                        part[begin:index[1]-1], part[index[1]+1:end]
-                    else
-                        (part, "")
-                    end
-                end
-
-                if isempty(key)
-                    continue
-                end
-                key = let
-                    q = replace(key, '+' => ' ')
-                    occursin("%", q) || (q, false)
-                    out = IOBuffer()
-                    io = IOBuffer(q)
-                    try
-                        while !eof(io)
-                            c = read(io, Char)
-                            if c == '%'
-                                try
-                                    c1 = read(io, Char)
-                                    c2 = read(io, Char)
-                                    write(out, Base.parse(UInt8, string(c1, c2); base = 16))
-                                catch
-                                    throw(ArgumentError("invalid Query escape '%$c1$c2'"))
-                                end
-                            else
-                                write(out, c)
-                            end
-                        end
-                        String(take!(out))
-                    finally
-                        close(io)
-                        close(out)
-                    end
-                end
-
-                value = let
-                    q = replace(value, '+' => ' ')
-                    occursin("%", q) || (q, false)
-                    out = IOBuffer()
-                    io = IOBuffer(q)
-                    try
-                        while !eof(io)
-                            c = read(io, Char)
-                            if c == '%'
-                                try
-                                    c1 = read(io, Char)
-                                    c2 = read(io, Char)
-                                    write(out, Base.parse(UInt8, string(c1, c2); base = 16))
-                                catch
-                                    throw(ArgumentError("invalid Query escape '%$c1$c2'"))
-                                end
-                            else
-                                write(out, c)
-                            end
-                        end
-                        String(take!(out))
-                    finally
-                        close(io)
-                        close(out)
-                    end
-                end
-                contains(key, ';') && throw(ArgumentError("invalid semicolon separator in query key"))
-                if haskey(parsed, key)
-                    push!(parsed[key], value)
-                else
-                    parsed[key] = [value]
-                end
-            end
-            parsed
-        catch e
-            throw(DeserSyntaxError("query", "failed to parse Query input", e))
-        end
-    end)
-end
-
-function default_binaryjson_strategy()
-    BinaryJsonParsingStrategy((x; kw...) -> begin
-        try
-            if x isa BinaryJson.BsonSerializer
-                return BinaryJson.deserialize(x)
-            elseif x isa IO
-                return BinaryJson.deserialize(BinaryJson.BsonSerializer(x))
-            else
-                return BinaryJson.deserialize(x)
-            end
-        catch e
-            throw(DeserSyntaxError("binaryjson", "failed to parse BinaryJson input", e))
-        end
-    end)
-end
-
-function default_messagepack_strategy()
-    MessagePackParsingStrategy((x; kw...) -> begin
-        try
-            if x isa MessagePack.MsgPackSerializer
-                return MessagePack.deserialize(x)
-            elseif x isa IO
-                return MessagePack.deserialize(MessagePack.MsgPackSerializer(x))
-            else
-                bytes = x isa AbstractVector{UInt8} ? x : Vector{UInt8}(x)
-                return MessagePack.deserialize(MessagePack.MsgPackSerializer(IOBuffer(bytes)))
-            end
-        catch e
-            throw(DeserSyntaxError("messagepack", "failed to parse MessagePack input", e))
-        end
-    end)
-end
-
-function _binstream_serializer(x)
-    bytes = if x isa BinaryStream.Serializer
-        seekstart(x)
-        readavailable(x)
-    elseif x isa IO
-        read(x)
-    elseif x isa AbstractVector{<:Integer}
-        Vector{UInt8}(x)
-    else
-        Vector{UInt8}(x)
-    end
-    buf = IOBuffer(bytes; read = true, write = false)
-    seekstart(buf)
-    return BinaryStream.Serializer(buf)
-end
-
-function _deserialize_binarystream(s::BinaryStream.Serializer, ::Type{T}) where {T}
-    return BinaryStream.deserialize(s, T)
-end
-
-function default_binarystream_strategy()
-    BinaryStreamParsingStrategy((T, x; kw...) -> begin
-        try
-            serializer = _binstream_serializer(x)
-            return _deserialize_binarystream(serializer, T)
-        catch e
-            throw(DeserSyntaxError("binarystream", "failed to parse BinaryStream input", e))
-        end
-    end)
-end
-
 # Ser
-export to_csv,
-    to_json,
+export to_json,
     to_pretty_json,
-    to_query,
-    to_toml,
-    to_xml,
-    to_yaml,
-    to_binaryjson,
-    to_messagepack,
-    to_binarystream
+    to_messagepack
 
 # De
-export deser_csv,
-    deser_json,
-    deser_query,
-    deser_toml,
-    deser_xml,
-    deser_yaml,
-    deser_binaryjson,
+export deser_json,
     deser_messagepack,
-    deser_binarystream
+    DeserChain
 
 # Par
-export parse_csv,
-    parse_json,
-    parse_query,
-    parse_toml,
-    parse_xml,
-    parse_yaml,
-    parse_binaryjson,
+export parse_json,
     parse_messagepack,
-    parse_binarystream
+    ParserChain
 
-# Utl
-export @serde,
-    @serde_pascal_case,
-    @serde_camel_case,
-    @serde_kebab_case,
-    to_flatten
+# Ser
+export to_json,
+    to_pretty_json,
+    to_messagepack,
+    SerializerChain
+
+# Strategies
+export JsonParsingStrategy,
+    MessagePackParsingStrategy,
+    JsonSerializer,
+    MessagePackSerializer,
+    default_json_strategy,
+    default_messagepack_strategy
+
+(ser_name(::Type{T}, ::Val{x})::Symbol) where {T,x} = x
+(ser_value(::Type{T}, ::Val{x}, v::V)::V) where {T,x,V} = v
+(ser_type(::Type{T}, v::V)::V) where {T,V} = v
+
+(ser_ignore_field(::Type{T}, ::Val{x})::Bool) where {T,x} = false
+(ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
+(ser_ignore_null(::Type{T})::Bool) where {T} = false
+
+append_stage!(chain, stage::Symbol, f::Function) = throw(MethodError(append_stage!, (chain, stage, f)))
+replace_stage!(chain, stage::Symbol, fs) = throw(MethodError(replace_stage!, (chain, stage, fs)))
+
+to_deser(::Type{T}, x) where {T} = deser(T, x)
+to_deser(::Type{Nothing}, x) = nothing
+to_deser(::Type{Missing}, x) = missing
+
+include("MessagePack/MessagePack.jl")
 include("Strategy/Strategy.jl")
-include("Utl/Utl.jl")
+
 include("Par/Par.jl")
 include("Ser/Ser.jl")
+include("De/De.jl")
+
+include("Json/Par/Par.jl")
+include("Json/Ser/Ser.jl")
+include("Json/De/De.jl")
+include("MessagePack/Par/Par.jl")
+include("MessagePack/Ser/Ser.jl")
+include("MessagePack/De/De.jl")
+
+using .Par: ParserChain
+using .Ser: SerializerChain
+using .JsonPar: parse_json, JsonParsingStrategy, default_json_strategy
+using .JsonSer: to_json, to_pretty_json, JsonSerializer
+using .JsonDe: deser_json
+using .MessagePackPar: parse_messagepack, MessagePackParsingStrategy, default_messagepack_strategy
+using .MessagePackSer: to_messagepack, MessagePackSerializer
+using .MessagePackDe: deser_messagepack
 Base.include(Strategy, "Strategy/Adapters.jl")
 Base.include(Strategy, "Strategy/Custom.jl")
-include("De/De.jl")
+
 end

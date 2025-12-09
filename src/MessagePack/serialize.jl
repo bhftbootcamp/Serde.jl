@@ -1,4 +1,4 @@
-#__ serialize
+# __ serialize
 
 function serialize(s::MsgPackSerializer, x::Integer)
     nb::Int = 0
@@ -183,3 +183,4 @@ function serialize(s::MsgPackSerializer, @nospecialize(x))
     end
     return nb
 end
+

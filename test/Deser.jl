@@ -734,7 +734,7 @@ using Test, Dates
             }
         }
         """
-        Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractDict) = "test"
+        Serde.deser(::Type{SubType}, ::Type{String}, x::AbstractDict) = "test"
         exp_obj = MyType(SubType("test"))
         @test deser_json(MyType, exp_str) == exp_obj
 
@@ -745,7 +745,7 @@ using Test, Dates
             }
         }
         """
-        Serde.deser(::Type{<:SubType}, ::Type{String}, x::AbstractVector) = "test2"
+        Serde.deser(::Type{SubType}, ::Type{String}, x::AbstractVector) = "test2"
         exp_obj2 = MyType(SubType("test2"))
         @test deser_json(MyType, exp_str2) == exp_obj2
     end
@@ -973,18 +973,6 @@ using Test, Dates
         @test Serde.to_json(Serde.Strategy.JsonSerializer(), Dict("a" => 1)) == Serde.to_json(Dict("a" => 1))
         @test Serde.to_json(Serde.Strategy.JsonSerializer(pretty = true), Dict("a" => 1)) == Serde.to_pretty_json(Dict("a" => 1))
 
-        yaml_data = Dict("x" => 1)
-        @test Serde.to_yaml(Serde.Strategy.YamlSerializer(), yaml_data) == Serde.to_yaml(yaml_data)
-
-        toml_data = Dict("x" => 1)
-        @test Serde.to_toml(Serde.Strategy.TomlSerializer(), toml_data) == Serde.to_toml(toml_data)
-
-        query_data = Dict("int" => 1, "strings" => ["a", "b"])
-        @test Serde.to_query(Serde.Strategy.QuerySerializer(), query_data) == Serde.to_query(query_data)
-        @test Serde.parse_query(Serde.Strategy.QueryParser(), "int=1&strings=[a,b]") == Serde.parse_query("int=1&strings=[a,b]")
-
-        csv_data = [Dict("a" => 1), Dict("a" => 2)]
-        @test Serde.to_csv(Serde.Strategy.CsvSerializer(), csv_data) == Serde.to_csv(csv_data)
     end
 
     @testset "Case №51: Custom strategies usage" begin
@@ -994,15 +982,5 @@ using Test, Dates
         end
         json = "{\"myValue\": 1, \"secondField\": \"ok\"}"
         @test Serde.deser(CamelSnake, Serde.Strategy.Custom.CamelToSnakeJsonParser(), json) == CamelSnake(1, "ok")
-
-        qdata = Dict("b" => 2, "a" => 1)
-        @test Serde.Strategy.serialize(Serde.Strategy.Custom.SortedQuerySerializer(), qdata) == "a=1&b=2"
-
-        struct CsvRow
-            a::Int64
-            b::Int64
-        end
-        csv_out = Serde.Strategy.serialize(Serde.Strategy.Custom.CsvNoHeaderSerializer(), [CsvRow(1,2), CsvRow(3,4)])
-        @test !startswith(csv_out, "a,") && !startswith(csv_out, "b,")
     end
 end
