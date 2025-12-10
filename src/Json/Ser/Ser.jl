@@ -308,4 +308,8 @@ function Strategy.serialize(s::JsonSerializer, f::Function, data; kw...)
     return s.pretty ? to_pretty_json(f, data; kw...) : to_json(f, data; kw...)
 end
 
+to_json(s::JsonSerializer, data; kw...) = Strategy.serialize(s, data; kw...)
+to_json(s::JsonSerializer, f::Function, data; kw...) = Strategy.serialize(s, f, data; kw...)
+to_pretty_json(::JsonSerializer, data; kw...) = Strategy.serialize(JsonSerializer(pretty = true), data; kw...)
+
 end

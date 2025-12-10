@@ -2,7 +2,9 @@ module MessagePackPar
 
 export parse_messagepack, MessagePackParsingStrategy, default_messagepack_strategy
 
-using .....Serde: MessagePack, AbstractParsingStrategy, DeserSyntaxError
+import ..Serde
+using ..Serde: MessagePack, AbstractParsingStrategy, DeserSyntaxError
+using ..Strategy
 
 struct MessagePackParsingStrategy <: AbstractParsingStrategy
     parser::Function
@@ -53,6 +55,10 @@ end
 
 function parse_messagepack(x::MessagePack.MsgPackSerializer; strategy::MessagePackParsingStrategy = default_messagepack_strategy(), kw...)
     return _normalize_messagepack(strategy.parser(x; kw...))
+end
+
+function parse_messagepack(parser::Strategy.AbstractParserStrategy, x; kw...)
+    return Strategy.parse(parser, x; kw...)
 end
 
 end

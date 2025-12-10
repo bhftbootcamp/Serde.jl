@@ -3,7 +3,8 @@ module JsonPar
 export parse_json, JsonParsingStrategy, default_json_strategy
 
 using JSON
-using .....Serde: AbstractParsingStrategy, DeserSyntaxError
+using ..Serde: AbstractParsingStrategy, DeserSyntaxError
+using ..Strategy
 
 struct JsonParsingStrategy <: AbstractParsingStrategy
     parser::Function
@@ -53,6 +54,10 @@ end
 
 function parse_json(x::Vector{UInt8}; strategy::JsonParsingStrategy = default_json_strategy(), kw...)
     return parse_json(unsafe_string(pointer(x), length(x)); strategy = strategy, kw...)
+end
+
+function parse_json(parser::Strategy.AbstractParserStrategy, x; kw...)
+    return Strategy.parse(parser, x; kw...)
 end
 
 end

@@ -53,18 +53,24 @@ export to_json,
 # De
 export deser_json,
     deser_messagepack,
-    DeserChain
+    DeserPipeline,
+    deser_pipeline,
+    @deser_pipeline
 
 # Par
 export parse_json,
     parse_messagepack,
-    ParserChain
+    ParserPipeline,
+    parser_pipeline,
+    @parser_pipeline
 
 # Ser
 export to_json,
     to_pretty_json,
     to_messagepack,
-    SerializerChain
+    SerializerPipeline,
+    serializer_pipeline,
+    @serializer_pipeline
 
 # Strategies
 export JsonParsingStrategy,
@@ -81,9 +87,6 @@ export JsonParsingStrategy,
 (ser_ignore_field(::Type{T}, ::Val{x})::Bool) where {T,x} = false
 (ser_ignore_field(::Type{T}, k::Val{x}, v::V)::Bool) where {T,x,V} = ser_ignore_field(T, k)
 (ser_ignore_null(::Type{T})::Bool) where {T} = false
-
-append_stage!(chain, stage::Symbol, f::Function) = throw(MethodError(append_stage!, (chain, stage, f)))
-replace_stage!(chain, stage::Symbol, fs) = throw(MethodError(replace_stage!, (chain, stage, fs)))
 
 to_deser(::Type{T}, x) where {T} = deser(T, x)
 to_deser(::Type{Nothing}, x) = nothing
@@ -103,15 +106,17 @@ include("MessagePack/Par/Par.jl")
 include("MessagePack/Ser/Ser.jl")
 include("MessagePack/De/De.jl")
 
-using .Par: ParserChain
-using .Ser: SerializerChain
+using .Par: ParserPipeline, parser_pipeline, @parser_pipeline
+using .Ser: SerializerPipeline, serializer_pipeline, @serializer_pipeline
 using .JsonPar: parse_json, JsonParsingStrategy, default_json_strategy
-using .JsonSer: to_json, to_pretty_json, JsonSerializer
+using .JsonSer: JsonSerializer
 using .JsonDe: deser_json
 using .MessagePackPar: parse_messagepack, MessagePackParsingStrategy, default_messagepack_strategy
-using .MessagePackSer: to_messagepack, MessagePackSerializer
+using .MessagePackSer: MessagePackSerializer
 using .MessagePackDe: deser_messagepack
-Base.include(Strategy, "Strategy/Adapters.jl")
+
+import .JsonSer: to_json, to_pretty_json
+import .MessagePackSer: to_messagepack
 Base.include(Strategy, "Strategy/Custom.jl")
 
 end

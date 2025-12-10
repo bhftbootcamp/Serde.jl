@@ -1,9 +1,9 @@
 module Strategy
 
+using ..Serde
+
 export AbstractParserStrategy,
        AbstractSerializerStrategy,
-       append_stage!,
-       replace_stage!,
        parse,
        serialize
 export Custom
@@ -19,6 +19,14 @@ abstract type AbstractSerializerStrategy end
 function serialize(::AbstractSerializerStrategy, data; kw...)
     throw(MethodError(serialize, (:AbstractSerializerStrategy, typeof(data))))
 end
+
+struct JsonParser <: AbstractParserStrategy end
+struct MessagePackParser <: AbstractParserStrategy end
+
+parse(::JsonParser, x::AbstractString; kw...) = Serde.parse_json(x; kw...)
+parse(::MessagePackParser, x::AbstractVector{<:Integer}; kw...) = Serde.parse_messagepack(x; kw...)
+parse(::MessagePackParser, x::IO; kw...) = Serde.parse_messagepack(x; kw...)
+parse(::MessagePackParser, x::Serde.MessagePack.MsgPackSerializer; kw...) = Serde.parse_messagepack(x; kw...)
 
 _as_stage_vector(fs) = fs === nothing ? Function[] : fs isa Function ? Function[fs] : Function[f for f in fs]
 

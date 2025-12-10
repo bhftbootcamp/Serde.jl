@@ -91,4 +91,7 @@ end
 Strategy.serialize(::MessagePackSerializer, data; kw...) = to_messagepack(data; kw...)
 Strategy.serialize(::MessagePackSerializer, f::Function, data; kw...) = to_messagepack(f, data; kw...)
 
+to_messagepack(s::MessagePackSerializer, data; kw...) = Strategy.serialize(s, data; kw...)
+to_messagepack(s::MessagePackSerializer, f::Function, data; kw...) = Strategy.serialize(s, f, data; kw...)
+
 end
