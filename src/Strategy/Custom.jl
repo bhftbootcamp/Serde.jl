@@ -1,14 +1,10 @@
 module Custom
 
 export NumericStringToNumberJsonParser,
-       CamelToSnakeJsonParser,
-       SortedQuerySerializer,
-       CsvNoHeaderSerializer
+       CamelToSnakeJsonParser
 
 using ..Strategy
-using ..ParJson
-using ..SerQuery
-using ..SerCsv
+using ..Serde
 
 const INT_RE = r"^\s*[+-]?\d+\s*$"
 
@@ -88,7 +84,7 @@ after parsing with the default JSON parser.
 struct NumericStringToNumberJsonParser <: AbstractParserStrategy end
 
 function Strategy.parse(::NumericStringToNumberJsonParser, x::AbstractString; kw...)
-    obj = ParJson.parse_json(x; kw...)
+    obj = Serde.parse_json(x; kw...)
     return _normalize_numbers_inplace!(obj)
 end
 
@@ -100,26 +96,8 @@ JSON parser strategy that converts all object keys from camelCase to snake_case.
 struct CamelToSnakeJsonParser <: AbstractParserStrategy end
 
 function Strategy.parse(::CamelToSnakeJsonParser, x::AbstractString; kw...)
-    obj = ParJson.parse_json(x; kw...)
+    obj = Serde.parse_json(x; kw...)
     return _camel_to_snake_keys!(obj)
 end
-
-"""
-    SortedQuerySerializer <: AbstractSerializerStrategy
-
-Query serializer strategy that always sorts keys.
-"""
-struct SortedQuerySerializer <: AbstractSerializerStrategy end
-Strategy.serialize(::SortedQuerySerializer, data; delimiter::AbstractString = "&", escape::Bool = true, kw...) =
-    SerQuery.to_query(data; delimiter = delimiter, sort_keys = true, escape = escape)
-
-"""
-    CsvNoHeaderSerializer <: AbstractSerializerStrategy
-
-CSV serializer strategy that omits header row.
-"""
-struct CsvNoHeaderSerializer <: AbstractSerializerStrategy end
-Strategy.serialize(::CsvNoHeaderSerializer, data::Vector; kw...) =
-    SerCsv.to_csv(data; with_names = false, kw...)
 
 end
