@@ -24,3 +24,6 @@ using .SerXml
 
 include("SerYaml.jl")
 using .SerYaml
+
+include("SerParquet.jl")
+using .SerParquet
