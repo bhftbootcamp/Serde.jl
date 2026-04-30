@@ -1,4 +1,4 @@
-# De/Deser
+#__ De/Deser
 
 """
     ClassType
@@ -386,9 +386,11 @@ function deser(::CustomType, ::Type{T}, data::AbstractVector{A})::T where {T<:An
         val_i = get(data, i, nulltype(F_i))
         push!(others, eldeser(T, F_i, i, val_i))
     end
-    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
-                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
-                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
+    return constructor(
+        x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+        x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+        x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...,
+    )
 end
 
 function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:Any,K<:Union{AbstractString,Symbol},D<:Any}
@@ -414,9 +416,11 @@ function deser(::CustomType, ::Type{T}, data::AbstractDict{K,D})::T where {T<:An
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         push!(others, eldeser(T, F_i, key_i, val_i))
     end
-    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
-                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
-                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
+    return constructor(
+        x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+        x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+        x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...,
+    )
 end
 
 function deser(::CustomType, ::Type{T}, data::NamedTuple)::T where {T}
@@ -440,7 +444,9 @@ function deser(::CustomType, ::Type{T}, data::NamedTuple)::T where {T}
         val_i = (isnothing(val_i) || ismissing(val_i) || isempty(T, val_i)) ? nulltype(F_i) : val_i
         push!(others, eldeser(T, F_i, key_i, val_i))
     end
-    return constructor(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
-                       x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
-                       x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...)
+    return constructor(
+        x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9, x_10, x_11, x_12, x_13,
+        x_14, x_15, x_16, x_17, x_18, x_19, x_20, x_21, x_22, x_23, x_24, x_25,
+        x_26, x_27, x_28, x_29, x_30, x_31, x_32, others...,
+    )
 end
