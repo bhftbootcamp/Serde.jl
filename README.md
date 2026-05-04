@@ -11,7 +11,7 @@ Serde is a Julia library for (de)serializing data to/from various formats. The l
 <html>
   <body>
     <table>
-      <tr><th>Format</th><th><div align=center>JSON</div></th><th><div align=center>TOML</div></th><th><div align=center>XML</div></th><th><div align=center>YAML</div></th><th><div align=center>CSV</div><th><div align=center>Query</div></th><th><div align=center>MsgPack</div></th><th><div align=center>BSON</div></th></tr>
+      <tr><th>Format</th><th><div align=center>JSON</div></th><th><div align=center>TOML</div></th><th><div align=center>XML</div></th><th><div align=center>YAML</div></th><th><div align=center>CSV</div></th><th><div align=center>Query</div></th><th><div align=center>MsgPack</div></th><th><div align=center>BSON</div></th></tr>
       <tr>
         <td>Deserialization</td>
         <td><div align=center>✓</div></td>
