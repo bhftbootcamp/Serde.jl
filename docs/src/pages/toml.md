@@ -4,17 +4,17 @@
 
 ```@docs
 Serde.parse_toml
-Serde.TomlSyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_toml
+from_toml
+try_from_toml
 ```
 
 ## Serialization
 
 ```@docs
-Serde.to_toml
+to_toml
 ```

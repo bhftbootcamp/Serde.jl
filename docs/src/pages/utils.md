@@ -1,9 +1,24 @@
-# Utils
+# Utilities
+
+## Flatten
 
 ```@docs
 Serde.to_flatten
-Serde.@serde
-Serde.@serde_pascal_case
-Serde.@serde_camel_case
-Serde.@serde_kebab_case
+```
+
+## Errors
+
+```@docs
+Serde.SerdeError
+Serde.ParseError
+Serde.DeserError
+Serde.MissingFieldError
+Serde.TypeMismatchError
+Serde.ValidationError
+```
+
+## Tagged unions
+
+```@docs
+Serde.register_tagged_subtype
 ```

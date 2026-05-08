@@ -1,20 +1,20 @@
-# CSV
+# MessagePack
 
 ## Parsing
 
 ```@docs
-Serde.parse_csv
+Serde.parse_msgpack
 ```
 
 ## Deserialization
 
 ```@docs
-from_csv
-try_from_csv
+from_msgpack
+try_from_msgpack
 ```
 
 ## Serialization
 
 ```@docs
-to_csv
+to_msgpack
 ```

@@ -4,17 +4,17 @@
 
 ```@docs
 Serde.parse_query
-Serde.QuerySyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_query
+from_query
+try_from_query
 ```
 
-## Serealization
+## Serialization
 
 ```@docs
-Serde.to_query
+to_query
 ```
