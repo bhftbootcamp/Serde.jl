@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · Serde.jl</title><meta name="title" content="Home · Serde.jl"/><meta property="og:title" content="Home · Serde.jl"/><meta property="twitter:title" content="Home · Serde.jl"/><meta name="description" content="Documentation for Serde.jl."/><meta property="og:description" content="Documentation for Serde.jl."/><meta property="twitter:description" content="Documentation for Serde.jl."/><meta property="og:url" content="https://bhftbootcamp.github.io/Serde.jl/"/><meta property="twitter:url" content="https://bhftbootcamp.github.io/Serde.jl/"/><link rel="canonical" href="https://bhftbootcamp.github.io/Serde.jl/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>Serde.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Usage"><span>Usage</span></a></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="pages/json/">JSON</a></li><li><a class="tocitem" href="pages/toml/">TOML</a></li><li><a class="tocitem" href="pages/csv/">CSV</a></li><li><a class="tocitem" href="pages/query/">Query</a></li><li><a class="tocitem" href="pages/xml/">XML</a></li><li><a class="tocitem" href="pages/yaml/">YAML</a></li><li><a class="tocitem" href="pages/msgpack/">MessagePack</a></li><li><a class="tocitem" href="pages/bson/">BSON</a></li><li><a class="tocitem" href="pages/strategies/">Strategies</a></li><li><a class="tocitem" href="pages/utils/">Utilities</a></li></ul></li><li><span class="tocitem">For Developers</span><ul><li><a class="tocitem" href="pages/extended_ser/">Extended serialization</a></li><li><a class="tocitem" href="pages/extended_de/">Extended deserialization</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl/blob/master/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Serde.jl"><a class="docs-heading-anchor" href="#Serde.jl">Serde.jl</a><a id="Serde.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Serde.jl" title="Permalink"></a></h1><p>Serde is a Julia library for (de)serializing data to/from various formats. The library offers a simple and concise API for defining custom (de)serialization behavior for user-defined types. Inspired by the <a href="https://serde.rs/">serde.rs</a> Rust library, it supports the following data formats:</p><html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · Serde.jl</title><meta name="title" content="Home · Serde.jl"/><meta property="og:title" content="Home · Serde.jl"/><meta property="twitter:title" content="Home · Serde.jl"/><meta name="description" content="Documentation for Serde.jl."/><meta property="og:description" content="Documentation for Serde.jl."/><meta property="twitter:description" content="Documentation for Serde.jl."/><meta property="og:url" content="https://bhftbootcamp.github.io/Serde.jl/"/><meta property="twitter:url" content="https://bhftbootcamp.github.io/Serde.jl/"/><link rel="canonical" href="https://bhftbootcamp.github.io/Serde.jl/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>Serde.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Usage"><span>Usage</span></a></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="pages/json/">JSON</a></li><li><a class="tocitem" href="pages/toml/">TOML</a></li><li><a class="tocitem" href="pages/csv/">CSV</a></li><li><a class="tocitem" href="pages/query/">Query</a></li><li><a class="tocitem" href="pages/xml/">XML</a></li><li><a class="tocitem" href="pages/yaml/">YAML</a></li><li><a class="tocitem" href="pages/msgpack/">MessagePack</a></li><li><a class="tocitem" href="pages/bson/">BSON</a></li><li><a class="tocitem" href="pages/strategies/">Strategies</a></li><li><a class="tocitem" href="pages/utils/">Utilities</a></li></ul></li><li><span class="tocitem">For Developers</span><ul><li><a class="tocitem" href="pages/extended_ser/">Extended serialization</a></li><li><a class="tocitem" href="pages/extended_de/">Extended deserialization</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/bhftbootcamp/Serde.jl/blob/master/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Serde.jl"><a class="docs-heading-anchor" href="#Serde.jl">Serde.jl</a><a id="Serde.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Serde.jl" title="Permalink"></a></h1><p>Serde is a Julia library for (de)serializing data to/from various formats. Inspired by <a href="https://serde.rs/">serde.rs</a>, it provides a strategy-based API for customizing serialization behaviour without boilerplate. Supported formats:</p><html>
   <body>
     <table>
       <tr><th>Format</th><th><div align=center>JSON</div></th><th><div align=center>TOML</div></th><th><div align=center>XML</div></th><th><div align=center>YAML</div></th><th><div align=center>CSV</div></th><th><div align=center>Query</div></th><th><div align=center>MsgPack</div></th><th><div align=center>BSON</div></th></tr>
@@ -27,125 +27,73 @@
       </tr>
     </table>
   </body>
-</html><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>To install Serde, simply use the Julia package manager:</p><pre><code class="language-julia hljs">] add Serde</code></pre><h2 id="Usage"><a class="docs-heading-anchor" href="#Usage">Usage</a><a id="Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Usage" title="Permalink"></a></h2><p>Let&#39;s look at some of the most common use cases.</p><h3 id="Deserialization"><a class="docs-heading-anchor" href="#Deserialization">Deserialization</a><a id="Deserialization-1"></a><a class="docs-heading-anchor-permalink" href="#Deserialization" title="Permalink"></a></h3><p>The following example shows how to deserialize market trade data from various formats into a custom structure <code>Trade</code>. The deserialization of the <code>timestamp</code> field is customized by adding a method for <code>Serde.deser</code> that converts Unix milliseconds to a <code>DateTime</code>.</p><pre><code class="language-julia hljs">using Dates, Serde
+</html><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><pre><code class="language-julia hljs">] add Serde</code></pre><h2 id="Usage"><a class="docs-heading-anchor" href="#Usage">Usage</a><a id="Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Usage" title="Permalink"></a></h2><h3 id="Deserialization"><a class="docs-heading-anchor" href="#Deserialization">Deserialization</a><a id="Deserialization-1"></a><a class="docs-heading-anchor-permalink" href="#Deserialization" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Dates, Serde
 
-struct Trade
-    symbol::String
-    price::Float64
-    quantity::Float64
-    side::String
-    timestamp::DateTime
+struct JuliaCon
+    title::String
+    start_date::Date
+    end_date::Date
 end
 
-function Serde.deser(::Type{Trade}, ::Type{DateTime}, v::Integer)
-    return Dates.unix2datetime(v / 1000)
+function Serde.deser(::Type{JuliaCon}, ::Type{Date}, v::String)
+    return Dates.Date(v, &quot;U d, yyyy&quot;)
 end
 
-# JSON deserialization
-json = &quot;&quot;&quot;
-{
-  &quot;symbol&quot;: &quot;BTCUSDT&quot;,
-  &quot;price&quot;: 67420.5,
-  &quot;quantity&quot;: 0.015,
-  &quot;side&quot;: &quot;buy&quot;,
-  &quot;timestamp&quot;: 1720000000000
-}
+json = &quot;&quot;&quot;{&quot;title&quot;:&quot;JuliaCon 2024&quot;,&quot;start_date&quot;:&quot;July 9, 2024&quot;,&quot;end_date&quot;:&quot;July 13, 2024&quot;}&quot;&quot;&quot;
+
+julia&gt; from_json(JuliaCon, json)
+JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))</code></pre><p>The same struct works across all formats:</p><pre><code class="language-julia hljs">toml = &quot;&quot;&quot;
+title = &quot;JuliaCon 2024&quot;
+start_date = &quot;July 9, 2024&quot;
+end_date = &quot;July 13, 2024&quot;
 &quot;&quot;&quot;
 
-julia&gt; trade = from_json(Trade, json)
-Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
+julia&gt; from_toml(JuliaCon, toml)
+JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# TOML deserialization
-toml = &quot;&quot;&quot;
-symbol    = &quot;BTCUSDT&quot;
-price     = 67420.5
-quantity  = 0.015
-side      = &quot;buy&quot;
-timestamp = 1720000000000
-&quot;&quot;&quot;
+query = &quot;title=JuliaCon 2024&amp;start_date=July 9, 2024&amp;end_date=July 13, 2024&quot;
 
-julia&gt; trade = from_toml(Trade, toml)
-Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
+julia&gt; from_query(JuliaCon, query)
+JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))
 
-# URL query string deserialization
-query = &quot;symbol=BTCUSDT&amp;price=67420.5&amp;quantity=0.015&amp;side=buy&amp;timestamp=1720000000000&quot;
-
-julia&gt; trade = from_query(Trade, query)
-Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
-
-# CSV deserialization
 csv = &quot;&quot;&quot;
-symbol,price,quantity,side,timestamp
-BTCUSDT,67420.5,0.015,buy,1720000000000
-ETHUSDT,3512.0,1.2,sell,1720000001000
+title,start_date,end_date
+&quot;JuliaCon 2024&quot;,&quot;July 9, 2024&quot;,&quot;July 13, 2024&quot;
 &quot;&quot;&quot;
 
-julia&gt; trades = from_csv(Trade, csv)
-2-element Vector{Trade}:
- Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
- Trade(&quot;ETHUSDT&quot;, 3512.0, 1.2, &quot;sell&quot;, DateTime(&quot;2024-07-03T06:13:21&quot;))
+julia&gt; from_csv(JuliaCon, csv)
+1-element Vector{JuliaCon}:
+ JuliaCon(&quot;JuliaCon 2024&quot;, Date(&quot;2024-07-09&quot;), Date(&quot;2024-07-13&quot;))</code></pre><p>If you want to see more deserialization options, take a look at the corresponding <a href="pages/extended_de/">section</a> of the documentation.</p><h3 id="Serialization"><a class="docs-heading-anchor" href="#Serialization">Serialization</a><a id="Serialization-1"></a><a class="docs-heading-anchor-permalink" href="#Serialization" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Dates, Serde
 
-# YAML deserialization
-yaml = &quot;&quot;&quot;
-symbol: BTCUSDT
-price: 67420.5
-quantity: 0.015
-side: buy
-timestamp: 1720000000000
-&quot;&quot;&quot;
-
-julia&gt; trade = from_yaml(Trade, yaml)
-Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
-
-# XML deserialization
-xml = &quot;&quot;&quot;
-&lt;trade symbol=&quot;BTCUSDT&quot; price=&quot;67420.5&quot; quantity=&quot;0.015&quot; side=&quot;buy&quot; timestamp=&quot;1720000000000&quot; /&gt;
-&quot;&quot;&quot;
-
-julia&gt; trade = from_xml(Trade, xml)
-Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))</code></pre><p>If you want to see more deserialization options, take a look at the corresponding <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_de/">section</a> of the documentation.</p><h3 id="Serialization"><a class="docs-heading-anchor" href="#Serialization">Serialization</a><a id="Serialization-1"></a><a class="docs-heading-anchor-permalink" href="#Serialization" title="Permalink"></a></h3><p>The following example shows how an object <code>trade</code> of type <code>Trade</code> can be serialized into various formats. The <code>timestamp</code> field is converted back to Unix milliseconds by overloading <code>ser_type</code>.</p><pre><code class="language-julia hljs">using Dates, Serde
-
-struct Trade
-    symbol::String
-    price::Float64
-    quantity::Float64
-    side::String
-    timestamp::DateTime
+struct JuliaCon
+    title::String
+    start_date::Date
+    end_date::Date
 end
 
-trade = Trade(&quot;BTCUSDT&quot;, 67420.5, 0.015, &quot;buy&quot;, DateTime(&quot;2024-07-03T06:13:20&quot;))
+Serde.ser_type(::Type{JuliaCon}, v::Date) = Dates.format(v, &quot;U d, yyyy&quot;)
 
-# JSON serialization
-function Serde.ser_type(::Type{Trade}, v::DateTime)
-    return round(Int, Dates.datetime2unix(v) * 1000)
+juliacon = JuliaCon(&quot;JuliaCon 2024&quot;, Date(2024, 7, 9), Date(2024, 7, 13))
+
+julia&gt; to_json(juliacon) |&gt; print
+{&quot;title&quot;:&quot;JuliaCon 2024&quot;,&quot;start_date&quot;:&quot;July 9, 2024&quot;,&quot;end_date&quot;:&quot;July 13, 2024&quot;}
+
+julia&gt; to_toml(juliacon) |&gt; print
+title = &quot;JuliaCon 2024&quot;
+start_date = &quot;July 9, 2024&quot;
+end_date = &quot;July 13, 2024&quot;</code></pre><p>If you want to see more serialization options, take a look at the corresponding <a href="pages/extended_ser/">section</a> of the documentation.</p><h3 id="Strategies"><a class="docs-heading-anchor" href="#Strategies">Strategies</a><a id="Strategies-1"></a><a class="docs-heading-anchor-permalink" href="#Strategies" title="Permalink"></a></h3><p>Strategies rename fields globally without touching the struct definition:</p><pre><code class="language-julia hljs">struct Order
+    order_id::Int
+    total_amount::Float64
 end
 
-julia&gt; to_json(trade) |&gt; print
-{&quot;symbol&quot;:&quot;BTCUSDT&quot;,&quot;price&quot;:67420.5,&quot;quantity&quot;:0.015,&quot;side&quot;:&quot;buy&quot;,&quot;timestamp&quot;:1720000000000}
+julia&gt; to_json(CamelCase(), Order(1, 99.9))
+&quot;{\&quot;orderId\&quot;:1,\&quot;totalAmount\&quot;:99.9}&quot;
 
-# TOML serialization
-julia&gt; to_toml(trade) |&gt; print
-symbol    = &quot;BTCUSDT&quot;
-price     = 67420.5
-quantity  = 0.015
-side      = &quot;buy&quot;
-timestamp = 1720000000000
+julia&gt; from_json(CamelCase(), Order, &quot;{\&quot;orderId\&quot;:1,\&quot;totalAmount\&quot;:99.9}&quot;)
+Order(1, 99.9)</code></pre><p>Combine multiple strategies with <code>With</code>:</p><pre><code class="language-julia hljs">struct MyCtx end
 
-# CSV serialization
-julia&gt; to_csv([trade]) |&gt; print
-symbol,price,quantity,side,timestamp
-BTCUSDT,67420.5,0.015,buy,1720000000000</code></pre><p>If you want to see more serialization options, take a look at the corresponding <a href="https://bhftbootcamp.github.io/Serde.jl/stable/pages/extended_ser/">section</a> of the documentation.</p><h3 id="Strategies"><a class="docs-heading-anchor" href="#Strategies">Strategies</a><a id="Strategies-1"></a><a class="docs-heading-anchor-permalink" href="#Strategies" title="Permalink"></a></h3><p>Pass a strategy as the first argument to rename fields automatically across all formats. Use <a href="pages/strategies/#Serde.With"><code>With</code></a> to compose multiple strategies into one:</p><pre><code class="language-julia hljs">using Serde
+Serde.has_default(::MyCtx, ::Type{Order}, ::Val{:total_amount}) = true
+Serde.deser_default(::MyCtx, ::Type{Order}, ::Val{:total_amount}) = 0.0
 
-struct Order
-    order_id::String
-    asset_symbol::String
-    notional_usd::Float64
-end
-
-# API sends camelCase — CamelCase() maps camelCase keys to snake_case fields
-julia&gt; from_json(CamelCase(), Order, &quot;&quot;&quot;{&quot;orderId&quot;:&quot;abc&quot;,&quot;assetSymbol&quot;:&quot;BTC&quot;,&quot;notionalUsd&quot;:50000.0}&quot;&quot;&quot;)
-Order(&quot;abc&quot;, &quot;BTC&quot;, 50000.0)
-
-# Serialize back with camelCase keys
-julia&gt; to_json(CamelCase(), Order(&quot;abc&quot;, &quot;BTC&quot;, 50000.0)) |&gt; print
-{&quot;orderId&quot;:&quot;abc&quot;,&quot;assetSymbol&quot;:&quot;BTC&quot;,&quot;notionalUsd&quot;:50000.0}</code></pre><p>See <a href="pages/strategies/">Strategies</a> for the full list of built-in strategies and the <a href="pages/strategies/#Serde.With"><code>With</code></a> composer.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="pages/json/">JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 8 May 2026 16:15">Friday 8 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+julia&gt; from_json(With(CamelCase(), MyCtx()), Order, &quot;{\&quot;orderId\&quot;:5}&quot;)
+Order(5, 0.0)</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="pages/json/">JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 8 May 2026 16:18">Friday 8 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
