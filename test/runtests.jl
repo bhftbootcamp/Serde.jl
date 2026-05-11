@@ -3,6 +3,13 @@
 using Serde
 using Test, Dates, UUIDs
 
+# Activate format extensions so the test suite exercises real implementations
+# (each `using` here matches an extension trigger in Serde's Project.toml).
+using CSV
+using YAML
+using EzXML
+using TOML
+
 @testset "Serde.jl v4" begin
     include("test_types.jl")
     include("test_traits.jl")
