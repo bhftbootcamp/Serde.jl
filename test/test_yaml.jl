@@ -1,3 +1,41 @@
+@testset "YAML — quote/escape conformance" begin
+    # Regression: the escape path used `Base.escape_string`, which does NOT
+    # escape `"`, producing invalid YAML output for strings/keys containing a
+    # literal quote.
+    out = to_yaml(Dict("a\"b" => 1))                # quote in key
+    @test occursin("\"a\\\"b\"", out)
+    parsed = parse_yaml(out)
+    @test parsed["a\"b"] == 1
+
+    out = to_yaml(Dict("k" => "say \"hi\""))         # quote in value
+    @test occursin("\\\"", out)
+    parsed = parse_yaml(out)
+    @test parsed["k"] == "say \"hi\""
+
+    # Control bytes use \xNN (YAML 1.2 §5.7).
+    out = to_yaml(Dict("k" => "a\x01b"))
+    @test occursin("\\x01", out)
+    parsed = parse_yaml(out)
+    @test parsed["k"] == "a\x01b"
+end
+
+@testset "YAML — keys with indicator chars are quoted" begin
+    # H12: keys containing :, #, &, *, etc. must be quoted; otherwise YAML
+    # parses them differently from the intended string.
+    out = to_yaml(Dict("foo:bar" => 1, "@x" => 2))
+    parsed = parse_yaml(out)
+    @test parsed["foo:bar"] == 1
+    @test parsed["@x"] == 2
+end
+
+@testset "YAML — Dict-of-Dict-as-key does not duplicate kwargs" begin
+    # H13: nested propagation of `is_key` previously triggered duplicate-kwarg errors.
+    # Use a NamedTuple-of-Dict as the key (any compound key triggers the path).
+    inner = Dict("a" => "b")
+    out = to_yaml(Dict(inner => "x"))  # should not throw
+    @test out isa String
+end
+
 @testset "YAML — remaining coverage paths" begin
 
     @testset "to_yaml with custom f function (non-fieldnames)" begin

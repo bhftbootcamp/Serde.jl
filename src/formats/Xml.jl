@@ -4,13 +4,68 @@ using Dates
 using UUIDs
 using EzXML
 
-export parse_xml, from_xml, to_xml
+export parse_xml, from_xml, try_from_xml, to_xml
 
 import ..ParseError, ..SerdeError, ..to_deser, ..DefaultStrategy
 import ..ser_name, ..ser_value, ..ser_type, ..ser_skip
 import ..isnull, ..issimple
 
 const XML_CONTENT_KEY = "_"
+
+function _xml_escape_text(s::AbstractString)
+    (occursin('&', s) || occursin('<', s) || occursin('>', s)) || return s
+    io = IOBuffer()
+    for c in s
+        if c == '&'
+            write(io, "&amp;")
+        elseif c == '<'
+            write(io, "&lt;")
+        elseif c == '>'
+            write(io, "&gt;")
+        else
+            write(io, c)
+        end
+    end
+    return String(take!(io))
+end
+
+function _xml_escape_attr(s::AbstractString)
+    (occursin('&', s) || occursin('<', s) || occursin('"', s) ||
+     occursin('\n', s) || occursin('\r', s) || occursin('\t', s)) || return s
+    io = IOBuffer()
+    for c in s
+        if c == '&'
+            write(io, "&amp;")
+        elseif c == '<'
+            write(io, "&lt;")
+        elseif c == '"'
+            write(io, "&quot;")
+        elseif c == '\n'
+            write(io, "&#10;")
+        elseif c == '\r'
+            write(io, "&#13;")
+        elseif c == '\t'
+            write(io, "&#9;")
+        else
+            write(io, c)
+        end
+    end
+    return String(take!(io))
+end
+
+function _xml_valid_name(s::AbstractString)
+    isempty(s) && return false
+    first_ok = false
+    for (i, c) in enumerate(s)
+        if i == 1
+            first_ok = isletter(c) || c == '_' || c == ':'
+            first_ok || return false
+        else
+            (isletter(c) || isdigit(c) || c == '_' || c == ':' || c == '-' || c == '.') || return false
+        end
+    end
+    return first_ok
+end
 
 function _xml_has_text_content(node::EzXML.Node)
     is_content = istext(node) || iscdata(node) || !haselement(node)
@@ -34,6 +89,9 @@ function _xml_parse_node(node::EzXML.Node; dict_type::Type{D}, force_array::Bool
     for child in elements(node)
         child_name = nodename(child)
         child_dict = _xml_parse_node(child; dict_type, force_array)
+        if !force_array && length(child_dict) == 1 && haskey(child_dict, XML_CONTENT_KEY)
+            child_dict = child_dict[XML_CONTENT_KEY]
+        end
         if haskey(xml_dict, child_name)
             if force_array || isa(xml_dict[child_name], AbstractVector)
                 push!(xml_dict[child_name], child_dict)
@@ -146,6 +204,29 @@ function from_xml(f::Function, x; kw...)
     return to_deser(f(object), object)
 end
 
+function _try_wrap(f, args...; kw...)
+    try
+        return f(args...; kw...)
+    catch e
+        return e isa SerdeError ? e : ParseError("XML", string(e), e)
+    end
+end
+
+"""
+    try_from_xml(::Type{T}, x; kw...) -> Union{T, SerdeError}
+    try_from_xml(strategy, ::Type{T}, x; kw...) -> Union{T, SerdeError}
+
+Like [`from_xml`](@ref) but returns a [`SerdeError`](@ref) instead of throwing on failure.
+
+# Returns
+- `T` on success.
+- A [`ParseError`](@ref) or [`DeserError`](@ref) subtype on failure.
+
+See also: [`from_xml`](@ref), [`SerdeError`](@ref).
+"""
+try_from_xml(::Type{T}, x; kw...)           where {T} = _try_wrap(from_xml, T, x; kw...)
+try_from_xml(strategy, ::Type{T}, x; kw...) where {T} = _try_wrap(from_xml, strategy, T, x; kw...)
+
 _xml_value(val::AbstractString; _...) = string(val)
 _xml_value(val::Number; _...) = string(isnan(val) ? "nan" : val)
 _xml_value(val::Symbol; kw...) = _xml_value(string(val); kw...)
@@ -154,7 +235,7 @@ _xml_value(val::Bool; _...) = val ? "true" : "false"
 _xml_value(val::Enum; kw...) = _xml_value(string(val); kw...)
 _xml_value(val::Type; kw...) = _xml_value(string(val); kw...)
 _xml_value(val::Dates.TimeType; kw...) = _xml_value(string(val); kw...)
-_xml_value(val::Dates.DateTime; _...) = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss\Z")
+_xml_value(val::Dates.DateTime; _...) = Dates.format(val, Dates.dateformat"YYYY-mm-dd\THH:MM:SS.sss")
 _xml_value(val::Dates.Time; _...) = Dates.format(val, Dates.dateformat"HH:MM:SS.sss")
 _xml_value(val::Dates.Date; _...) = Dates.format(val, Dates.dateformat"YYYY-mm-dd")
 _xml_value(val::UUID; kw...) = _xml_value(string(val); kw...)
@@ -210,8 +291,10 @@ end
 end
 
 function _xml_write_simple!(io::IO, key, val; level::Int)
+    k = _xml_key(key)
+    _xml_valid_name(k) || throw(ArgumentError("invalid XML element name: $(repr(k))"))
     _xml_shift!(io, level)
-    print(io, '<', _xml_key(key), '>', _xml_value(val), "</", _xml_key(key), ">\n")
+    print(io, '<', k, '>', _xml_escape_text(_xml_value(val)), "</", k, ">\n")
 end
 
 """
@@ -265,6 +348,16 @@ end
 
 to_xml(val; kw...) = to_xml(DefaultStrategy(), val; kw...)
 
+function to_xml(io::IO, val; key::String = "xml", kw...)
+    _to_xml_inner!(io, DefaultStrategy(), Dict{String,Any}(key => val))
+    return nothing
+end
+
+function to_xml(strategy, io::IO, val; key::String = "xml", kw...)
+    _to_xml_inner!(io, strategy, Dict{String,Any}(key => val))
+    return nothing
+end
+
 # ── Context-aware serialization ──
 
 function _xml_pairs(strategy, val::T; kw...) where {T}
@@ -307,7 +400,17 @@ end
 _xml_attributes(strategy, node::AbstractDict) = _xml_attributes(node)
 
 function _xml_attributes_string(strategy, node)
-    return join([" $n=\"$v\"" for (n, v) in _xml_attributes(strategy, node)])
+    io = IOBuffer()
+    for (n, v) in _xml_attributes(strategy, node)
+        nstr = _xml_key(n)
+        _xml_valid_name(nstr) || throw(ArgumentError("invalid XML attribute name: $(repr(nstr))"))
+        write(io, ' ')
+        write(io, nstr)
+        write(io, "=\"")
+        write(io, _xml_escape_attr(_xml_value(v)))
+        write(io, '"')
+    end
+    return String(take!(io))
 end
 
 _xml_pair!(io::IO, strategy, key, val::AbstractString; level::Int, kw...) = _xml_write_simple!(io, key, val; level)
@@ -329,6 +432,7 @@ function _xml_write_node!(io::IO, strategy, key, node; level::Int, kw...)
     text = _xml_node_content(node)
     attrs = _xml_attributes_string(strategy, node)
     k = _xml_key(key)
+    _xml_valid_name(k) || throw(ArgumentError("invalid XML element name: $(repr(k))"))
     if isempty(child) && isempty(text)
         _xml_shift!(io, level)
         print(io, '<', k, attrs, "/>\n")
@@ -340,7 +444,7 @@ function _xml_write_node!(io::IO, strategy, key, node; level::Int, kw...)
         print(io, "</", k, ">\n")
     else
         _xml_shift!(io, level)
-        print(io, '<', k, attrs, '>', text)
+        print(io, '<', k, attrs, '>', _xml_escape_text(text))
         _to_xml_inner!(io, strategy, child; level = level + 1)
         print(io, "</", k, ">\n")
     end

@@ -18,6 +18,7 @@ using Test, Dates, UUIDs
     include("test_bson.jl")
     include("test_xml.jl")
     include("test_yaml.jl")
+    include("test_parquet.jl")
     include("test_context.jl")
     include("test_with.jl")
     include("test_edge_cases.jl")

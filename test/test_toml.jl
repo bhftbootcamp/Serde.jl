@@ -1,3 +1,51 @@
+@testset "TOML — quoted-key escape is TOML-conformant" begin
+    # Regression: `_toml_key` used `Base.escape_string`, which (a) does not
+    # escape `"` and (b) emits non-conformant `\xNN` for control bytes.
+    out = to_toml(Dict("a\"b" => 1, "\x01foo" => 2))
+    @test occursin("\"a\\\"b\"", out)        # quote is escaped
+    @test occursin("\"\\u0001foo\"", out)    # control byte uses \uXXXX
+    @test !occursin("\\x", out)               # never emits \xNN
+    # And the output must round-trip through the TOML parser.
+    parsed = parse_toml(out)
+    @test parsed["a\"b"] == 1
+    @test parsed["\x01foo"] == 2
+end
+
+@testset "TOML — Inf encoding" begin
+    # H9
+    struct _TomlInf; x::Float64; y::Float64; z::Float64; end
+    out = to_toml(_TomlInf(Inf, -Inf, NaN))
+    @test occursin("inf", out)
+    @test occursin("-inf", out)
+    @test occursin("nan", out)
+    # And the result must parse back
+    parse_toml(out)
+end
+
+@testset "TOML — local datetime (no Z suffix)" begin
+    # H11: Julia's DateTime is naive, must emit as TOML local-datetime.
+    using Dates
+    struct _TomlDT; t::DateTime; end
+    out = to_toml(_TomlDT(DateTime(2024, 1, 2, 3, 4, 5, 6)))
+    @test !occursin("Z", out)
+    parsed = parse_toml(out)
+    @test parsed["t"] == DateTime(2024, 1, 2, 3, 4, 5, 6)
+end
+
+@testset "TOML — Char field is emitted as inline string" begin
+    # MEDIUM
+    struct _TomlChar; c::Char; end
+    out = to_toml(_TomlChar('x'))
+    @test occursin("c = \"x\"", out)
+end
+
+@testset "TOML — heterogeneous array dispatch via all-simple check" begin
+    # MEDIUM: previously dispatched on val[1] only.
+    out = to_toml(Dict("xs" => [1, "two", 3.0]))
+    parsed = parse_toml(out)
+    @test parsed["xs"] == [1, "two", 3.0]
+end
+
 @testset "TOML format" begin
     @testset "parse_toml" begin
         d = parse_toml("key = \"value\"\nnum = 42")

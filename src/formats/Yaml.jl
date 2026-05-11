@@ -138,10 +138,52 @@ try_from_yaml(strategy, ::Type{T}, x; kw...) where {T} = _try_wrap(from_yaml, st
 const YAML_NULL = "null"
 const YAML_ESCAPE_CHARS = Set(['"', '\\', '\b', '\f', '\n', '\r', '\t'])
 
+const YAML_INDICATOR_CHARS = Set([':', '#', '?', '-', '[', ']', '{', '}', ',',
+                                  '&', '*', '!', '|', '>', '\'', '%', '@', '`'])
+
 @inline function _yaml_indent!(io::IO, l::Int)
     print(io, '\n')
     for _ in 1:l
         print(io, "  ")
+    end
+end
+
+function _yaml_escape_str!(io::IO, s::AbstractString)
+    @inbounds for c in s
+        if c == '"'
+            write(io, "\\\"")
+        elseif c == '\\'
+            write(io, "\\\\")
+        elseif c == '\0'
+            write(io, "\\0")
+        elseif c == '\b'
+            write(io, "\\b")
+        elseif c == '\t'
+            write(io, "\\t")
+        elseif c == '\n'
+            write(io, "\\n")
+        elseif c == '\f'
+            write(io, "\\f")
+        elseif c == '\r'
+            write(io, "\\r")
+        elseif iscntrl(c)
+            cp = Int(c)
+            if cp <= 0xff
+                write(io, "\\x")
+                for shift in (4, 0)
+                    d = (cp >> shift) & 0xf
+                    write(io, UInt8(d < 10 ? UInt8('0') + d : UInt8('a') + d - 10))
+                end
+            else
+                write(io, "\\u")
+                for shift in (12, 8, 4, 0)
+                    d = (cp >> shift) & 0xf
+                    write(io, UInt8(d < 10 ? UInt8('0') + d : UInt8('a') + d - 10))
+                end
+            end
+        else
+            print(io, c)
+        end
     end
 end
 
@@ -150,15 +192,41 @@ end
            v isa Tuple || v isa NamedTuple || v isa AbstractSet
 end
 
+function _yaml_needs_quote(s::AbstractString)
+    isempty(s) && return true
+    # Trim-sensitive chars
+    (first(s) in (' ', '\t')) && return true
+    (last(s)  in (' ', '\t')) && return true
+    for c in s
+        if c in YAML_ESCAPE_CHARS || iscntrl(c) || c in YAML_INDICATOR_CHARS
+            return true
+        end
+    end
+    # Reserved literals — quoting prevents the parser from interpreting them.
+    sl = lowercase(s)
+    sl in ("true", "false", "yes", "no", "on", "off", "null", "~") && return true
+    # Looks like a number?
+    tryparse(Int, s) === nothing || return true
+    tryparse(Float64, s) === nothing || return true
+    return false
+end
+
 # ── Context-aware serialization ──
 
 _yaml_value!(io::IO, strategy, f::Function, val::AbstractString; kw...) = begin
+    is_key = get(kw, :is_key, false)
     if any(c -> c in YAML_ESCAPE_CHARS || iscntrl(c), val)
         print(io, '"')
-        escape_string(io, val)
+        _yaml_escape_str!(io, val)
         print(io, '"')
+    elseif is_key
+        if _yaml_needs_quote(val)
+            print(io, '"'); _yaml_escape_str!(io, val); print(io, '"')
+        else
+            print(io, val)
+        end
     else
-        get(kw, :is_key, false) ? print(io, val) : (print(io, '"'); print(io, val); print(io, '"'))
+        print(io, '"'); _yaml_escape_str!(io, val); print(io, '"')
     end
 end
 
@@ -177,33 +245,38 @@ _yaml_value!(io::IO, strategy, f::Function, val::Missing; kw...) = print(io, YAM
 _yaml_value!(io::IO, strategy, f::Function, val::Nothing; kw...) = print(io, YAML_NULL)
 _yaml_value!(io::IO, strategy, f::Function, val::Type; kw...)    = print(io, val)
 
+@inline _yaml_passthrough_kw(kw) = Base.structdiff(values(kw), NamedTuple{(:is_key, :skip_lf)})
+
 function _yaml_value!(io::IO, strategy, f::Function, val::Pair; l::Int, skip_lf::Bool = false, kw...)
     skip_lf || _yaml_indent!(io, l)
-    _yaml_value!(io, strategy, f, first(val); l = l + 1, is_key = true, kw...)
+    pass = _yaml_passthrough_kw(kw)
+    _yaml_value!(io, strategy, f, first(val); l = l + 1, is_key = true, pass...)
     print(io, ": ")
-    _yaml_value!(io, strategy, f, last(val); l = l + 1, kw...)
+    _yaml_value!(io, strategy, f, last(val); l = l + 1, pass...)
 end
 
 function _yaml_value!(io::IO, strategy, f::Function, val::AbstractDict; l::Int, skip_lf::Bool = false, kw...)
     skip_lf || _yaml_indent!(io, l)
+    pass = _yaml_passthrough_kw(kw)
     first_entry = true
     for (k, v) in val
         first_entry || _yaml_indent!(io, l)
         first_entry = false
-        _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, kw...)
+        _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, pass...)
         print(io, _yaml_needs_indent(v) ? ":" : ": ")
-        _yaml_value!(io, strategy, f, v; l = l + 1, kw...)
+        _yaml_value!(io, strategy, f, v; l = l + 1, pass...)
     end
 end
 
 function _yaml_iterable!(io::IO, strategy, f::Function, iter; l::Int, skip_lf::Bool = false, kw...)
     skip_lf || _yaml_indent!(io, l)
+    pass = _yaml_passthrough_kw(kw)
     first_entry = true
     for item in iter
         first_entry || _yaml_indent!(io, l)
         first_entry = false
         print(io, "- ")
-        _yaml_value!(io, strategy, f, item; l = l + 1, skip_lf = true, kw...)
+        _yaml_value!(io, strategy, f, item; l = l + 1, skip_lf = true, pass...)
     end
 end
 
@@ -213,20 +286,26 @@ _yaml_value!(io::IO, strategy, f::Function, val::AbstractSet; l::Int, kw...)    
 
 function _yaml_value!(io::IO, strategy, f::Function, val::NamedTuple; l::Int, skip_lf::Bool = false, kw...)
     skip_lf || _yaml_indent!(io, l)
+    pass = _yaml_passthrough_kw(kw)
     first_entry = true
     for k in keys(val)
         first_entry || _yaml_indent!(io, l)
         first_entry = false
-        _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, kw...)
+        _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, pass...)
         print(io, ": ")
-        _yaml_value!(io, strategy, f, val[k]; l = l + 1, skip_lf = true, kw...)
+        _yaml_value!(io, strategy, f, val[k]; l = l + 1, skip_lf = true, pass...)
     end
 end
 
 function _yaml_value!(io::IO, strategy, f::Function, val::T; l::Int, skip_lf::Bool = false, kw...) where {T}
     skip_lf || _yaml_indent!(io, l)
+    pass = _yaml_passthrough_kw(kw)
     _first = true
     N = fieldcount(T)
+    if N == 0
+        print(io, "{}")
+        return
+    end
     if f === fieldnames
         Base.@nexprs 32 i -> begin
             if i <= N
@@ -236,9 +315,9 @@ function _yaml_value!(io::IO, strategy, f::Function, val::T; l::Int, skip_lf::Bo
                 if !ser_skip(strategy, T, Val(fn_i), v_i)
                     _first || _yaml_indent!(io, l)
                     _first = false
-                    _yaml_value!(io, strategy, f, k_i; l = l + 1, is_key = true, kw...)
+                    _yaml_value!(io, strategy, f, k_i; l = l + 1, is_key = true, pass...)
                     print(io, _yaml_needs_indent(v_i) ? ":" : ": ")
-                    _yaml_value!(io, strategy, f, v_i; l = l + 1, kw...)
+                    _yaml_value!(io, strategy, f, v_i; l = l + 1, pass...)
                 end
             end
         end
@@ -249,9 +328,9 @@ function _yaml_value!(io::IO, strategy, f::Function, val::T; l::Int, skip_lf::Bo
                 ser_skip(strategy, T, Val(field), v) && continue
                 _first || _yaml_indent!(io, l)
                 _first = false
-                _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, kw...)
+                _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, pass...)
                 print(io, _yaml_needs_indent(v) ? ":" : ": ")
-                _yaml_value!(io, strategy, f, v; l = l + 1, kw...)
+                _yaml_value!(io, strategy, f, v; l = l + 1, pass...)
             end
         end
     else
@@ -261,9 +340,9 @@ function _yaml_value!(io::IO, strategy, f::Function, val::T; l::Int, skip_lf::Bo
             ser_skip(strategy, T, Val(field), v) && continue
             _first || _yaml_indent!(io, l)
             _first = false
-            _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, kw...)
+            _yaml_value!(io, strategy, f, k; l = l + 1, is_key = true, pass...)
             print(io, _yaml_needs_indent(v) ? ":" : ": ")
-            _yaml_value!(io, strategy, f, v; l = l + 1, kw...)
+            _yaml_value!(io, strategy, f, v; l = l + 1, pass...)
         end
     end
 end
@@ -310,5 +389,16 @@ function to_yaml(strategy, data; kw...)::String
 end
 
 to_yaml(data; kw...) = to_yaml(DefaultStrategy(), data; kw...)
+
+function to_yaml(io::IO, data; kw...)
+    _yaml_value!(io, DefaultStrategy(), fieldnames, data; l = 0, skip_lf = true, kw...)
+    print(io, "\n")
+    return nothing
+end
+function to_yaml(strategy, io::IO, data; kw...)
+    _yaml_value!(io, strategy, fieldnames, data; l = 0, skip_lf = true, kw...)
+    print(io, "\n")
+    return nothing
+end
 
 end

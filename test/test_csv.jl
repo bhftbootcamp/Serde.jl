@@ -1,3 +1,32 @@
+@testset "CSV — nullable nested struct flattens consistently" begin
+    # H7
+    struct _CsvInner; a::Int; b::Int; end
+    struct _CsvNullableNested
+        id::Int
+        inner::Union{Nothing, _CsvInner}
+    end
+    rows = [_CsvNullableNested(1, _CsvInner(10, 20)),
+            _CsvNullableNested(2, nothing),
+            _CsvNullableNested(3, _CsvInner(30, 40))]
+    out = to_csv(rows)
+    lines = split(out, '\n'; keepempty = false)
+    n_cols = length(split(lines[1], ','))
+    @test n_cols == 3
+    for line in lines
+        @test length(split(line, ',')) == n_cols
+    end
+end
+
+@testset "CSV — top-level scalar input rejected" begin
+    @test_throws ArgumentError to_csv([1, 2, 3])
+end
+
+@testset "CSV — RFC 4180 CRLF line endings (opt-in)" begin
+    struct _CsvCrlf; a::Int; end
+    out = to_csv([_CsvCrlf(1), _CsvCrlf(2)]; crlf = true)
+    @test occursin("\r\n", out)
+end
+
 @testset "CSV format" begin
     @testset "parse_csv basic" begin
         csv = "name,age\nAlice,30\nBob,25"

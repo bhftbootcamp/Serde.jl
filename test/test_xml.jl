@@ -1,3 +1,49 @@
+@testset "XML — naive DateTime is emitted without a Z suffix" begin
+    # Regression: emitting `Z` for a Julia DateTime is a lie about timezone.
+    # See the matching TOML fix.
+    using Dates
+    struct _XmlDT; t::DateTime; end
+    out = to_xml(_XmlDT(DateTime(2024, 1, 2, 3, 4, 5)))
+    @test !occursin("Z\"", out)
+    @test occursin("2024-01-02T03:04:05", out)
+end
+
+@testset "XML — entity escaping (CRITICAL)" begin
+    # C6: text content and attribute values must be entity-escaped.
+    struct _XmlEsc; v::String; end
+    xml = to_xml(_XmlEsc("<foo>&\"a"))
+    # No raw <, &, or " inside an attribute value
+    @test !occursin("v=\"<foo>", xml)
+    # Round-trip through EzXML must succeed
+    back = from_xml(_XmlEsc, xml)
+    @test back.v == "<foo>&\"a"
+
+    # Same for text-content paths
+    xml2 = to_xml(Dict("t" => "a < b & c > d"); key = "root")
+    @test !occursin("a < b", xml2) || occursin("&lt;", xml2)
+    @test occursin("&amp;", xml2)
+    parse_xml(xml2)  # must not throw
+end
+
+@testset "XML — child-element-as-value deserialization (CRITICAL)" begin
+    # C7: <root><x>1</x><y>2</y></root> must deserialize into struct{x::Int, y::Int}.
+    struct _XmlChildVal; x::Int; y::Int; end
+    res = from_xml(_XmlChildVal, "<root><x>1</x><y>2</y></root>")
+    @test res === _XmlChildVal(1, 2)
+end
+
+@testset "XML — try_from_xml" begin
+    # H14
+    struct _XmlTry; n::Int; end
+    @test try_from_xml(_XmlTry, "<r n=\"7\"/>").n == 7
+    @test try_from_xml(_XmlTry, "<broken") isa SerdeError
+    @test try_from_xml(CamelCase(), _XmlTry, "<r n=\"3\"/>").n == 3
+end
+
+@testset "XML — invalid element name rejected on serialize" begin
+    @test_throws ArgumentError to_xml(Dict("hello world" => 1); key = "r")
+end
+
 @testset "XML — _xml_node_content and text content" begin
 
     @testset "to_xml struct with _ field (text content)" begin

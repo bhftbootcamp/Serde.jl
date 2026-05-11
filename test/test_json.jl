@@ -1,3 +1,273 @@
+@testset "JSON — scalar JSON value routed through user `deser` for struct-classed types" begin
+    # Regression: the generic `_yy_extract` fallback used to dive into
+    # `_yy_deser_struct` whenever `ClassType(F) isa StructClass`, even when
+    # the actual JSON value was a scalar (e.g. a string encoding for an
+    # ObjectId). User overrides like
+    #     Serde.deser(::Type{T}, ::Type{MyId}, s::AbstractString) = MyId(s)
+    # never got a chance to fire. The fast path now only takes the struct
+    # branch when the JSON value is actually an object.
+    struct _ScalarOid; v::BSONObjectId; end
+    function Serde.deser(::Type{_ScalarOid}, ::Type{BSONObjectId}, s::AbstractString)
+        return BSONObjectId(s)
+    end
+    out = """{"v":"507f1f77bcf86cd799439011"}"""
+    back = from_json(_ScalarOid, out)
+    @test back.v == BSONObjectId("507f1f77bcf86cd799439011")
+end
+
+@testset "JSON — iterator GC-rooted across element-extract loop (regression)" begin
+    # Regression: `iter = YYJSONArrIter()` was being reclaimed mid-loop when
+    # the element-extract path allocated, leaving `iter_ptr` dangling. The
+    # second `yyjson_arr_iter_next` then returned NULL and deserialization
+    # silently dropped every element after the first. Reproduces with a
+    # non-primitive element type whose deser triggers allocation.
+    struct _LoopOid; ids::Vector{BSONObjectId}; end
+    function Serde.deser(::Type{_LoopOid}, ::Type{BSONObjectId}, s::AbstractString)
+        return BSONObjectId(s)
+    end
+    payload = """{"ids":["507f1f77bcf86cd799439011","507f191e810c19729de860ea","507f191e810c19729de860eb"]}"""
+    back = from_json(_LoopOid, payload)
+    @test length(back.ids) == 3
+    @test back.ids[1] == BSONObjectId("507f1f77bcf86cd799439011")
+    @test back.ids[3] == BSONObjectId("507f191e810c19729de860eb")
+
+    # Top-level Vector{T} target — different code path (no enclosing struct).
+    function Serde.deser(::Type{T}, ::Type{BSONObjectId}, s::AbstractString) where {T}
+        return BSONObjectId(s)
+    end
+    ids = from_json(Vector{BSONObjectId},
+        """["507f1f77bcf86cd799439011","507f191e810c19729de860ea","507f191e810c19729de860eb"]""")
+    @test length(ids) == 3
+    @test ids[end] == BSONObjectId("507f191e810c19729de860eb")
+end
+
+@testset "JSON — bare-type collection targets work" begin
+    # Regression: `from_json(Dict, ...)` / `from_json(Tuple, ...)` /
+    # `from_json(Pair, ...)` failed because `keytype(Dict)` / `fieldtypes(Tuple)`
+    # / `Pair.parameters[1]` raise on UnionAll types. Now bare types fall back
+    # to (String, Any) parameters and arbitrary tuple arity.
+    @test from_json(Dict, "{\"x\":1}") == Dict{Any,Any}("x" => 1)
+    @test from_json(Tuple, "[1,\"two\",true]") === (1, "two", true)
+    @test from_json(Pair, "{\"a\":1}") == Pair{String,Any}("a", 1)
+
+    # Same defaults apply under a strategy.
+    @test from_json(CamelCase(), Dict, "{\"fooBar\":1}") == Dict{Any,Any}("fooBar" => 1)
+    @test from_json(CamelCase(), Pair, "{\"x\":1}") == Pair{String,Any}("x", 1)
+
+    # The binary formats route bare/typed Pair through the deser engine; both work.
+    @test from_msgpack(Pair{String,Int}, to_msgpack("a" => 1)) === ("a" => 1)
+    @test from_msgpack(Pair, to_msgpack("a" => 1)) == Pair{String,Any}("a", 1)
+    @test from_bson(Pair{String,Int}, to_bson(Dict("a" => 1))) === ("a" => 1)
+end
+
+@testset "JSON — parse_json applies dict_type to nested objects" begin
+    # Regression: `_yy_to_julia` always built inner dicts as `Dict{String,Any}`,
+    # so `dict_type=OrderedDict` only affected the top level.
+    using OrderedCollections
+    d = parse_json("{\"a\":{\"b\":1}}"; dict_type = OrderedDict{String,Any})
+    @test d isa OrderedDict{String,Any}
+    @test d["a"] isa OrderedDict{String,Any}
+    @test d["a"]["b"] == 1
+
+    # And inside arrays of objects.
+    d2 = parse_json("{\"xs\":[{\"k\":1},{\"k\":2}]}"; dict_type = OrderedDict{String,Any})
+    @test d2 isa OrderedDict{String,Any}
+    @test all(x -> x isa OrderedDict{String,Any}, d2["xs"])
+end
+
+@testset "JSON — Any-typed fields and elements materialize via _yy_to_julia" begin
+    # Regression: `_yy_extract(strategy, T, Any, v)` fell through to the generic
+    # fallback which calls `fieldcount(Any)` and throws.
+    struct _AnyField; v::Any; end
+    @test from_json(_AnyField, "{\"v\":42}").v === Int64(42)
+    @test from_json(_AnyField, "{\"v\":\"hi\"}").v == "hi"
+    @test from_json(_AnyField, "{\"v\":{\"n\":1}}").v == Dict{String,Any}("n" => 1)
+    @test from_json(_AnyField, "{\"v\":null}").v === nothing
+
+    struct _AnyVec; xs::Vector{Any}; end
+    res = from_json(_AnyVec, "{\"xs\":[1,\"x\",true,null,[1,2],{\"a\":1}]}")
+    @test res.xs == Any[1, "x", true, nothing, Any[1, 2], Dict{String,Any}("a" => 1)]
+
+    # Free-standing Vector{Any} target.
+    @test from_json(Vector{Any}, "[1,\"x\"]") == Any[1, "x"]
+end
+
+@testset "JSON — TypeMismatchError carries the actual offending value" begin
+    # Regression: error previously contained `typeof(ArgumentError)` and the
+    # exception itself in the value/got slots, hiding the real input.
+    struct _JsonErrCtx; n::Int; end
+    err = try
+        from_json(_JsonErrCtx, "{\"n\":[1,2]}")
+        nothing
+    catch e
+        e
+    end
+    @test err isa TypeMismatchError
+    @test err.field === :n
+    @test err.expected === Int
+    @test err.value == Any[1, 2]
+end
+
+@testset "JSON — RFC 8259 escape conformance" begin
+    # C1: control bytes must use \u00XX (not \xNN), and round-trip
+    struct _JsonEscape; v::String; end
+    s = "\x01\x02ab\"\\c\x7f"
+    out = to_json(_JsonEscape(s))
+    @test !occursin("\\x", out)
+    @test occursin("\\u0001", out)
+    @test occursin("\\u0002", out)
+    @test from_json(_JsonEscape, out).v == s
+
+    out_p = to_pretty_json(_JsonEscape(s))
+    @test !occursin("\\x", out_p)
+    @test occursin("\\u0001", out_p)
+end
+
+@testset "JSON — Symbol keys are escaped" begin
+    # C2: Symbols can contain ", \, control bytes, NULs; serialization must escape.
+    d = Dict{Symbol,Int}(Symbol("x\"y") => 1, Symbol("a\nb") => 2, Symbol("c\x01d") => 3)
+    out = to_json(d)
+    @test parse_json(out) == Dict{String,Any}("x\"y" => 1, "a\nb" => 2, "c\x01d" => 3)
+end
+
+@testset "JSON — embedded NUL preserved on read" begin
+    # C3
+    struct _JsonNul; v::String; end
+    res = from_json(_JsonNul, "{\"v\":\"a\\u0000b\"}")
+    @test ncodeunits(res.v) == 3
+    @test res.v == "a\0b"
+
+    d = parse_json("{\"a\\u0000b\":1}")
+    @test haskey(d, "a\0b")
+end
+
+@testset "JSON — BigFloat does not crash on overflow to Inf" begin
+    # C4
+    struct _JsonBigF; x::BigFloat; end
+    @test occursin("null", to_json(_JsonBigF(BigFloat("1e1000"))))
+    @test occursin("3.14", to_json(_JsonBigF(BigFloat("3.14"))))
+end
+
+@testset "JSON — collection-element user deser overrides fire" begin
+    # C5
+    struct _CElemFoo; n::Int; end
+    struct _CElemOuter; xs::Vector{_CElemFoo}; end
+    Serde.deser(::Type{_CElemOuter}, ::Type{_CElemFoo}, d::AbstractDict) = _CElemFoo(d["n"] * 100)
+    res = from_json(_CElemOuter, "{\"xs\":[{\"n\":1},{\"n\":2}]}")
+    @test res.xs == [_CElemFoo(100), _CElemFoo(200)]
+end
+
+@testset "JSON — tagged union dispatches on non-string tags" begin
+    # C6
+    abstract type _CTag end
+    Serde.ClassType(::Type{<:_CTag}) = Serde.TaggedClass()
+    Serde.tag_key(::Type{<:_CTag}) = "k"
+    struct _CTagA <: _CTag; v::Int; end
+    struct _CTagB <: _CTag; v::Int; end
+    register_tagged_subtype(_CTag, "1", _CTagA)
+    register_tagged_subtype(_CTag, "true", _CTagB)
+    @test from_json(_CTag, "{\"k\":1,\"v\":42}") isa _CTagA
+    @test from_json(_CTag, "{\"k\":true,\"v\":7}") isa _CTagB
+end
+
+@testset "JSON — pretty top-level closing brace on its own line" begin
+    # H4
+    struct _PrettyTL; x::Int; y::Int; end
+    out = to_pretty_json(_PrettyTL(1, 2))
+    @test endswith(out, "\n}")
+
+    # Top-level array
+    out_arr = to_pretty_json([1, 2, 3])
+    @test endswith(out_arr, "\n]")
+end
+
+@testset "JSON — null root errors for non-nullable target type" begin
+    # H5
+    struct _NullStruct; n::Int; end
+    @test_throws TypeMismatchError from_json(_NullStruct, "null")
+end
+
+@testset "JSON — fresh-string ser_value override does not GC-trash the writer" begin
+    # H1: Ensure that user `ser_value` overrides returning freshly constructed
+    # Strings don't need a GC root from the caller (yyjson now always copies
+    # into its arena via strncpy).
+    struct _GCSer; v::String; end
+    Serde.ser_value(::Type{_GCSer}, ::Val{:v}, x::String) = "fresh_$(rand(UInt32))"
+    GC.gc(true)
+    for _ in 1:100
+        out = to_json(_GCSer("input"))
+        @test occursin("fresh_", out)
+    end
+end
+
+@testset "JSON — Pair as target type" begin
+    # MEDIUM: parse single-entry JSON object directly into a Pair.
+    p = from_json(Pair{String,Int}, "{\"answer\":42}")
+    @test p === ("answer" => 42)
+
+    # Round-trip
+    @test from_json(Pair{String,Int}, to_json("a" => 1)) === ("a" => 1)
+
+    # Multi-entry object should error
+    @test_throws Exception from_json(Pair{String,Int}, "{\"a\":1,\"b\":2}")
+end
+
+@testset "JSON — Int128 / UInt128 / BigInt round-trip as real JSON numbers" begin
+    # Out-of-range integers are emitted as RAW JSON number literals (no quotes)
+    # and round-trip losslessly through `from_json` thanks to the reader's
+    # YYJSON_READ_BIGNUM_AS_RAW flag.
+    struct _BigInts; a::Int128; b::UInt128; c::BigInt; end
+    v = _BigInts(Int128(2)^100, UInt128(2)^120, BigInt(2)^200)
+    out = to_json(v)
+    @test !occursin("\"$(Int128(2)^100)\"", out)
+    @test occursin(string(Int128(2)^100), out)
+    @test !occursin("\"$(UInt128(2)^120)\"", out)
+    @test occursin(string(UInt128(2)^120), out)
+    @test !occursin("\"$(BigInt(2)^200)\"", out)
+    @test occursin(string(BigInt(2)^200), out)
+
+    # Pretty path also emits unquoted big numbers.
+    out_p = to_pretty_json(_BigInts(Int128(0), UInt128(1), BigInt(2)^200))
+    @test occursin(string(BigInt(2)^200), out_p)
+    @test !occursin("\"$(BigInt(2)^200)\"", out_p)
+
+    # Lossless round-trip — including a value that is NOT a power of two
+    # (powers of two are exactly representable in Float64, so they round-trip
+    # even without bignum-as-raw support).
+    struct _Big1; n::BigInt; end
+    rt = from_json(_Big1, to_json(_Big1(BigInt(2)^200 + 1)))
+    @test rt.n == BigInt(2)^200 + 1
+
+    rt2 = from_json(_Big1, to_pretty_json(_Big1(BigInt(2)^200 + 1)))
+    @test rt2.n == BigInt(2)^200 + 1
+
+    rt3 = from_json(_BigInts, to_json(v))
+    @test rt3.a == v.a
+    @test rt3.b == v.b
+    @test rt3.c == v.c
+
+    # Untyped parse: bignums materialize as BigInt; bigfloats as BigFloat.
+    @test parse_json("{\"x\":12345678901234567890123}")["x"] == big"12345678901234567890123"
+    @test parse_json("{\"x\":1e1000}")["x"] isa BigFloat
+end
+
+@testset "JSON — from_json(strategy, f, x) overload" begin
+    # MEDIUM: dynamic-type dispatch with strategy.
+    struct _DynS; my_field::Int; end
+    res = from_json(CamelCase(), x -> _DynS, "{\"myField\":7}")
+    @test res === _DynS(7)
+end
+
+@testset "JSON — type-mismatch produces TypeMismatchError" begin
+    # H3
+    struct _MM1; n::Int; end
+    @test_throws TypeMismatchError from_json(_MM1, "{\"n\":{\"nested\":1}}")
+    @test_throws TypeMismatchError from_json(_MM1, "{\"n\":[1,2]}")
+
+    struct _MM2; v::Vector{Int}; end
+    @test_throws TypeMismatchError from_json(_MM2, "{\"v\":42}")
+end
+
 @testset "JSON format" begin
     @testset "parse_json" begin
         d = parse_json("{\"a\": 1, \"b\": [2, 3]}")

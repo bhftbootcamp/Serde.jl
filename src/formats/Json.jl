@@ -13,31 +13,47 @@ import ..nulltype, ..isempty_value, ..deser_transform, ..deser_validate
 import ..ClassType, ..StructClass, ..TaggedClass
 import .._field_default, .._field_normalize, .._field_convert, .._field_validate
 import ..deser, ..tag_key, ..tag_subtypes
+import .._resolve_tag_key, .._resolve_tag_subtypes
 import ..DefaultStrategy
+import ..TypeMismatchError, ..MissingFieldError
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Parsing: yyjson C parser → Dict{String,Any}
 # ═══════════════════════════════════════════════════════════════════════════════
 
+const _YY_READ_FLAGS = YYJSON_READ_BIGNUM_AS_RAW
+
 @inline function _yy_read(json::AbstractString)
     err = YYJSONReadErr()
-    doc = yyjson_read_opts(json, ncodeunits(json), YYJSON_READ_NOFLAG, YYJSONAlc_NULL, pointer_from_objref(err))
+    doc = yyjson_read_opts(json, ncodeunits(json), _YY_READ_FLAGS, YYJSONAlc_NULL, pointer_from_objref(err))
     doc === YYJSONDoc_NULL && throw(ParseError("JSON", "invalid JSON syntax", err))
     return doc
 end
 
 @inline function _yy_read(json::Vector{UInt8})
     err = YYJSONReadErr()
-    doc = yyjson_read_opts(json, length(json), YYJSON_READ_NOFLAG, YYJSONAlc_NULL, pointer_from_objref(err))
+    doc = GC.@preserve json yyjson_read_opts(pointer(json), length(json), _YY_READ_FLAGS, YYJSONAlc_NULL, pointer_from_objref(err))
     doc === YYJSONDoc_NULL && throw(ParseError("JSON", "invalid JSON syntax", err))
     return doc
 end
 
-function _yy_to_julia(v::Ptr{YYJSONVal})
-    yyjson_is_str(v)  && return unsafe_string(yyjson_get_str(v))
+@inline _yy_str(v::Ptr{YYJSONVal}) = unsafe_string(yyjson_get_str(v), yyjson_get_len(v))
+@inline _yy_raw(v::Ptr{YYJSONVal}) = unsafe_string(yyjson_get_raw(v), yyjson_get_len(v))
+
+function _yy_raw_to_julia(s::AbstractString)
+    @inbounds for i in 1:ncodeunits(s)
+        c = codeunit(s, i)
+        (c == UInt8('.') || c == UInt8('e') || c == UInt8('E')) && return parse(BigFloat, s)
+    end
+    return parse(BigInt, s)
+end
+
+function _yy_to_julia(v::Ptr{YYJSONVal}, ::Type{D} = Dict{String,Any}) where {D<:AbstractDict}
+    yyjson_is_str(v)  && return _yy_str(v)
     yyjson_is_bool(v) && return yyjson_get_bool(v)
     yyjson_is_real(v) && return yyjson_get_real(v)
     yyjson_is_int(v)  && return Int64(yyjson_get_num(v))
+    yyjson_is_raw(v)  && return _yy_raw_to_julia(_yy_raw(v))
     yyjson_is_null(v) && return nothing
     if yyjson_is_arr(v)
         n = yyjson_arr_size(v)
@@ -45,22 +61,22 @@ function _yy_to_julia(v::Ptr{YYJSONVal})
         iter = YYJSONArrIter()
         iter_ptr = pointer_from_objref(iter)
         yyjson_arr_iter_init(v, iter_ptr)
-        @inbounds for i in 1:n
-            result[i] = _yy_to_julia(yyjson_arr_iter_next(iter_ptr))
+        GC.@preserve iter @inbounds for i in 1:n
+            result[i] = _yy_to_julia(yyjson_arr_iter_next(iter_ptr), D)
         end
         return result
     end
     if yyjson_is_obj(v)
         n = yyjson_obj_size(v)
-        d = Dict{String,Any}()
+        d = D()
         sizehint!(d, n)
         iter = YYJSONObjIter()
         iter_ptr = pointer_from_objref(iter)
         yyjson_obj_iter_init(v, iter_ptr)
-        for _ in 1:n
+        GC.@preserve iter for _ in 1:n
             key_ptr = yyjson_obj_iter_next(iter_ptr)
             val_ptr = yyjson_obj_iter_get_val(key_ptr)
-            d[unsafe_string(yyjson_get_str(key_ptr))] = _yy_to_julia(val_ptr)
+            d[_yy_str(key_ptr)] = _yy_to_julia(val_ptr, D)
         end
         return d
     end
@@ -108,15 +124,21 @@ function parse_json(x::AbstractString; dict_type::Type{D} = Dict{String,Any}, kw
     try
         root = yyjson_doc_get_root(doc)
         root === YYJSONVal_NULL && return D()
-        val = _yy_to_julia(root)
-        return val isa AbstractDict ? convert(D, val) : val
+        return _yy_to_julia(root, D)
     finally
         yyjson_doc_free(doc)
     end
 end
 
-function parse_json(x::Vector{UInt8}; kw...)
-    return parse_json(unsafe_string(pointer(x), length(x)); kw...)
+function parse_json(x::Vector{UInt8}; dict_type::Type{D} = Dict{String,Any}, kw...) where {D<:AbstractDict}
+    doc = _yy_read(x)
+    try
+        root = yyjson_doc_get_root(doc)
+        root === YYJSONVal_NULL && return D()
+        return GC.@preserve x _yy_to_julia(root, D)
+    finally
+        yyjson_doc_free(doc)
+    end
 end
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -125,56 +147,77 @@ end
 
 # Type-guided extraction from a yyjson value pointer.
 # The first type parameter T is the parent struct (for field-level deser overrides).
+function _yy_typemismatch(::Type{F}, v::Ptr{YYJSONVal}) where {F}
+    got_val = try
+        _yy_to_julia(v)
+    catch
+        nothing
+    end
+    throw(TypeMismatchError(F, Symbol(""), F, typeof(got_val), got_val))
+end
 
 @inline function _yy_extract(::Type, ::Type{String}, v::Ptr{YYJSONVal})
-    yyjson_is_str(v) && return unsafe_string(yyjson_get_str(v))
+    yyjson_is_str(v) && return _yy_str(v)
     yyjson_is_bool(v) && return yyjson_get_bool(v) ? "true" : "false"
-    yyjson_is_null(v) && return ""
     yyjson_is_int(v) && return string(Int64(yyjson_get_sint(v)))
     yyjson_is_real(v) && return string(yyjson_get_real(v))
-    return ""
+    yyjson_is_raw(v) && return _yy_raw(v)
+    _yy_typemismatch(String, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{Bool}, v::Ptr{YYJSONVal})
     yyjson_is_bool(v) && return yyjson_get_bool(v)
-    yyjson_is_str(v) && return unsafe_string(yyjson_get_str(v)) == "true"
+    yyjson_is_str(v) && return _yy_str(v) == "true"
     yyjson_is_int(v) && return yyjson_get_sint(v) != 0
-    return false
+    _yy_typemismatch(Bool, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{F}, v::Ptr{YYJSONVal}) where {F<:Signed}
     yyjson_is_int(v) && return F(yyjson_get_sint(v))
     yyjson_is_real(v) && return F(yyjson_get_real(v))
-    yyjson_is_str(v) && return parse(F, unsafe_string(yyjson_get_str(v)))
-    return F(0)
+    yyjson_is_raw(v) && return parse(F, _yy_raw(v))
+    yyjson_is_str(v) && return parse(F, _yy_str(v))
+    _yy_typemismatch(F, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{F}, v::Ptr{YYJSONVal}) where {F<:Unsigned}
     yyjson_is_uint(v) && return F(yyjson_get_uint(v))
     yyjson_is_int(v) && return F(yyjson_get_sint(v))
     yyjson_is_real(v) && return F(yyjson_get_real(v))
-    yyjson_is_str(v) && return parse(F, unsafe_string(yyjson_get_str(v)))
-    return F(0)
+    yyjson_is_raw(v) && return parse(F, _yy_raw(v))
+    yyjson_is_str(v) && return parse(F, _yy_str(v))
+    _yy_typemismatch(F, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{F}, v::Ptr{YYJSONVal}) where {F<:AbstractFloat}
     yyjson_is_real(v) && return F(yyjson_get_real(v))
     yyjson_is_int(v) && return F(yyjson_get_num(v))
-    yyjson_is_str(v) && return parse(F, unsafe_string(yyjson_get_str(v)))
-    return F(0)
+    yyjson_is_raw(v) && return parse(F, _yy_raw(v))
+    yyjson_is_str(v) && return parse(F, _yy_str(v))
+    _yy_typemismatch(F, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{F}, v::Ptr{YYJSONVal}) where {F<:AbstractString}
-    yyjson_is_str(v) && return F(unsafe_string(yyjson_get_str(v)))
+    yyjson_is_str(v) && return F(_yy_str(v))
     yyjson_is_int(v) && return F(string(Int64(yyjson_get_sint(v))))
     yyjson_is_real(v) && return F(string(yyjson_get_real(v)))
     yyjson_is_bool(v) && return F(yyjson_get_bool(v) ? "true" : "false")
-    return F("")
+    yyjson_is_raw(v) && return F(_yy_raw(v))
+    _yy_typemismatch(F, v)
 end
 
 @inline function _yy_extract(::Type, ::Type{Symbol}, v::Ptr{YYJSONVal})
-    yyjson_is_str(v) && return Symbol(unsafe_string(yyjson_get_str(v)))
-    return Symbol("")
+    yyjson_is_str(v) && return Symbol(_yy_str(v))
+    _yy_typemismatch(Symbol, v)
+end
+
+@inline function _yy_extract(::Type, ::Type{F}, v::Ptr{YYJSONVal}) where {F<:Union{Int128,UInt128,BigInt}}
+    yyjson_is_int(v)  && return F(yyjson_get_sint(v))
+    yyjson_is_uint(v) && return F(yyjson_get_uint(v))
+    yyjson_is_raw(v)  && return parse(F, _yy_raw(v))
+    yyjson_is_real(v) && return F(yyjson_get_real(v))
+    yyjson_is_str(v)  && return parse(F, _yy_str(v))
+    _yy_typemismatch(F, v)
 end
 
 # Nullable
@@ -188,72 +231,176 @@ end
 
 @inline _yy_extract(::Type, ::Type{Nothing}, ::Ptr{YYJSONVal}) = nothing
 @inline _yy_extract(::Type, ::Type{Missing}, ::Ptr{YYJSONVal}) = missing
+@inline _yy_extract(::Type, ::Type{Any}, v::Ptr{YYJSONVal}) = _yy_to_julia(v)
+@inline _yy_extract(strategy, ::Type, ::Type{Any}, v::Ptr{YYJSONVal}) = _yy_to_julia(v)
 
 # Vector
 function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractVector}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
     E = eltype(F)
     n = yyjson_arr_size(v)
     result = Vector{E}(undef, n)
     iter = YYJSONArrIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_arr_iter_init(v, iter_ptr)
-    @inbounds for i in 1:n
-        result[i] = _yy_extract(T, E, yyjson_arr_iter_next(iter_ptr))
+    # GC.@preserve keeps the iterator object live across the loop body, which
+    # may call `_yy_to_julia` and trigger allocation / safe-points. Without
+    # this, the compiler can drop the Julia-side `iter` reference after
+    # `pointer_from_objref`, the GC reclaims the iterator, and subsequent
+    # `yyjson_arr_iter_next(iter_ptr)` calls read garbage (return NULL).
+    GC.@preserve iter @inbounds for i in 1:n
+        result[i] = _yy_extract_elem(DefaultStrategy(), T, E, yyjson_arr_iter_next(iter_ptr))
     end
     return result
 end
 
 # Set
 function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractSet}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
     E = eltype(F)
     n = yyjson_arr_size(v)
     result = F()
     iter = YYJSONArrIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_arr_iter_init(v, iter_ptr)
-    for _ in 1:n
-        push!(result, _yy_extract(T, E, yyjson_arr_iter_next(iter_ptr)))
+    GC.@preserve iter for _ in 1:n
+        push!(result, _yy_extract_elem(DefaultStrategy(), T, E, yyjson_arr_iter_next(iter_ptr)))
     end
     return result
 end
 
 # Tuple
 function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:Tuple}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
+    arr_n = yyjson_arr_size(v)
+    if F isa UnionAll || F === Tuple
+        vals = Vector{Any}(undef, arr_n)
+        iter = YYJSONArrIter()
+        iter_ptr = pointer_from_objref(iter)
+        yyjson_arr_iter_init(v, iter_ptr)
+        GC.@preserve iter @inbounds for i in 1:arr_n
+            vals[i] = _yy_to_julia(yyjson_arr_iter_next(iter_ptr))
+        end
+        return Tuple(vals)
+    end
     types = fieldtypes(F)
     n = length(types)
-    vals = Any[_yy_extract(T, types[i], yyjson_arr_get(v, i - 1)) for i in 1:n]
+    arr_n == n || throw(ArgumentError("Tuple length mismatch: expected $n elements, got $arr_n"))
+    vals = Any[_yy_extract_elem(DefaultStrategy(), T, types[i], yyjson_arr_get(v, i - 1)) for i in 1:n]
     return F(vals)
 end
 
-# Dict
+@inline _yy_is_primitive(::Type{E}) where {E} =
+    E <: Union{String, Bool, Signed, Unsigned, AbstractFloat, AbstractString, Symbol, Nothing, Missing} ||
+    E === Any
+
+@inline function _yy_extract_elem(strategy, ::Type{T}, ::Type{E}, v::Ptr{YYJSONVal}) where {T, E}
+    if _yy_is_primitive(E)
+        return _yy_extract(strategy, T, E, v)
+    end
+    yyjson_is_null(v) && return nulltype(E)
+    raw = _yy_to_julia(v)
+    raw isa E && return raw
+    return deser(strategy, T, E, raw)::E
+end
+
+@inline function _yy_kv_params(::Type{F}) where {F}
+    T = F
+    while T isa UnionAll
+        T = T.body
+    end
+    ps = T.parameters
+    K = length(ps) >= 1 && ps[1] isa Type ? ps[1] : String
+    V = length(ps) >= 2 && ps[2] isa Type ? ps[2] : Any
+    return (K, V)
+end
+
 function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractDict}
-    V = valtype(F)
+    yyjson_is_obj(v) || _yy_typemismatch(F, v)
     n = yyjson_obj_size(v)
     d = F()
+    K = keytype(d)
+    V = valtype(d)
     sizehint!(d, n)
     iter = YYJSONObjIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_obj_iter_init(v, iter_ptr)
-    for _ in 1:n
+    GC.@preserve iter for _ in 1:n
         key_ptr = yyjson_obj_iter_next(iter_ptr)
         val_ptr = yyjson_obj_iter_get_val(key_ptr)
-        k = unsafe_string(yyjson_get_str(key_ptr))
+        ks = _yy_str(key_ptr)
+        k = (K === String || K === Any) ? ks : deser(K, ks)
         d[k] = V === Any ? _yy_to_julia(val_ptr) : _yy_extract(T, V, val_ptr)
     end
     return d
 end
 
-# Generic fallback: struct types → recurse; others → extract raw and let deser convert
+function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:Pair}
+    yyjson_is_obj(v) || _yy_typemismatch(F, v)
+    n = yyjson_obj_size(v)
+    n == 1 || throw(ArgumentError("Pair requires a single-entry JSON object, got $n entries"))
+    K, V = _yy_kv_params(F)
+    iter = YYJSONObjIter()
+    iter_ptr = pointer_from_objref(iter)
+    yyjson_obj_iter_init(v, iter_ptr)
+    key_ptr = yyjson_obj_iter_next(iter_ptr)
+    val_ptr = yyjson_obj_iter_get_val(key_ptr)
+    ks = _yy_str(key_ptr)
+    k = (K === String || K === Any) ? ks : deser(K, ks)
+    val = V === Any ? _yy_to_julia(val_ptr) : _yy_extract_elem(DefaultStrategy(), T, V, val_ptr)
+    return Pair{K,V}(k, val)
+end
+
 function _yy_extract(::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F}
     ct = ClassType(F)
-    if ct isa StructClass && fieldcount(F) > 0
-        return _yy_deser_struct(DefaultStrategy(), F, v)
+    # Only take the struct / tagged-union fast paths when the JSON value is
+    # actually an object. A scalar JSON value targeted at a struct-classed
+    # type (e.g. a `BSONObjectId` field encoded as a hex String) needs to
+    # go through the user-extension `deser(::Type{T}, ::Type{F}, raw)` hook
+    # instead.
+    if yyjson_is_obj(v)
+        if ct isa StructClass && fieldcount(F) > 0
+            return _yy_deser_struct(DefaultStrategy(), F, v)
+        elseif ct isa TaggedClass
+            return _yy_deser_tagged(DefaultStrategy(), F, v)
+        end
     end
-    return _yy_to_julia(v)
+    raw = _yy_to_julia(v)
+    raw isa F && return raw
+    return deser(DefaultStrategy(), T, F, raw)::F
+end
+
+@inline function _yy_field_extract(strategy, ::Type{T}, ::Type{F}, name::Symbol, val_ptr::Ptr{YYJSONVal}) where {T,F}
+    if val_ptr == YYJSONVal_NULL
+        return _field_default(strategy, T, name, F)
+    elseif yyjson_is_null(val_ptr)
+        return nothing
+    end
+    try
+        return _yy_extract(strategy, T, F, val_ptr)
+    catch e
+        if e isa TypeMismatchError
+            if e.field === Symbol("") && e.type === e.expected
+                throw(TypeMismatchError(T, name, e.expected, e.got, e.value))
+            else
+                rethrow(e)
+            end
+        elseif e isa ArgumentError || e isa InexactError || e isa MethodError
+            got_val = try
+                _yy_to_julia(val_ptr)
+            catch
+                nothing
+            end
+            throw(TypeMismatchError(T, name, F, typeof(got_val), got_val))
+        else
+            rethrow(e)
+        end
+    end
 end
 
 function _yy_deser_struct(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
     N = fieldcount(T)
+    N == 0 && return T()
     constructor = (args...) -> T(args...)
     Base.@nexprs 32 i -> begin
         if i <= N
@@ -261,13 +408,7 @@ function _yy_deser_struct(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
             name_i = fieldnames(T)[i]
             key_i = string(deser_name(strategy, T, Val(name_i)))
             val_ptr_i = yyjson_obj_getn(obj, key_i, sizeof(key_i))
-            if val_ptr_i == YYJSONVal_NULL
-                raw_i = _field_default(strategy, T, name_i, F_i)
-            elseif yyjson_is_null(val_ptr_i)
-                raw_i = nothing
-            else
-                raw_i = _yy_extract(strategy, T, F_i, val_ptr_i)
-            end
+            raw_i = _yy_field_extract(strategy, T, F_i, name_i, val_ptr_i)
             raw_i = _field_normalize(strategy, T, name_i, F_i, raw_i)
             x_i = _field_validate(strategy, T, name_i, _field_convert(strategy, T, F_i, name_i, raw_i))
             N == i && return Base.@ncall i constructor x
@@ -279,13 +420,7 @@ function _yy_deser_struct(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
         name_i = fieldnames(T)[i]
         key_i = string(deser_name(strategy, T, Val(name_i)))
         val_ptr_i = yyjson_obj_getn(obj, key_i, sizeof(key_i))
-        if val_ptr_i == YYJSONVal_NULL
-            raw_i = _field_default(strategy, T, name_i, F_i)
-        elseif yyjson_is_null(val_ptr_i)
-            raw_i = nothing
-        else
-            raw_i = _yy_extract(strategy, T, F_i, val_ptr_i)
-        end
+        raw_i = _yy_field_extract(strategy, T, F_i, name_i, val_ptr_i)
         raw_i = _field_normalize(strategy, T, name_i, F_i, raw_i)
         push!(others, _field_validate(strategy, T, name_i, _field_convert(strategy, T, F_i, name_i, raw_i)))
     end
@@ -296,15 +431,25 @@ function _yy_deser_struct(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
     )
 end
 
+@inline function _yy_tag_to_string(v::Ptr{YYJSONVal})
+    yyjson_is_str(v)  && return _yy_str(v)
+    yyjson_is_int(v)  && return string(Int64(yyjson_get_sint(v)))
+    yyjson_is_uint(v) && return string(yyjson_get_uint(v))
+    yyjson_is_real(v) && return string(yyjson_get_real(v))
+    yyjson_is_bool(v) && return yyjson_get_bool(v) ? "true" : "false"
+    yyjson_is_null(v) && return ""
+    return ""
+end
+
 function _yy_deser_tagged(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
-    tk = string(tag_key(T))
+    tk = string(_resolve_tag_key(strategy, T))
     tag_ptr = yyjson_obj_getn(obj, tk, sizeof(tk))
-    tag_ptr === YYJSONVal_NULL && throw(Serde.TypeMismatchError(T, Symbol(tk), T, Nothing, nothing))
-    tag_val = unsafe_string(yyjson_get_str(tag_ptr))
-    for (tv, ST) in tag_subtypes(T)
+    tag_ptr === YYJSONVal_NULL && throw(TypeMismatchError(T, Symbol(tk), T, Nothing, nothing))
+    tag_val = _yy_tag_to_string(tag_ptr)
+    for (tv, ST) in _resolve_tag_subtypes(strategy, T)
         string(tv) == tag_val && return _yy_deser_struct(strategy, ST, obj)
     end
-    throw(Serde.TypeMismatchError(T, Symbol(tk), T, String, tag_val))
+    throw(TypeMismatchError(T, Symbol(tk), T, String, tag_val))
 end
 
 # ── Context-aware deserialization ──
@@ -324,65 +469,107 @@ end
 
 # Vector with strategy
 function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractVector}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
     E = eltype(F)
     n = yyjson_arr_size(v)
     result = Vector{E}(undef, n)
     iter = YYJSONArrIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_arr_iter_init(v, iter_ptr)
-    @inbounds for i in 1:n
-        result[i] = _yy_extract(strategy, T, E, yyjson_arr_iter_next(iter_ptr))
+    GC.@preserve iter @inbounds for i in 1:n
+        result[i] = _yy_extract_elem(strategy, T, E, yyjson_arr_iter_next(iter_ptr))
     end
     return result
 end
 
 # Set with strategy
 function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractSet}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
     E = eltype(F)
     n = yyjson_arr_size(v)
     result = F()
     iter = YYJSONArrIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_arr_iter_init(v, iter_ptr)
-    for _ in 1:n
-        push!(result, _yy_extract(strategy, T, E, yyjson_arr_iter_next(iter_ptr)))
+    GC.@preserve iter for _ in 1:n
+        push!(result, _yy_extract_elem(strategy, T, E, yyjson_arr_iter_next(iter_ptr)))
     end
     return result
 end
 
 # Tuple with strategy
 function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:Tuple}
+    yyjson_is_arr(v) || _yy_typemismatch(F, v)
+    arr_n = yyjson_arr_size(v)
+    if F isa UnionAll || F === Tuple
+        vals = Vector{Any}(undef, arr_n)
+        iter = YYJSONArrIter()
+        iter_ptr = pointer_from_objref(iter)
+        yyjson_arr_iter_init(v, iter_ptr)
+        GC.@preserve iter @inbounds for i in 1:arr_n
+            vals[i] = _yy_to_julia(yyjson_arr_iter_next(iter_ptr))
+        end
+        return Tuple(vals)
+    end
     types = fieldtypes(F)
     n = length(types)
-    vals = Any[_yy_extract(strategy, T, types[i], yyjson_arr_get(v, i - 1)) for i in 1:n]
+    arr_n == n || throw(ArgumentError("Tuple length mismatch: expected $n elements, got $arr_n"))
+    vals = Any[_yy_extract_elem(strategy, T, types[i], yyjson_arr_get(v, i - 1)) for i in 1:n]
     return F(vals)
 end
 
-# Dict with strategy
 function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:AbstractDict}
-    V = valtype(F)
+    yyjson_is_obj(v) || _yy_typemismatch(F, v)
     n = yyjson_obj_size(v)
     d = F()
+    K = keytype(d)
+    V = valtype(d)
     sizehint!(d, n)
     iter = YYJSONObjIter()
     iter_ptr = pointer_from_objref(iter)
     yyjson_obj_iter_init(v, iter_ptr)
-    for _ in 1:n
+    GC.@preserve iter for _ in 1:n
         key_ptr = yyjson_obj_iter_next(iter_ptr)
         val_ptr = yyjson_obj_iter_get_val(key_ptr)
-        k = unsafe_string(yyjson_get_str(key_ptr))
-        d[k] = V === Any ? _yy_to_julia(val_ptr) : _yy_extract(strategy, T, V, val_ptr)
+        ks = _yy_str(key_ptr)
+        k = (K === String || K === Any) ? ks : deser(K, ks)
+        d[k] = V === Any ? _yy_to_julia(val_ptr) : _yy_extract_elem(strategy, T, V, val_ptr)
     end
     return d
 end
 
-# Generic fallback with strategy
+function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F<:Pair}
+    yyjson_is_obj(v) || _yy_typemismatch(F, v)
+    n = yyjson_obj_size(v)
+    n == 1 || throw(ArgumentError("Pair requires a single-entry JSON object, got $n entries"))
+    K, V = _yy_kv_params(F)
+    iter = YYJSONObjIter()
+    iter_ptr = pointer_from_objref(iter)
+    yyjson_obj_iter_init(v, iter_ptr)
+    key_ptr = yyjson_obj_iter_next(iter_ptr)
+    val_ptr = yyjson_obj_iter_get_val(key_ptr)
+    ks = _yy_str(key_ptr)
+    k = (K === String || K === Any) ? ks : deser(K, ks)
+    val = V === Any ? _yy_to_julia(val_ptr) : _yy_extract_elem(strategy, T, V, val_ptr)
+    return Pair{K,V}(k, val)
+end
+
+# Generic fallback with strategy. Same shape gate as the no-strategy variant:
+# only treat the JSON value as a struct / tagged union when it is actually an
+# object; otherwise materialize the scalar and route through the user-extension
+# `deser(::Type{T}, ::Type{F}, raw)` hook.
 function _yy_extract(strategy, ::Type{T}, ::Type{F}, v::Ptr{YYJSONVal}) where {T, F}
     ct = ClassType(F)
-    if ct isa StructClass && fieldcount(F) > 0
-        return _yy_deser_struct(strategy, F, v)
+    if yyjson_is_obj(v)
+        if ct isa StructClass && fieldcount(F) > 0
+            return _yy_deser_struct(strategy, F, v)
+        elseif ct isa TaggedClass
+            return _yy_deser_tagged(strategy, F, v)
+        end
     end
-    return _yy_to_julia(v)
+    raw = _yy_to_julia(v)
+    raw isa F && return raw
+    return deser(strategy, T, F, raw)::F
 end
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -443,6 +630,7 @@ function from_json(strategy, ::Type{T}, x::AbstractString; kw...) where {T}
         try
             root = yyjson_doc_get_root(doc)
             root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
+            yyjson_is_null(root) && throw(TypeMismatchError(T, Symbol(""), T, Nothing, nothing))
             return ct isa TaggedClass ? _yy_deser_tagged(strategy, T, root) : _yy_deser_struct(strategy, T, root)
         finally
             yyjson_doc_free(doc)
@@ -460,7 +648,27 @@ function from_json(strategy, ::Type{T}, x::AbstractString; kw...) where {T}
 end
 
 function from_json(strategy, ::Type{T}, x::Vector{UInt8}; kw...) where {T}
-    return from_json(strategy, T, unsafe_string(pointer(x), length(x)); kw...)
+    ct = ClassType(T)
+    if ct isa StructClass || ct isa TaggedClass
+        doc = _yy_read(x)
+        try
+            root = yyjson_doc_get_root(doc)
+            root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
+            yyjson_is_null(root) && throw(TypeMismatchError(T, Symbol(""), T, Nothing, nothing))
+            return GC.@preserve x (ct isa TaggedClass ? _yy_deser_tagged(strategy, T, root) : _yy_deser_struct(strategy, T, root))
+        finally
+            yyjson_doc_free(doc)
+        end
+    else
+        doc = _yy_read(x)
+        try
+            root = yyjson_doc_get_root(doc)
+            root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
+            return GC.@preserve x _yy_extract(strategy, Nothing, T, root)
+        finally
+            yyjson_doc_free(doc)
+        end
+    end
 end
 
 from_json(::Type{T}, x; kw...) where {T} = from_json(DefaultStrategy(), T, x; kw...)
@@ -472,6 +680,11 @@ from_json(::Type{Missing}, ::AbstractString) = missing
 function from_json(f::Function, x; kw...)
     object = parse_json(x; kw...)
     return to_deser(f(object), object)
+end
+
+function from_json(strategy, f::Function, x; kw...)
+    object = parse_json(x; kw...)
+    return to_deser(strategy, f(object), object)
 end
 
 # ── Error-safe deserialization ──
@@ -554,6 +767,9 @@ const _yyjson_lib = YYJSON.yyjson_jll.libyyjson
 @inline _yy_mut_strcpy(doc, s::String) =
     ccall((:yyjson_mut_strncpy, _yyjson_lib), Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{UInt8}, Csize_t), doc, s, sizeof(s))
 
+@inline _yy_mut_rawcpy(doc, s::String) =
+    ccall((:yyjson_mut_rawncpy, _yyjson_lib), Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{UInt8}, Csize_t), doc, s, sizeof(s))
+
 # Symbol name pointer (interned, never GC'd — safe for strn)
 @inline function _yy_mut_sym(doc, s::Symbol)
     ptr = ccall(:jl_symbol_name, Ptr{UInt8}, (Any,), s)
@@ -576,8 +792,7 @@ end
 
 # ── Type-dispatched serialization to yyjson_mut_val ──
 
-# Strings: field values use strn (kept alive by struct), others use strcpy
-@inline _yy_ser(doc::Ptr{Cvoid}, val::String) = _yy_mut_strn(doc, val)
+@inline _yy_ser(doc::Ptr{Cvoid}, val::String) = _yy_mut_strcpy(doc, val)
 @inline _yy_ser(doc::Ptr{Cvoid}, val::SubString{String}) = _yy_mut_strcpy(doc, String(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::AbstractString) = _yy_mut_strcpy(doc, string(val))
 
@@ -590,21 +805,36 @@ end
 @inline _yy_ser(doc::Ptr{Cvoid}, val::Int32) = _yy_mut_int(doc, Int64(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::Int16) = _yy_mut_int(doc, Int64(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::Int8) = _yy_mut_int(doc, Int64(val))
-@inline _yy_ser(doc::Ptr{Cvoid}, val::Int128) = _yy_mut_int(doc, Int64(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::UInt64) = _yy_mut_uint(doc, val)
 @inline _yy_ser(doc::Ptr{Cvoid}, val::UInt32) = _yy_mut_uint(doc, UInt64(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::UInt16) = _yy_mut_uint(doc, UInt64(val))
 @inline _yy_ser(doc::Ptr{Cvoid}, val::UInt8) = _yy_mut_uint(doc, UInt64(val))
-@inline _yy_ser(doc::Ptr{Cvoid}, val::UInt128) = _yy_mut_uint(doc, UInt64(val))
+@inline function _yy_ser(doc::Ptr{Cvoid}, val::Int128)
+    typemin(Int64) <= val <= typemax(Int64) && return _yy_mut_int(doc, Int64(val))
+    return _yy_mut_rawcpy(doc, string(val))
+end
+@inline function _yy_ser(doc::Ptr{Cvoid}, val::UInt128)
+    val <= typemax(UInt64) && return _yy_mut_uint(doc, UInt64(val))
+    return _yy_mut_rawcpy(doc, string(val))
+end
+@inline function _yy_ser(doc::Ptr{Cvoid}, val::BigInt)
+    typemin(Int64) <= val <= typemax(Int64) && return _yy_mut_int(doc, Int64(val))
+    val >= 0 && val <= typemax(UInt64) && return _yy_mut_uint(doc, UInt64(val))
+    return _yy_mut_rawcpy(doc, string(val))
+end
 
 @inline function _yy_ser(doc::Ptr{Cvoid}, val::AbstractFloat)
     (isnan(val) || isinf(val)) && return _yy_mut_null(doc)
-    return _yy_mut_real(doc, Float64(val))
+    f = Float64(val)
+    (isnan(f) || isinf(f)) && return _yy_mut_null(doc)
+    return _yy_mut_real(doc, f)
 end
 
 @inline function _yy_ser(doc::Ptr{Cvoid}, val::Number)
     (isnan(val) || isinf(val)) && return _yy_mut_null(doc)
-    return _yy_mut_real(doc, Float64(val))
+    f = Float64(val)
+    (isnan(f) || isinf(f)) && return _yy_mut_null(doc)
+    return _yy_mut_real(doc, f)
 end
 
 # Nulls
@@ -791,21 +1021,31 @@ end
 # ═══════════════════════════════════════════════════════════════════════════════
 
 const _JSON_NULL = "null"
-const _json_float_buf = Vector{UInt8}(undef, 32)
 
-# Zero-alloc Symbol key writer: writes "key": without allocating a String
+@inline function _json_float_buf()
+    buf = get(task_local_storage(), :_serde_json_float_buf, nothing)
+    if buf === nothing
+        buf = Vector{UInt8}(undef, 32)
+        task_local_storage(:_serde_json_float_buf, buf)
+    end
+    return buf::Vector{UInt8}
+end
+
 @inline function _json_write_key!(io::IO, key::Symbol)
+    s = String(key)
     write(io, UInt8('"'))
-    ptr = ccall(:jl_symbol_name, Ptr{UInt8}, (Any,), key)
-    len = ccall(:strlen, Csize_t, (Ptr{UInt8},), ptr)
-    unsafe_write(io, ptr, len)
+    if _json_needs_escape(s)
+        _json_escape_str!(io, s)
+    else
+        write(io, s)
+    end
     write(io, UInt8('"'))
 end
 
 @inline function _json_write_key!(io::IO, key::AbstractString)
     write(io, UInt8('"'))
     if _json_needs_escape(key)
-        escape_string(io, key)
+        _json_escape_str!(io, key)
     else
         write(io, key)
     end
@@ -813,15 +1053,20 @@ end
 end
 
 @inline function _json_write_key!(io::IO, key)
+    s = string(key)
     write(io, UInt8('"'))
-    print(io, key)
+    if _json_needs_escape(s)
+        _json_escape_str!(io, s)
+    else
+        write(io, s)
+    end
     write(io, UInt8('"'))
 end
 
 @inline _json_nextlevel(l::Int) = l + (l > -1)
 
 const _JSON_INDENTS = let
-    v = String[""]
+    v = String["\n"]
     for i in 1:32
         push!(v, "\n" * "  "^i)
     end
@@ -841,16 +1086,47 @@ end
 end
 
 @inline function _json_needs_escape(val::AbstractString)
-    for c in val
-        (c == '"' || c == '\\' || iscntrl(c)) && return true
+    for b in codeunits(val)
+        (b == 0x22 || b == 0x5c || b < 0x20) && return true
     end
     return false
+end
+
+const _JSON_HEX = UInt8['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+
+function _json_escape_str!(io::IO, s::AbstractString)
+    @inbounds for b in codeunits(s)
+        if b == 0x22
+            write(io, UInt8('\\')); write(io, UInt8('"'))
+        elseif b == 0x5c
+            write(io, UInt8('\\')); write(io, UInt8('\\'))
+        elseif b < 0x20
+            if b == 0x08
+                write(io, UInt8('\\')); write(io, UInt8('b'))
+            elseif b == 0x09
+                write(io, UInt8('\\')); write(io, UInt8('t'))
+            elseif b == 0x0a
+                write(io, UInt8('\\')); write(io, UInt8('n'))
+            elseif b == 0x0c
+                write(io, UInt8('\\')); write(io, UInt8('f'))
+            elseif b == 0x0d
+                write(io, UInt8('\\')); write(io, UInt8('r'))
+            else
+                write(io, UInt8('\\')); write(io, UInt8('u'))
+                write(io, UInt8('0')); write(io, UInt8('0'))
+                write(io, _JSON_HEX[(b >> 4) + 1])
+                write(io, _JSON_HEX[(b & 0x0f) + 1])
+            end
+        else
+            write(io, b)
+        end
+    end
 end
 
 function _json_value!(io::IO, f::Function, val::AbstractString; kw...)
     write(io, UInt8('"'))
     if _json_needs_escape(val)
-        escape_string(io, val)
+        _json_escape_str!(io, val)
     else
         write(io, val)
     end
@@ -869,7 +1145,9 @@ _json_value!(io::IO, f::Function, val::Bool; kw...) = write(io, val ? "true" : "
 end
 
 function _json_value!(io::IO, f::Function, val::Integer; kw...)
-    if val < 0
+    if val isa Int128 || val isa UInt128 || val isa BigInt
+        print(io, val)
+    elseif val < 0
         write(io, UInt8('-'))
         _json_write_int!(io, unsigned(-val))
     else
@@ -881,8 +1159,9 @@ function _json_value!(io::IO, f::Function, val::AbstractFloat; kw...)
     if isnan(val) || isinf(val)
         write(io, _JSON_NULL)
     else
-        n = Base.Ryu.writeshortest(_json_float_buf, 1, Float64(val))
-        unsafe_write(io, pointer(_json_float_buf), n - 1)
+        buf = _json_float_buf()
+        n = Base.Ryu.writeshortest(buf, 1, Float64(val))
+        @GC.preserve buf unsafe_write(io, pointer(buf), n - 1)
     end
 end
 

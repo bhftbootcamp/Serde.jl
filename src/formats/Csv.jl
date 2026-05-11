@@ -157,13 +157,17 @@ function _csv_escape!(io::IO, s::AbstractString, delim::String)
     end
 end
 
+@inline _csv_unwrap_nullable(::Type{T}) where {T} = T
+@inline _csv_unwrap_nullable(::Type{Union{Nothing,T}}) where {T} = T
+@inline _csv_unwrap_nullable(::Type{Union{Missing,T}}) where {T} = T
+
 function _csv_flat_columns(strategy, ::Type{T}; delimiter::String = "_", prefix::String = "") where {T}
     cols = String[]
     for (i, field) in enumerate(fieldnames(T))
         ser_skip(strategy, T, Val(field)) && continue
         name = string(ser_name(strategy, T, Val(field)))
         full = isempty(prefix) ? name : prefix * delimiter * name
-        ft = fieldtype(T, i)
+        ft = _csv_unwrap_nullable(fieldtype(T, i))
         if ClassType(ft) isa StructClass && fieldcount(ft) > 0
             append!(cols, _csv_flat_columns(strategy, ft; delimiter, prefix = full))
         else
@@ -181,34 +185,46 @@ end
     return !isnull(v) && ClassType(v) isa StructClass && fieldcount(typeof(v)) > 0
 end
 
-function _csv_write_row!(io::IO, strategy, data::T, delim::String, written::Int)::Int where {T}
+# Number of leaf columns a declared field type contributes to the flattened
+# CSV layout. Mirrors `_csv_flat_columns` but counts only.
+@inline function _csv_field_width(strategy, ::Type{T}, ::Type{F}) where {T,F}
+    Fnn = _csv_unwrap_nullable(F)
+    if ClassType(Fnn) isa StructClass && fieldcount(Fnn) > 0
+        n = 0
+        for fn in fieldnames(Fnn)
+            ser_skip(strategy, Fnn, Val(fn)) && continue
+            n += _csv_field_width(strategy, Fnn, fieldtype(Fnn, findfirst(==(fn), fieldnames(Fnn))))
+        end
+        return n
+    end
+    return 1
+end
+
+function _csv_write_row!(io::IO, strategy, data::T, delim::String, written::Int, lineend::String = "\n")::Int where {T}
     N = fieldcount(T)
-    Base.@nexprs 32 i -> begin
-        if i <= N
-            fn_i = fieldnames(T)[i]
-            if !ser_skip(strategy, T, Val(fn_i))
-                v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(data, fn_i)))
-                if _csv_is_nested(v_i)
-                    written = _csv_write_row!(io, strategy, v_i, delim, written)
-                else
+    for i in 1:N
+        fn = fieldnames(T)[i]
+        ser_skip(strategy, T, Val(fn)) && continue
+        v = ser_type(strategy, T, ser_value(strategy, T, Val(fn), getfield(data, fn)))
+        F = fieldtype(T, i)
+        Fnn = _csv_unwrap_nullable(F)
+        if ClassType(Fnn) isa StructClass && fieldcount(Fnn) > 0
+            if _csv_is_nested(v)
+                written = _csv_write_row!(io, strategy, v, delim, written, lineend)
+            else
+                # Declared as nullable-nested-struct but value is null: emit
+                # the right number of empty cells so columns line up with the
+                # header.
+                w = _csv_field_width(strategy, T, F)
+                for _ in 1:w
                     written > 0 && write(io, delim)
-                    isnull(v_i) || _csv_escape!(io, string(v_i), delim)
                     written += 1
                 end
             end
-        end
-    end
-    if N > 32
-        for field in fieldnames(T)[33:end]
-            ser_skip(strategy, T, Val(field)) && continue
-            v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(data, field)))
-            if _csv_is_nested(v)
-                written = _csv_write_row!(io, strategy, v, delim, written)
-            else
-                written > 0 && write(io, delim)
-                isnull(v) || _csv_escape!(io, string(v), delim)
-                written += 1
-            end
+        else
+            written > 0 && write(io, delim)
+            isnull(v) || _csv_escape!(io, string(v), delim)
+            written += 1
         end
     end
     return written
@@ -216,30 +232,25 @@ end
 
 function _csv_collect_values!(strategy, vals::Vector{Any}, data::T, idx::Int)::Int where {T}
     N = fieldcount(T)
-    Base.@nexprs 32 i -> begin
-        if i <= N
-            fn_i = fieldnames(T)[i]
-            if !ser_skip(strategy, T, Val(fn_i))
-                v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(data, fn_i)))
-                if _csv_is_nested(v_i)
-                    idx = _csv_collect_values!(strategy, vals, v_i, idx)
-                else
-                    vals[idx] = v_i
-                    idx += 1
-                end
-            end
-        end
-    end
-    if N > 32
-        for field in fieldnames(T)[33:end]
-            ser_skip(strategy, T, Val(field)) && continue
-            v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(data, field)))
+    for i in 1:N
+        fn = fieldnames(T)[i]
+        ser_skip(strategy, T, Val(fn)) && continue
+        v = ser_type(strategy, T, ser_value(strategy, T, Val(fn), getfield(data, fn)))
+        F = fieldtype(T, i)
+        Fnn = _csv_unwrap_nullable(F)
+        if ClassType(Fnn) isa StructClass && fieldcount(Fnn) > 0
             if _csv_is_nested(v)
                 idx = _csv_collect_values!(strategy, vals, v, idx)
             else
-                vals[idx] = v
-                idx += 1
+                w = _csv_field_width(strategy, T, F)
+                for _ in 1:w
+                    vals[idx] = nothing
+                    idx += 1
+                end
             end
+        else
+            vals[idx] = v
+            idx += 1
         end
     end
     return idx
@@ -294,12 +305,22 @@ function to_csv(
     delimiter::String = ",",
     headers::Vector{String} = String[],
     with_names::Bool = true,
+    crlf::Bool = false,
 )::String where {T}
+    # Reject element types we cannot meaningfully serialize as a CSV row.
+    # `to_csv([1, 2, 3])` previously emitted blank rows because Int has no
+    # fields — better to surface this at the API boundary.
+    if !(ClassType(T) isa StructClass) || fieldcount(T) == 0
+        if !(T <: AbstractDict)
+            throw(ArgumentError("to_csv requires Vector of structs (or Dicts), got Vector{$T}"))
+        end
+    end
     isempty(data) && return ""
 
     all_cols = _csv_flat_columns(strategy, T)
     use_custom = !isempty(headers)
     out_cols = use_custom ? headers : all_cols
+    lineend = crlf ? "\r\n" : "\n"
 
     io = IOBuffer(; sizehint = length(data) * length(out_cols) * 16)
     try
@@ -308,7 +329,7 @@ function to_csv(
                 i > 1 && write(io, delimiter)
                 write(io, col)
             end
-            write(io, '\n')
+            write(io, lineend)
         end
 
         if use_custom
@@ -324,12 +345,12 @@ function to_csv(
                         isnull(v) || _csv_escape!(io, string(v), delimiter)
                     end
                 end
-                write(io, '\n')
+                write(io, lineend)
             end
         else
             for item in data
-                _csv_write_row!(io, strategy, item, delimiter, 0)
-                write(io, '\n')
+                _csv_write_row!(io, strategy, item, delimiter, 0, lineend)
+                write(io, lineend)
             end
         end
 
@@ -340,5 +361,14 @@ function to_csv(
 end
 
 to_csv(data::Vector{T}; kw...) where {T} = to_csv(DefaultStrategy(), data; kw...)
+
+function to_csv(io::IO, data::Vector{T}; kw...) where {T}
+    write(io, to_csv(DefaultStrategy(), data; kw...))
+    return nothing
+end
+function to_csv(strategy, io::IO, data::Vector{T}; kw...) where {T}
+    write(io, to_csv(strategy, data; kw...))
+    return nothing
+end
 
 end

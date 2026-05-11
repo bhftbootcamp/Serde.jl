@@ -1,3 +1,41 @@
+@testset "MsgPack — DoS guards on length prefixes" begin
+    # C8: ARR32/MAP32/STR32/BIN32 length headers must be sanity-checked
+    # against remaining bytes so that a 5-byte payload cannot drive a
+    # multi-GB allocation.
+    bogus_arr32 = UInt8[0xdd, 0xff, 0xff, 0xff, 0xff]
+    @test_throws ParseError parse_msgpack(bogus_arr32)
+
+    bogus_map32 = UInt8[0xdf, 0xff, 0xff, 0xff, 0xff]
+    @test_throws ParseError parse_msgpack(bogus_map32)
+
+    bogus_str32 = UInt8[0xdb, 0xff, 0xff, 0xff, 0xff]
+    @test_throws ParseError parse_msgpack(bogus_str32)
+
+    bogus_bin32 = UInt8[0xc6, 0xff, 0xff, 0xff, 0xff]
+    @test_throws ParseError parse_msgpack(bogus_bin32)
+end
+
+@testset "MsgPack — recursion depth limit (configurable)" begin
+    # Build a deeply nested 1-element fixarray so that parsing recurses ~depth times.
+    # The default cap (1000) is generous; users can lower or raise it freely
+    # via the `max_depth` kwarg.
+    deep = vcat([0x91 for _ in 1:300], [0xc0])  # 300 nested fixarrays then nil
+    @test_throws ParseError parse_msgpack(deep; max_depth = 100)
+    # Default accepts 300-deep nesting without erroring.
+    parse_msgpack(deep)
+end
+
+@testset "MsgPack — struct serializer evaluates ser_value once per field" begin
+    # MEDIUM: previously called ser_value/ser_type twice per field.
+    mutable struct _MpCounter; v::Int; end
+    counter = _MpCounter(0)
+    struct _MpStruct; n::Int; end
+    Serde.ser_value(::Type{_MpStruct}, ::Val{:n}, x::Int) = (counter.v += 1; x)
+    counter.v = 0
+    to_msgpack(_MpStruct(7))
+    @test counter.v == 1
+end
+
 @testset "MsgPack format" begin
     @testset "parse_msgpack primitives" begin
         @test parse_msgpack(to_msgpack(nothing)) === nothing
