@@ -84,3 +84,70 @@ end
     end
     @test_throws ArgumentError to_parquet(_ParE[])
 end
+
+# ── Underlying-library feature passthrough ──────────────────────────────────
+# `to_parquet` / `from_parquet` forward arbitrary kwargs to `Parquet2.writefile`
+# and `Parquet2.Dataset`. The tests below exercise the compression codecs
+# that Parquet2 supports out of the box; they prove the kwarg plumbing works
+# AND demonstrate the value-add of the underlying library (smaller files for
+# the same data, depending on the codec's compression ratio).
+
+@testset "Parquet — compression codec passthrough" begin
+    # A repetitive payload compresses well, so a real codec should shave
+    # most of the bytes off the uncompressed baseline.
+    struct _ParCodec
+        id::Int64
+        category::String
+        score::Float64
+    end
+    # ~1000 rows of low-entropy data — well-suited to dictionary + RLE encoding
+    rows = [_ParCodec(i, "category_$(i % 5)", Float64(i % 7)) for i in 1:1000]
+
+    uncompressed = to_parquet(rows; compression_codec = :uncompressed)
+    @test from_parquet(Vector{_ParCodec}, uncompressed) == rows
+
+    for codec in (:snappy, :gzip, :zstd)
+        bytes = to_parquet(rows; compression_codec = codec)
+        @test from_parquet(Vector{_ParCodec}, bytes) == rows
+        # Sanity: a real codec on highly-redundant data must beat
+        # the uncompressed baseline.
+        @test length(bytes) < length(uncompressed)
+    end
+
+    # Different codecs should produce different byte streams (or at least
+    # different sizes for non-trivial input) — confirms the kwarg actually
+    # changes Parquet2's behavior and isn't silently dropped.
+    snappy_bytes = to_parquet(rows; compression_codec = :snappy)
+    zstd_bytes   = to_parquet(rows; compression_codec = :zstd)
+    @test snappy_bytes != zstd_bytes
+end
+
+@testset "Parquet — codec via IO sink" begin
+    struct _ParCodecIO
+        n::Int64
+    end
+    rows = [_ParCodecIO(i) for i in 1:200]
+    io = IOBuffer()
+    to_parquet(io, rows; compression_codec = :zstd)
+    bytes = take!(io)
+    @test from_parquet(Vector{_ParCodecIO}, bytes) == rows
+end
+
+@testset "Parquet — codec with strategy + IO" begin
+    # Stack: codec kwarg + With composer + IO sink. All three pieces of
+    # plumbing have to cooperate.
+    struct _ParCodecStrat
+        user_id::Int64
+        full_name::String
+    end
+    rows = [_ParCodecStrat(i, "name_$i") for i in 1:100]
+    io = IOBuffer()
+    to_parquet(io, CamelCase(), rows; compression_codec = :zstd)
+    bytes = take!(io)
+    # Untyped parse exposes the renamed columns from CamelCase.
+    parsed = parse_parquet(bytes)
+    @test haskey(parsed[1], "userId")
+    @test haskey(parsed[1], "fullName")
+    # Round-trip via the same strategy reconstructs the original rows.
+    @test from_parquet(CamelCase(), Vector{_ParCodecStrat}, bytes) == rows
+end

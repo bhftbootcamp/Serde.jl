@@ -1,3 +1,49 @@
+# ── YAML.jl feature passthrough ─────────────────────────────────────────────
+# `parse_yaml` and `from_yaml` forward kwargs to `YAML.load`. The headline
+# feature is the `dicttype` parameter for choosing the result dict type.
+# (The writer is hand-rolled, so format-flavour kwargs there are Serde-defined.)
+
+@testset "YAML — dict_type kwarg flows into YAML.load" begin
+    using OrderedCollections
+    yaml = "name: Ada\nage: 36\nrole: engineer\n"
+    d = parse_yaml(yaml; dict_type = OrderedDict{String,Any})
+    @test d isa OrderedDict{String,Any}
+    @test collect(keys(d)) == ["name", "age", "role"]   # insertion order preserved
+end
+
+@testset "YAML — anchors and aliases (a feature of the underlying YAML.jl)" begin
+    # YAML aliases let one node reference another via `&anchor` / `*alias`.
+    # YAML.jl supports them natively; Serde inherits the behavior for free.
+    yaml = """
+    default: &defaults
+      retries: 3
+      timeout: 30
+    server:
+      <<: *defaults
+      host: localhost
+    """
+    d = parse_yaml(yaml)
+    @test d["default"]["retries"] == 3
+    @test d["server"]["host"] == "localhost"
+    @test d["server"]["retries"] == 3   # inherited via merge-key alias
+    @test d["server"]["timeout"] == 30
+end
+
+@testset "YAML — multi-line scalars (block / folded styles)" begin
+    # Block (`|`) preserves newlines; folded (`>`) joins them with spaces.
+    yaml = """
+    literal: |
+      line one
+      line two
+    folded: >
+      line one
+      line two
+    """
+    d = parse_yaml(yaml)
+    @test d["literal"] == "line one\nline two\n"
+    @test strip(d["folded"]) == "line one line two"
+end
+
 @testset "YAML — quote/escape conformance" begin
     # Regression: the escape path used `Base.escape_string`, which does NOT
     # escape `"`, producing invalid YAML output for strings/keys containing a

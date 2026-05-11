@@ -1,3 +1,44 @@
+# ── EzXML feature passthrough ───────────────────────────────────────────────
+# `parse_xml` forwards kwargs into `_xml_parse_node`. The headline `force_array`
+# kwarg controls whether a child element with a single occurrence is wrapped
+# in a `Vector` (useful when the schema permits 0..N children but you don't
+# know up-front whether a given doc has 1 vs. many). Without it, single
+# children collapse to scalars and you'd have to special-case downstream.
+
+@testset "XML — force_array kwarg promotes single children to Vector" begin
+    xml = "<root><item>a</item></root>"
+    d_default = parse_xml(xml)
+    d_force   = parse_xml(xml; force_array = true)
+    # Default: single child collapses to a scalar (well, to its content dict).
+    @test !(d_default["item"] isa AbstractVector)
+    # force_array: single child is always wrapped.
+    @test d_force["item"] isa AbstractVector
+    @test length(d_force["item"]) == 1
+end
+
+@testset "XML — multiple children stay a Vector regardless of force_array" begin
+    xml = "<root><item>a</item><item>b</item></root>"
+    @test parse_xml(xml)["item"] isa AbstractVector
+    @test parse_xml(xml; force_array = true)["item"] isa AbstractVector
+end
+
+@testset "XML — dict_type kwarg flows into the recursive node parser" begin
+    using OrderedCollections
+    # Nested order is preserved when an ordered dict is requested.
+    d = parse_xml("<root x=\"1\" y=\"2\" z=\"3\"/>"; dict_type = OrderedDict{String,Any})
+    @test d isa OrderedDict{String,Any}
+    @test collect(keys(d)) == ["x", "y", "z"]
+end
+
+@testset "XML — CDATA sections (a feature of the underlying EzXML)" begin
+    # EzXML transparently surfaces CDATA content as the node text. CDATA is
+    # the natural way to embed payloads that contain XML-meta characters
+    # without escaping every angle bracket.
+    xml = "<root><payload><![CDATA[<not><xml>&\"</xml></not>]]></payload></root>"
+    d = parse_xml(xml)
+    @test d["payload"] == "<not><xml>&\"</xml></not>"
+end
+
 @testset "XML — naive DateTime is emitted without a Z suffix" begin
     # Regression: emitting `Z` for a Julia DateTime is a lie about timezone.
     # See the matching TOML fix.

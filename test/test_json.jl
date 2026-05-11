@@ -1,3 +1,104 @@
+@testset "JSON — UInt64 values above Int64 max materialize as UInt64 (not Int64)" begin
+    # Regression: `_yy_to_julia` was checking `yyjson_is_int` (which is true
+    # for both sint and uint subtypes) and converting via `Int64(...)`, which
+    # threw InexactError for values in (typemax(Int64), typemax(UInt64)].
+    big_u = UInt64(typemax(Int64)) + UInt64(1)   # 9223372036854775808
+    parsed = parse_json("{\"a\":$(big_u)}")
+    @test parsed["a"] === big_u
+    @test parsed["a"] isa UInt64
+
+    # Values that fit Int64 keep returning Int64 — no type widening.
+    @test parse_json("{\"a\":42}")["a"] === Int64(42)
+end
+
+# ── YYJSON parser flag passthrough ──────────────────────────────────────────
+# Serde forwards yyjson's permissive-parse flags through `parse_json` /
+# `from_json` kwargs. By default the reader is strict; users opt into
+# extensions (comments, trailing commas, Inf/NaN literals, invalid UTF-8)
+# as the input requires. The tests both prove the strict default AND that
+# the flags actually reach the C parser.
+
+@testset "JSON — allow_trailing_commas flag" begin
+    # Strict mode rejects.
+    @test_throws ParseError parse_json("{\"a\":1,}")
+    @test_throws ParseError parse_json("[1, 2, 3,]")
+
+    # With the flag, both forms parse.
+    @test parse_json("{\"a\":1,}";   allow_trailing_commas = true) == Dict{String,Any}("a" => 1)
+    @test parse_json("[1, 2, 3,]";   allow_trailing_commas = true) == Any[1, 2, 3]
+
+    # And through the typed path.
+    struct _JsonTC; a::Int; end
+    @test from_json(_JsonTC, "{\"a\":1,}"; allow_trailing_commas = true) == _JsonTC(1)
+end
+
+@testset "JSON — allow_comments flag" begin
+    @test_throws ParseError parse_json("/* hi */ {\"a\":1}")
+    @test_throws ParseError parse_json("{\"a\":1} // tail")
+
+    @test parse_json("/* hi */ {\"a\":1}"; allow_comments = true) == Dict{String,Any}("a" => 1)
+    @test parse_json("{\"a\":1} // tail";  allow_comments = true) == Dict{String,Any}("a" => 1)
+
+    # Inline.
+    payload = """{"a": /* inline */ 1, "b": 2}"""
+    @test parse_json(payload; allow_comments = true) == Dict{String,Any}("a" => 1, "b" => 2)
+end
+
+@testset "JSON — allow_inf_and_nan flag" begin
+    # Strict JSON has no Inf/NaN — yyjson rejects without the flag.
+    @test_throws ParseError parse_json("{\"a\":Infinity}")
+    @test_throws ParseError parse_json("{\"a\":NaN}")
+
+    # With the flag, the literals come through as Float64 Inf / NaN.
+    pos_inf = parse_json("{\"a\":Infinity}";  allow_inf_and_nan = true)["a"]
+    @test isinf(pos_inf) && pos_inf > 0
+
+    neg_inf = parse_json("{\"a\":-Infinity}"; allow_inf_and_nan = true)["a"]
+    @test isinf(neg_inf) && neg_inf < 0
+
+    @test isnan(parse_json("{\"a\":NaN}"; allow_inf_and_nan = true)["a"])
+
+    # Lowercase forms are accepted too (yyjson is case-insensitive).
+    @test isinf(parse_json("{\"a\":inf}"; allow_inf_and_nan = true)["a"])
+    @test isnan(parse_json("{\"a\":nan}"; allow_inf_and_nan = true)["a"])
+
+    # Typed deser path picks up the flag.
+    struct _JsonInf; x::Float64; end
+    @test isinf(from_json(_JsonInf, "{\"x\":Infinity}"; allow_inf_and_nan = true).x)
+end
+
+@testset "JSON — allow_invalid_unicode flag" begin
+    # Construct a JSON document with a lone (invalid) surrogate inside a
+    # string literal — strict yyjson rejects.
+    bad_unicode_bytes = UInt8[0x7b, 0x22, 0x61, 0x22, 0x3a, 0x22,    # `{"a":"`
+                              0xed, 0xa0, 0x80,                       # invalid surrogate
+                              0x22, 0x7d]                             # `"}`
+    @test_throws ParseError parse_json(bad_unicode_bytes)
+    # With the flag, parsing succeeds (the string keeps the raw bytes).
+    parsed = parse_json(bad_unicode_bytes; allow_invalid_unicode = true)
+    @test parsed isa Dict{String,Any}
+    @test haskey(parsed, "a")
+end
+
+@testset "JSON — combined flags + bignum coexistence" begin
+    # All four flags + the always-on BIGNUM_AS_RAW behave together: a payload
+    # with a comment, a trailing comma, NaN, AND a big integer round-trips
+    # to the expected shape.
+    payload = """
+    /* header */
+    {
+        "n": 123456789012345678901234567890,   // bignum → BigInt
+        "v": NaN,                              // Inf/NaN literal
+    }
+    """
+    d = parse_json(payload;
+                   allow_comments        = true,
+                   allow_trailing_commas = true,
+                   allow_inf_and_nan     = true)
+    @test d["n"] == big"123456789012345678901234567890"
+    @test isnan(d["v"])
+end
+
 @testset "JSON — scalar JSON value routed through user `deser` for struct-classed types" begin
     # Regression: the generic `_yy_extract` fallback used to dive into
     # `_yy_deser_struct` whenever `ClassType(F) isa StructClass`, even when

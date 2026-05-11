@@ -1,3 +1,55 @@
+# ── CSV.jl feature passthrough ──────────────────────────────────────────────
+# Headline kwargs of the underlying CSV library: `delimiter` / `crlf` for the
+# writer (Serde's hand-rolled implementation), and arbitrary CSV.File kwargs
+# (`missingstring`, `dateformat`, `comment`, etc.) forwarded by the reader.
+
+@testset "CSV — custom delimiter passthrough (writer + reader)" begin
+    struct _CsvDelim; a::Int; b::String; end
+    rows = [_CsvDelim(1, "x"), _CsvDelim(2, "y")]
+
+    # Tab-delimited round-trip — the writer emits tabs, the reader honours them.
+    tsv = to_csv(rows; delimiter = "\t")
+    @test occursin("a\tb", tsv)
+    @test occursin("1\tx", tsv)
+    @test !occursin(",", tsv)
+    back = from_csv(_CsvDelim, tsv; delim = '\t')
+    @test back == rows
+
+    # Pipe delimiter.
+    psv = to_csv(rows; delimiter = "|")
+    @test occursin("1|x", psv)
+    @test from_csv(_CsvDelim, psv; delim = '|') == rows
+end
+
+@testset "CSV — CRLF line endings (RFC 4180 strict)" begin
+    struct _CsvCrlfRT; a::Int; end
+    rows = [_CsvCrlfRT(1), _CsvCrlfRT(2)]
+    out = to_csv(rows; crlf = true)
+    @test occursin("\r\n", out)
+    # The reader handles CRLF transparently.
+    @test from_csv(_CsvCrlfRT, out) == rows
+end
+
+@testset "CSV — header omission for header-less files" begin
+    struct _CsvNoHdr; a::Int; b::String; end
+    rows = [_CsvNoHdr(1, "x"), _CsvNoHdr(2, "y")]
+    out = to_csv(rows; with_names = false)
+    @test !occursin("a,b", out)
+    @test startswith(out, "1,x")
+end
+
+@testset "CSV — `missingstring` kwarg flows into CSV.File reader" begin
+    # CSV.jl supports a `missingstring` kwarg that turns sentinel tokens into
+    # `missing`. We forward arbitrary kwargs from `from_csv` to CSV.File, so
+    # users can opt in. Our deser engine then converts `missing` to `nothing`
+    # via `nulltype(Union{Nothing,T})`.
+    struct _CsvMs; a::Int; b::Union{Nothing,String}; end
+    csv = "a,b\n1,NULL\n2,x\n"
+    rows = from_csv(_CsvMs, csv; missingstring = "NULL")
+    @test rows[1].b === nothing
+    @test rows[2].b == "x"
+end
+
 @testset "CSV — nullable nested struct flattens consistently" begin
     # H7
     struct _CsvInner; a::Int; b::Int; end

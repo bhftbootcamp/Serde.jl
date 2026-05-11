@@ -21,18 +21,37 @@ import ..TypeMismatchError, ..MissingFieldError
 # Parsing: yyjson C parser → Dict{String,Any}
 # ═══════════════════════════════════════════════════════════════════════════════
 
-const _YY_READ_FLAGS = YYJSON_READ_BIGNUM_AS_RAW
+# `YYJSON_READ_BIGNUM_AS_RAW` is always on so that out-of-range integers
+# round-trip losslessly (see the `to_json` BigInt / Int128 path). The other
+# parse-time flags are exposed through `parse_json` / `from_json` kwargs so
+# users can opt into yyjson's permissive parsing for input from non-strict
+# producers without escape hatches that bypass the library.
+const _YY_READ_FLAGS_BASE = YYJSON_READ_BIGNUM_AS_RAW
 
-@inline function _yy_read(json::AbstractString)
+@inline function _yy_read_flags(;
+    allow_comments::Bool = false,
+    allow_trailing_commas::Bool = false,
+    allow_inf_and_nan::Bool = false,
+    allow_invalid_unicode::Bool = false,
+)
+    flags = _YY_READ_FLAGS_BASE
+    allow_comments         && (flags |= YYJSON_READ_ALLOW_COMMENTS)
+    allow_trailing_commas  && (flags |= YYJSON_READ_ALLOW_TRAILING_COMMAS)
+    allow_inf_and_nan      && (flags |= YYJSON_READ_ALLOW_INF_AND_NAN)
+    allow_invalid_unicode  && (flags |= YYJSON_READ_ALLOW_INVALID_UNICODE)
+    return flags
+end
+
+@inline function _yy_read(json::AbstractString; kw...)
     err = YYJSONReadErr()
-    doc = yyjson_read_opts(json, ncodeunits(json), _YY_READ_FLAGS, YYJSONAlc_NULL, pointer_from_objref(err))
+    doc = yyjson_read_opts(json, ncodeunits(json), _yy_read_flags(; kw...), YYJSONAlc_NULL, pointer_from_objref(err))
     doc === YYJSONDoc_NULL && throw(ParseError("JSON", "invalid JSON syntax", err))
     return doc
 end
 
-@inline function _yy_read(json::Vector{UInt8})
+@inline function _yy_read(json::Vector{UInt8}; kw...)
     err = YYJSONReadErr()
-    doc = GC.@preserve json yyjson_read_opts(pointer(json), length(json), _YY_READ_FLAGS, YYJSONAlc_NULL, pointer_from_objref(err))
+    doc = GC.@preserve json yyjson_read_opts(pointer(json), length(json), _yy_read_flags(; kw...), YYJSONAlc_NULL, pointer_from_objref(err))
     doc === YYJSONDoc_NULL && throw(ParseError("JSON", "invalid JSON syntax", err))
     return doc
 end
@@ -45,6 +64,19 @@ function _yy_raw_to_julia(s::AbstractString)
         c = codeunit(s, i)
         (c == UInt8('.') || c == UInt8('e') || c == UInt8('E')) && return parse(BigFloat, s)
     end
+    # `Inf` / `Infinity` / `NaN` literals are tagged as raw when both
+    # ALLOW_INF_AND_NAN and BIGNUM_AS_RAW flags are set on the reader.
+    # They have no decimal point or exponent so they would otherwise fall
+    # into the BigInt branch and throw. Detect by leading letter.
+    isempty(s) || begin
+        c = codeunit(s, 1)
+        if c == UInt8('-') || c == UInt8('+')
+            length(s) >= 2 || return parse(BigInt, s)
+            c = codeunit(s, 2)
+        end
+        (c == UInt8('I') || c == UInt8('i') || c == UInt8('N') || c == UInt8('n')) &&
+            return parse(Float64, s)
+    end
     return parse(BigInt, s)
 end
 
@@ -52,7 +84,14 @@ function _yy_to_julia(v::Ptr{YYJSONVal}, ::Type{D} = Dict{String,Any}) where {D<
     yyjson_is_str(v)  && return _yy_str(v)
     yyjson_is_bool(v) && return yyjson_get_bool(v)
     yyjson_is_real(v) && return yyjson_get_real(v)
-    yyjson_is_int(v)  && return Int64(yyjson_get_num(v))
+    # `yyjson_is_int` returns true for both `sint` and `uint` subtypes; if we
+    # checked it first we'd lose UInt64 values in (typemax(Int64), typemax(UInt64)]
+    # to `Int64(uint)` (InexactError). Prefer the explicit sint / uint accessors.
+    yyjson_is_sint(v) && return Int64(yyjson_get_sint(v))
+    if yyjson_is_uint(v)
+        u = yyjson_get_uint(v)
+        return u <= typemax(Int64) ? Int64(u) : u
+    end
     yyjson_is_raw(v)  && return _yy_raw_to_julia(_yy_raw(v))
     yyjson_is_null(v) && return nothing
     if yyjson_is_arr(v)
@@ -120,7 +159,7 @@ See also: [`from_json`](@ref), [`try_from_json`](@ref).
 function parse_json end
 
 function parse_json(x::AbstractString; dict_type::Type{D} = Dict{String,Any}, kw...) where {D<:AbstractDict}
-    doc = _yy_read(x)
+    doc = _yy_read(x; kw...)
     try
         root = yyjson_doc_get_root(doc)
         root === YYJSONVal_NULL && return D()
@@ -131,7 +170,7 @@ function parse_json(x::AbstractString; dict_type::Type{D} = Dict{String,Any}, kw
 end
 
 function parse_json(x::Vector{UInt8}; dict_type::Type{D} = Dict{String,Any}, kw...) where {D<:AbstractDict}
-    doc = _yy_read(x)
+    doc = _yy_read(x; kw...)
     try
         root = yyjson_doc_get_root(doc)
         root === YYJSONVal_NULL && return D()
@@ -626,7 +665,7 @@ See also: [`try_from_json`](@ref), [`parse_json`](@ref), [`to_json`](@ref).
 function from_json(strategy, ::Type{T}, x::AbstractString; kw...) where {T}
     ct = ClassType(T)
     if ct isa StructClass || ct isa TaggedClass
-        doc = _yy_read(x)
+        doc = _yy_read(x; kw...)
         try
             root = yyjson_doc_get_root(doc)
             root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
@@ -636,7 +675,7 @@ function from_json(strategy, ::Type{T}, x::AbstractString; kw...) where {T}
             yyjson_doc_free(doc)
         end
     else
-        doc = _yy_read(x)
+        doc = _yy_read(x; kw...)
         try
             root = yyjson_doc_get_root(doc)
             root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
@@ -650,7 +689,7 @@ end
 function from_json(strategy, ::Type{T}, x::Vector{UInt8}; kw...) where {T}
     ct = ClassType(T)
     if ct isa StructClass || ct isa TaggedClass
-        doc = _yy_read(x)
+        doc = _yy_read(x; kw...)
         try
             root = yyjson_doc_get_root(doc)
             root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))
@@ -660,7 +699,7 @@ function from_json(strategy, ::Type{T}, x::Vector{UInt8}; kw...) where {T}
             yyjson_doc_free(doc)
         end
     else
-        doc = _yy_read(x)
+        doc = _yy_read(x; kw...)
         try
             root = yyjson_doc_get_root(doc)
             root === YYJSONVal_NULL && throw(ParseError("JSON", "empty JSON document", ErrorException("empty")))

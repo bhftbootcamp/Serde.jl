@@ -1,3 +1,59 @@
+# ── TOML stdlib feature passthrough ─────────────────────────────────────────
+# `parse_toml` delegates to `TOML.parse`. The stdlib parser supports the full
+# TOML 1.0 grammar including typed datetimes, multi-line strings, and
+# array-of-tables. Serde gets these for free; the tests below pin them.
+
+@testset "TOML — array-of-tables syntax" begin
+    # `[[servers]]` is the canonical TOML form for a list of records.
+    toml = """
+    [[servers]]
+    name = "alpha"
+    port = 8001
+
+    [[servers]]
+    name = "beta"
+    port = 8002
+    """
+    d = parse_toml(toml)
+    @test d["servers"] isa AbstractVector
+    @test length(d["servers"]) == 2
+    @test d["servers"][1]["name"] == "alpha"
+    @test d["servers"][2]["port"] == 8002
+end
+
+@testset "TOML — typed datetimes (date, time, local + offset datetime)" begin
+    # The stdlib TOML.parse returns native Julia Date / Time / DateTime types,
+    # honouring the TOML 1.0 distinction between local and offset datetimes.
+    using Dates
+    toml = """
+    odt = 1979-05-27T07:32:00Z
+    ldt = 1979-05-27T07:32:00
+    ld  = 1979-05-27
+    lt  = 07:32:00
+    """
+    d = parse_toml(toml)
+    @test d["ld"] == Date(1979, 5, 27)
+    @test d["lt"] == Time(7, 32)
+    @test d["ldt"] isa DateTime
+    # The TOML stdlib represents offset-datetime as a String (it preserves
+    # the offset) rather than collapsing to Julia's naive DateTime.
+    @test d["odt"] isa Union{String, DateTime}
+end
+
+@testset "TOML — multi-line basic & literal strings" begin
+    # Triple-quoted basic strings honour escape sequences; triple-quoted
+    # literal strings ('''...''') don't.
+    toml = """
+    basic = \"\"\"
+    line\\none\"\"\"
+    literal = '''
+    line\\none'''
+    """
+    d = parse_toml(toml)
+    @test d["basic"] == "line\none"      # \n → newline
+    @test d["literal"] == "line\\none"   # literal — backslash preserved
+end
+
 @testset "TOML — quoted-key escape is TOML-conformant" begin
     # Regression: `_toml_key` used `Base.escape_string`, which (a) does not
     # escape `"` and (b) emits non-conformant `\xNN` for control bytes.
