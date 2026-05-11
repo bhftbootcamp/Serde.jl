@@ -136,11 +136,11 @@ end
     end
 
     @testset "to_csv custom delimiter" begin
-        struct _CsvDelim
+        struct _CsvDelim2
             x::Int
             y::Int
         end
-        csv = to_csv([_CsvDelim(1, 2)]; delimiter = ";")
+        csv = to_csv([_CsvDelim2(1, 2)]; delimiter = ";")
         @test contains(csv, ";")
     end
 
