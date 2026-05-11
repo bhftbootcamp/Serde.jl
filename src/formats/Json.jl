@@ -1585,7 +1585,7 @@ function to_json(strategy, f::Function, val; pretty::Bool = false, kw...)::Strin
     end
 end
 
-function to_json(strategy, io::IO, x...; pretty::Bool = false, kw...)
+function to_json(io::IO, strategy, x...; pretty::Bool = false, kw...)
     _json_value!(io, strategy, fieldnames, x...; l = pretty ? 1 : -1, kw...)
     return nothing
 end

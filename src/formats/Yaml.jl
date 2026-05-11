@@ -395,7 +395,7 @@ function to_yaml(io::IO, data; kw...)
     print(io, "\n")
     return nothing
 end
-function to_yaml(strategy, io::IO, data; kw...)
+function to_yaml(io::IO, strategy, data; kw...)
     _yaml_value!(io, strategy, fieldnames, data; l = 0, skip_lf = true, kw...)
     print(io, "\n")
     return nothing

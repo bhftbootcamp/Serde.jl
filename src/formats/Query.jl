@@ -361,7 +361,7 @@ function to_query(io::IO, data; kw...)
     write(io, to_query(DefaultStrategy(), data; kw...))
     return nothing
 end
-function to_query(strategy, io::IO, data; kw...)
+function to_query(io::IO, strategy, data; kw...)
     write(io, to_query(strategy, data; kw...))
     return nothing
 end

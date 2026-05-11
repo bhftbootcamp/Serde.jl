@@ -532,7 +532,7 @@ function to_msgpack(io::IO, data)
     _msgpack_write!(io, DefaultStrategy(), data)
     return nothing
 end
-function to_msgpack(strategy, io::IO, data)
+function to_msgpack(io::IO, strategy, data)
     _msgpack_write!(io, strategy, data)
     return nothing
 end

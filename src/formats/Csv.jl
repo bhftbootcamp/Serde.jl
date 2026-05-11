@@ -366,7 +366,7 @@ function to_csv(io::IO, data::Vector{T}; kw...) where {T}
     write(io, to_csv(DefaultStrategy(), data; kw...))
     return nothing
 end
-function to_csv(strategy, io::IO, data::Vector{T}; kw...) where {T}
+function to_csv(io::IO, strategy, data::Vector{T}; kw...) where {T}
     write(io, to_csv(strategy, data; kw...))
     return nothing
 end

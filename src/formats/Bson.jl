@@ -567,7 +567,7 @@ function to_bson(io::IO, data)
     write(io, to_bson(DefaultStrategy(), data))
     return nothing
 end
-function to_bson(strategy, io::IO, data)
+function to_bson(io::IO, strategy, data)
     write(io, to_bson(strategy, data))
     return nothing
 end

@@ -353,7 +353,7 @@ function to_xml(io::IO, val; key::String = "xml", kw...)
     return nothing
 end
 
-function to_xml(strategy, io::IO, val; key::String = "xml", kw...)
+function to_xml(io::IO, strategy, val; key::String = "xml", kw...)
     _to_xml_inner!(io, strategy, Dict{String,Any}(key => val))
     return nothing
 end

@@ -692,10 +692,10 @@ end
         @test occursin("stf1", j) || occursin("stf34", j)
     end
 
-    @testset "to_json(strategy, io, data)" begin
+    @testset "to_json(io, strategy, data)" begin
         struct _JStratIO; count::Int; end
         io = IOBuffer()
-        to_json(CamelCase(), io, _JStratIO(5))
+        to_json(io, CamelCase(), _JStratIO(5))
         j = String(take!(io))
         @test occursin("5", j)
     end
@@ -920,21 +920,21 @@ end
     end
 end
 
-@testset "JSON — to_json(strategy, io, data)" begin
+@testset "JSON — to_json(io, strategy, data)" begin
 
-    @testset "to_json(strategy, io, struct)" begin
+    @testset "to_json(io, strategy, struct)" begin
         struct _JStratIOStream; x_val::Int; end
         io = IOBuffer()
-        to_json(CamelCase(), io, _JStratIOStream(99))
+        to_json(io, CamelCase(), _JStratIOStream(99))
         j = String(take!(io))
         @test occursin("xVal", j)
         @test occursin("99", j)
     end
 
-    @testset "to_json(strategy, io, data; pretty=true)" begin
+    @testset "to_json(io, strategy, data; pretty=true)" begin
         struct _JStratIOPretty; my_x::Int; end
         io = IOBuffer()
-        to_json(CamelCase(), io, _JStratIOPretty(5); pretty = true)
+        to_json(io, CamelCase(), _JStratIOPretty(5); pretty = true)
         j = String(take!(io))
         @test occursin("myX", j)
     end

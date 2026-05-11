@@ -84,7 +84,7 @@ end
 
 to_parquet(vals::AbstractVector; kw...) = to_parquet(DefaultStrategy(), vals; kw...)
 
-function to_parquet(strategy, io::IO, vals::AbstractVector; kw...)
+function to_parquet(io::IO, strategy, vals::AbstractVector; kw...)
     isempty(vals) && throw(ArgumentError(
         "to_parquet requires a non-empty Vector — Parquet has no zero-row encoding"))
     table = _parquet_columnar(strategy, vals)
@@ -93,7 +93,7 @@ function to_parquet(strategy, io::IO, vals::AbstractVector; kw...)
 end
 
 to_parquet(io::IO, vals::AbstractVector; kw...) =
-    to_parquet(DefaultStrategy(), io, vals; kw...)
+    to_parquet(io, DefaultStrategy(), vals; kw...)
 
 function _parquet_columnar(strategy, vals::AbstractVector{T}) where {T}
     isempty(vals) && throw(ArgumentError(

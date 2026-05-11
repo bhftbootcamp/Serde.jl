@@ -141,15 +141,15 @@ end
     end
 
     @testset "from_bson nested struct" begin
-        struct _BsonInner
+        struct _BsonNestInner
             x::Int
         end
-        struct _BsonOuter
+        struct _BsonNestOuter
             label::String
-            inner::_BsonInner
+            inner::_BsonNestInner
         end
-        obj = _BsonOuter("test", _BsonInner(42))
-        @test from_bson(_BsonOuter, to_bson(obj)) == obj
+        obj = _BsonNestOuter("test", _BsonNestInner(42))
+        @test from_bson(_BsonNestOuter, to_bson(obj)) == obj
     end
 
     @testset "from_bson vectors" begin

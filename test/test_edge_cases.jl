@@ -1,11 +1,4 @@
 # test_edge_cases.jl
-#
-# Дополнительные тесты, покрывающие edge cases и пути кода,
-# не охваченные базовым набором тестов.
-# Покрывает: deser.jl, форматы Yaml/Xml/Toml/Csv/Query/MsgPack/Bson
-# а также >32-поля (fallback paths), специальные типы, ошибки.
-#
-# ВАЖНО: to_yaml(struct) требует контекст — to_yaml(Serde.DefaultStrategy(), struct)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. deser.jl — непокрытые пути
@@ -594,10 +587,10 @@ end
     end
 
     @testset "to_xml DateTime value" begin
-        struct _XmlDT
+        struct _XmlDTEdge
             ts::Dates.DateTime
         end
-        xml = to_xml(_XmlDT(Dates.DateTime(2024, 1, 15)); key = "r")
+        xml = to_xml(_XmlDTEdge(Dates.DateTime(2024, 1, 15)); key = "r")
         @test occursin("2024", xml)
     end
 end
@@ -686,11 +679,13 @@ end
     end
 
     @testset "to_toml DateTime" begin
+        # Distinct name from `_TomlDT` in test_toml.jl — Julia ≤ 1.10 rejects
+        # redefining structs at the same scope.
         dt = Dates.DateTime(2024, 6, 15, 10, 30, 0)
-        struct _TomlDT
+        struct _TomlDTEdge
             ts::Dates.DateTime
         end
-        toml = to_toml(_TomlDT(dt))
+        toml = to_toml(_TomlDTEdge(dt))
         @test occursin("2024", toml)
     end
 
@@ -1493,9 +1488,7 @@ end
         io = IOBuffer(); to_xml(io, v);  @test occursin("n=\"7\"", String(take!(io)))
         io = IOBuffer(); to_query(io, v); @test occursin("n=7", String(take!(io)))
         io = IOBuffer(); to_csv(io, [v]); @test occursin("n,s", String(take!(io)))
-
-        # With strategy
-        io = IOBuffer(); to_msgpack(CamelCase(), io, v); @test parse_msgpack(take!(io))["n"] == 7
+        io = IOBuffer(); to_msgpack(io, CamelCase(), v); @test parse_msgpack(take!(io))["n"] == 7
     end
 
     @testset "from_json invalid string for Int throws" begin

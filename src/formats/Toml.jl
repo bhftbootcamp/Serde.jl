@@ -376,7 +376,7 @@ function to_toml(io::IO, data; kw...)
     _to_toml!(io, DefaultStrategy(), data; kw...)
     return nothing
 end
-function to_toml(strategy, io::IO, data; kw...)
+function to_toml(io::IO, strategy, data; kw...)
     _to_toml!(io, strategy, data; kw...)
     return nothing
 end
