@@ -1523,8 +1523,13 @@ function to_json(f::Function, val; pretty::Bool = false, kw...)::String
     end
 end
 
-function to_json(io::IO, x...; pretty::Bool = false, kw...)
-    _json_value!(io, x...; l = pretty ? 1 : -1, kw...)
+function to_json(io::IO, val; pretty::Bool = false, kw...)
+    _json_value!(io, val; l = pretty ? 1 : -1, kw...)
+    return nothing
+end
+
+function to_json(io::IO, f::Function, val; pretty::Bool = false, kw...)
+    _json_value!(io, f, val; l = pretty ? 1 : -1, kw...)
     return nothing
 end
 
@@ -1585,8 +1590,13 @@ function to_json(strategy, f::Function, val; pretty::Bool = false, kw...)::Strin
     end
 end
 
-function to_json(io::IO, strategy, x...; pretty::Bool = false, kw...)
-    _json_value!(io, strategy, fieldnames, x...; l = pretty ? 1 : -1, kw...)
+function to_json(io::IO, strategy, val; pretty::Bool = false, kw...)
+    _json_value!(io, strategy, fieldnames, val; l = pretty ? 1 : -1, kw...)
+    return nothing
+end
+
+function to_json(io::IO, strategy, f::Function, val; pretty::Bool = false, kw...)
+    _json_value!(io, strategy, f, val; l = pretty ? 1 : -1, kw...)
     return nothing
 end
 
