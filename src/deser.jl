@@ -272,10 +272,10 @@ function deser(strategy, ::StructClass, ::Type{T}, data::AbstractDict{K,D}) wher
 end
 
 function deser(strategy, ::TaggedClass, ::Type{T}, data::AbstractDict{K,D}) where {T,K<:Union{AbstractString,Symbol},D}
-    tk = tag_key(T)
+    tk = tag_key(strategy, T)
     tag_val = get(data, isa(tk, K) ? tk : deser(K, tk), nothing)
     if tag_val !== nothing
-        for (tv, ST) in tag_subtypes(T)
+        for (tv, ST) in tag_subtypes(strategy, T)
             string(tag_val) == string(tv) && return deser(strategy, ST, data)
         end
     end

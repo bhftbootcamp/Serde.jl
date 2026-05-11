@@ -297,11 +297,11 @@ function _yy_deser_struct(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
 end
 
 function _yy_deser_tagged(strategy, ::Type{T}, obj::Ptr{YYJSONVal}) where {T}
-    tk = string(tag_key(T))
+    tk = string(tag_key(strategy, T))
     tag_ptr = yyjson_obj_getn(obj, tk, sizeof(tk))
     tag_ptr === YYJSONVal_NULL && throw(Serde.TypeMismatchError(T, Symbol(tk), T, Nothing, nothing))
     tag_val = unsafe_string(yyjson_get_str(tag_ptr))
-    for (tv, ST) in tag_subtypes(T)
+    for (tv, ST) in tag_subtypes(strategy, T)
         string(tv) == tag_val && return _yy_deser_struct(strategy, ST, obj)
     end
     throw(Serde.TypeMismatchError(T, Symbol(tk), T, String, tag_val))

@@ -9,13 +9,15 @@ well-defined combination rule per trait:
 
 | Trait | Rule |
 |---|---|
-| `ser_name` / `deser_name` | first-wins: use the first strategy that renames the field |
+| `ser_name` / `deser_name` | chain: apply each strategy in order |
 | `ser_skip` | OR: skip if any strategy says skip |
 | `ser_value` / `ser_type` / `deser_transform` | chain: apply each strategy in order |
 | `has_default` | OR: field has a default if any strategy provides one |
 | `deser_default` | first-wins: use the first strategy that has a default |
 | `isempty_value` | OR: treat as empty if any strategy says so |
 | `deser_validate` | all: run every strategy's validator |
+| `tag_key` | first-wins: use the first strategy that returns non-`nothing` |
+| `tag_subtypes` | merge: concatenate subtypes from all strategies |
 
 # Examples
 ```julia
@@ -39,22 +41,22 @@ end
 
 With(args...) = With(args)
 
-# ── ser_name: first-wins ──────────────────────────────────────────────────────
+# ── ser_name: chain ───────────────────────────────────────────────────────────
 
 _with_ser_name(::Tuple{}, ::Type{T}, ::Val{x}) where {T,x} = x
 function _with_ser_name(ctxs::Tuple, ::Type{T}, ::Val{x}) where {T,x}
     v = ser_name(first(ctxs), T, Val(x))
-    return v === x ? _with_ser_name(Base.tail(ctxs), T, Val(x)) : v
+    return _with_ser_name(Base.tail(ctxs), T, Val(v))
 end
 
 ser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_ser_name(w.ctxs, T, Val(x))
 
-# ── deser_name: first-wins ────────────────────────────────────────────────────
+# ── deser_name: chain ─────────────────────────────────────────────────────────
 
 _with_deser_name(::Tuple{}, ::Type{T}, ::Val{x}) where {T,x} = x
 function _with_deser_name(ctxs::Tuple, ::Type{T}, ::Val{x}) where {T,x}
     v = deser_name(first(ctxs), T, Val(x))
-    return v === x ? _with_deser_name(Base.tail(ctxs), T, Val(x)) : v
+    return _with_deser_name(Base.tail(ctxs), T, Val(v))
 end
 
 deser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_deser_name(w.ctxs, T, Val(x))
@@ -143,3 +145,22 @@ function _with_deser_validate(ctxs::Tuple, ::Type{T}, ::Val{x}, v) where {T,x}
 end
 
 deser_validate(w::With, ::Type{T}, ::Val{x}, v) where {T,x} = _with_deser_validate(w.ctxs, T, Val(x), v)
+
+# ── tag_key: first-wins (first non-nothing) ──────────────────────────────────
+
+_with_tag_key(::Tuple{}, ::Type{T}) where {T} = nothing
+function _with_tag_key(ctxs::Tuple, ::Type{T}) where {T}
+    v = tag_key(first(ctxs), T)
+    return v !== nothing ? v : _with_tag_key(Base.tail(ctxs), T)
+end
+
+tag_key(w::With, ::Type{T}) where {T} = _with_tag_key(w.ctxs, T)
+
+# ── tag_subtypes: merge ──────────────────────────────────────────────────────
+
+_with_tag_subtypes(::Tuple{}, ::Type{T}) where {T} = ()
+function _with_tag_subtypes(ctxs::Tuple, ::Type{T}) where {T}
+    return (tag_subtypes(first(ctxs), T)..., _with_tag_subtypes(Base.tail(ctxs), T)...)
+end
+
+tag_subtypes(w::With, ::Type{T}) where {T} = _with_tag_subtypes(w.ctxs, T)

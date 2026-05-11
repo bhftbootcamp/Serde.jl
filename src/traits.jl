@@ -190,6 +190,8 @@ deser_validate(::Type{T}, ::Val{x}, value) where {T,x} = nothing
 @inline isempty_value(strategy, ::Type{T}, ::Val{x}, v) where {T,x} = isempty_value(T, Val(x), v)
 @inline deser_transform(strategy, ::Type{T}, ::Type{F}, v) where {T,F} = deser_transform(T, F, v)
 @inline deser_validate(strategy, ::Type{T}, ::Val{x}, v) where {T,x} = deser_validate(T, Val(x), v)
+@inline tag_key(strategy, ::Type{T}) where {T} = tag_key(T)
+@inline tag_subtypes(strategy, ::Type{T}) where {T} = tag_subtypes(T)
 
 """
     Serde.ser_name(::Type{T}, ::Val{field}) -> Symbol
@@ -311,6 +313,7 @@ ser_skip(::Type{T}, ::Val{x}, v) where {T,x} = ser_skip(T, Val(x))
 
 """
     Serde.tag_key(::Type{T}) -> Union{Nothing, Symbol, String}
+    Serde.tag_key(strategy, ::Type{T}) -> Union{Nothing, Symbol, String}
 
 Returns the name of the discriminator field for tagged-union type `T`.
 
@@ -331,6 +334,7 @@ tag_key(::Type{T}) where {T} = nothing
 
 """
     Serde.tag_subtypes(::Type{T}) -> Tuple
+    Serde.tag_subtypes(strategy, ::Type{T}) -> Tuple
 
 Returns a tuple of `(tag_value => SubType, ...)` pairs for the tagged union type `T`.
 

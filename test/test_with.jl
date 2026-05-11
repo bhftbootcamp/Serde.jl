@@ -1,6 +1,6 @@
 @testset "With strategy composer" begin
 
-    # ── ser_name / deser_name: first-wins ─────────────────────────────────────
+    # ── ser_name / deser_name: chain ──────────────────────────────────────────
 
     @testset "With(CamelCase()) renames fields" begin
         struct _WithCamel
@@ -30,37 +30,28 @@
         @test obj.user_name == "Bob"
     end
 
-    @testset "first strategy wins for naming" begin
-        struct _WithNamingFirst
+    @testset "name strategies chain in order" begin
+        struct _WithNamingChain
             my_field::Int
         end
-        # Two CamelCase strategies — the first one wins (both rename to camelCase, same result)
-        w = With(CamelCase(), PascalCase())
-        # CamelCase wins: myField (not MyField from PascalCase)
-        @test Serde.ser_name(w, _WithNamingFirst, Val(:my_field)) == :myField
+        struct _TestPrefix end
+        Serde.ser_name(::_TestPrefix, ::Type{T}, ::Val{x}) where {T,x} = Symbol("api_" * string(x))
+        Serde.deser_name(::_TestPrefix, ::Type{T}, ::Val{x}) where {T,x} = Symbol("api_" * string(x))
+        # chain: Prefix first → api_my_field, then CamelCase → apiMyField
+        w = With(_TestPrefix(), CamelCase())
+        @test Serde.ser_name(w, _WithNamingChain, Val(:my_field)) == :apiMyField
+        @test Serde.deser_name(w, _WithNamingChain, Val(:my_field)) == :apiMyField
     end
 
-    @testset "unnamed fields fall through to type-level ser_name" begin
+    @testset "identity strategy is a no-op in chain" begin
         struct _WithFallthrough
             foo::Int
         end
         Serde.ser_name(::Type{_WithFallthrough}, ::Val{:foo}) = :FOO
-        # With(CamelCase()): CamelCase returns :foo (camelCase of "foo" = "foo"),
-        # which equals :foo, so falls through to next... but there's no next.
-        # Wait — actually CamelCase returns Symbol(to_camel_case("foo")) = :foo = x, so falls through.
-        # The _with_ser_name base case returns x = :foo.
-        # But type-level ser_name is NOT called by With directly; With calls strategy fallbacks.
-        # The type-level ser_name(T, Val(x)) is called via the generic fallback
-        # ser_name(strategy, T, Val(x)) = ser_name(T, Val(x)) when no strategy overrides.
-        # So for CamelCase: ser_name(CamelCase(), _WithFallthrough, Val(:foo)) = :foo (via CamelCase override).
-        # That equals :foo, so _with_ser_name falls through to base case returning :foo.
-        # The type-level override Serde.ser_name(::Type{_WithFallthrough}, ::Val{:foo}) = :FOO
-        # is NOT reached by With because With never calls ser_name(T, Val(x)) directly.
-        # This is by design: type-level overrides bypass With.
+        # CamelCase doesn't change "foo" (no underscores) → :foo, chain ends → :foo
         w = With(CamelCase())
-        # CamelCase doesn't change "foo" → "foo", falls through, base returns :foo
         @test Serde.ser_name(w, _WithFallthrough, Val(:foo)) == :foo
-        # Type-level override is independent
+        # Type-level override is independent of With
         @test Serde.ser_name(_WithFallthrough, Val(:foo)) == :FOO
     end
 
