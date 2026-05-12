@@ -127,9 +127,6 @@ function _csv_write_row!(io::IO, strategy, data::T, delim::String, written::Int,
             if _csv_is_nested(v)
                 written = _csv_write_row!(io, strategy, v, delim, written, lineend)
             else
-                # Declared as nullable-nested-struct but value is null: emit
-                # the right number of empty cells so columns line up with the
-                # header.
                 w = _csv_field_width(strategy, T, F)
                 for _ in 1:w
                     written > 0 && write(io, delim)
