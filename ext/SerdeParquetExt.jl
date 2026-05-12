@@ -1,8 +1,7 @@
 module SerdeParquetExt
 
 using Serde
-using Parquet2: Parquet2
-using Tables
+using Parquet2: Parquet2, Tables
 
 import Serde: parse_parquet, from_parquet, try_from_parquet, to_parquet
 import Serde: ParseError, SerdeError, to_deser, DefaultStrategy, iter_fields

@@ -113,12 +113,4 @@ See also: [`from_toml`](@ref).
 """
 function to_toml end
 
-const _TOML_HINT = "TOML support requires the `TOML` stdlib package. " *
-                   "Run `import TOML` to activate the extension."
-
-parse_toml(args...; kw...)    = throw(ArgumentError(_TOML_HINT))
-from_toml(args...; kw...)     = throw(ArgumentError(_TOML_HINT))
-try_from_toml(args...; kw...) = throw(ArgumentError(_TOML_HINT))
-to_toml(args...; kw...)       = throw(ArgumentError(_TOML_HINT))
-
 end

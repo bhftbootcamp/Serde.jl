@@ -1,6 +1,6 @@
 # Parquet format tests. The extension is loaded automatically once Parquet2
-# and Tables are present in the test environment.
-using Parquet2, Tables
+# is present in the test environment.
+using Parquet2
 
 @testset "Parquet — round-trip Vector{T}" begin
     struct _ParRow
