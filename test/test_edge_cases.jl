@@ -1,11 +1,4 @@
 # test_edge_cases.jl
-#
-# Дополнительные тесты, покрывающие edge cases и пути кода,
-# не охваченные базовым набором тестов.
-# Покрывает: deser.jl, форматы Yaml/Xml/Toml/Csv/Query/MsgPack/Bson
-# а также >32-поля (fallback paths), специальные типы, ошибки.
-#
-# ВАЖНО: to_yaml(struct) требует контекст — to_yaml(Serde.DefaultStrategy(), struct)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. deser.jl — непокрытые пути
@@ -13,16 +6,50 @@
 
 @testset "Deser engine — edge cases" begin
 
-    @testset "Enum deser from unknown Symbol returns nothing" begin
-        @enum _EdgeColor2 red2 green2 blue2
-        result = Serde.deser(_EdgeColor2, :purple)
-        @test result === nothing
+    @testset "Empty struct (zero fields) round-trip" begin
+        # Regression: `@nexprs 32` referenced `x_1..x_32` even when the struct
+        # had no fields, and `_yy_deser_struct` / deser.jl all blew up.
+        # BSON additionally rejected zero-field structs at write time; YAML
+        # emitted a blank document that parsed back as `nothing`.
+        struct _EE end
+        for (label, to_fn, from_fn) in [
+            ("json",    to_json,    from_json),
+            ("toml",    to_toml,    from_toml),
+            ("yaml",    to_yaml,    from_yaml),
+            ("xml",     to_xml,     from_xml),
+            ("msgpack", to_msgpack, from_msgpack),
+            ("bson",    to_bson,    from_bson),
+        ]
+            out = to_fn(_EE())
+            back = from_fn(_EE, out)
+            @test back === _EE()
+        end
+
+        # Nested empty struct inside a non-empty parent must also round-trip.
+        struct _Inner end
+        struct _Outer; inner::_Inner; n::Int; end
+        v = _Outer(_Inner(), 7)
+        @test from_json(_Outer, to_json(v)) === v
+        @test from_msgpack(_Outer, to_msgpack(v)).n == 7
+        @test from_bson(_Outer, to_bson(v)).n == 7
     end
 
-    @testset "Enum deser from unknown String returns nothing" begin
+    @testset "register_tagged_subtype validates subtype relationship" begin
+        abstract type _RegV end
+        struct _NotChild end
+        @test_throws ArgumentError register_tagged_subtype(_RegV, "x", _NotChild)
+    end
+
+    @testset "Enum deser from unknown Symbol throws" begin
+        # Previously this silently returned `nothing`. The deser engine now
+        # throws so the trait engine can surface a TypeMismatchError.
+        @enum _EdgeColor2 red2 green2 blue2
+        @test_throws ArgumentError Serde.deser(_EdgeColor2, :purple)
+    end
+
+    @testset "Enum deser from unknown String throws" begin
         @enum _EdgeDir north south east west
-        result = Serde.deser(_EdgeDir, "northeast")
-        @test result === nothing
+        @test_throws ArgumentError Serde.deser(_EdgeDir, "northeast")
     end
 
     @testset "Number coercion Float64 from Int" begin
@@ -560,10 +587,10 @@ end
     end
 
     @testset "to_xml DateTime value" begin
-        struct _XmlDT
+        struct _XmlDTEdge
             ts::Dates.DateTime
         end
-        xml = to_xml(_XmlDT(Dates.DateTime(2024, 1, 15)); key = "r")
+        xml = to_xml(_XmlDTEdge(Dates.DateTime(2024, 1, 15)); key = "r")
         @test occursin("2024", xml)
     end
 end
@@ -652,11 +679,13 @@ end
     end
 
     @testset "to_toml DateTime" begin
+        # Distinct name from `_TomlDT` in test_toml.jl — Julia ≤ 1.10 rejects
+        # redefining structs at the same scope.
         dt = Dates.DateTime(2024, 6, 15, 10, 30, 0)
-        struct _TomlDT
+        struct _TomlDTEdge
             ts::Dates.DateTime
         end
-        toml = to_toml(_TomlDT(dt))
+        toml = to_toml(_TomlDTEdge(dt))
         @test occursin("2024", toml)
     end
 
@@ -1433,13 +1462,33 @@ end
         @test_throws MissingFieldError from_json(_JsonMissField, "{}")
     end
 
-    @testset "from_json int field from JSON object defaults to zero" begin
+    @testset "from_json int field from JSON object throws TypeMismatchError" begin
         struct _JsonTypeMismatch
             x::Int
         end
-        # JSON direct deserialization: dict-to-int falls back to 0 (no error)
-        obj = from_json(_JsonTypeMismatch, "{\"x\": {\"nested\": 1}}")
-        @test obj.x == 0
+        # JSON direct deserialization: object-to-int is a type mismatch and must
+        # error rather than silently producing 0. Regression test for the fast-path
+        # primitive extractor previously zero-filling on shape mismatch.
+        @test_throws TypeMismatchError from_json(_JsonTypeMismatch, "{\"x\": {\"nested\": 1}}")
+    end
+
+    @testset "to_*(io::IO, ...) overloads" begin
+        # Phase 12 / API consistency: every format must accept an IO sink.
+        struct _IOStruct; n::Int; s::String; end
+        v = _IOStruct(7, "hi")
+
+        # JSON already has it; sanity-check.
+        io = IOBuffer(); to_json(io, v); @test occursin("\"n\":7", String(take!(io)))
+
+        io = IOBuffer(); to_msgpack(io, v); @test parse_msgpack(take!(io))["n"] == 7
+        io = IOBuffer(); to_bson(io, v);    @test parse_bson(take!(io))["n"] == 7
+
+        io = IOBuffer(); to_toml(io, v); @test occursin("n = 7", String(take!(io)))
+        io = IOBuffer(); to_yaml(io, v); @test occursin("n: 7", String(take!(io)))
+        io = IOBuffer(); to_xml(io, v);  @test occursin("n=\"7\"", String(take!(io)))
+        io = IOBuffer(); to_query(io, v); @test occursin("n=7", String(take!(io)))
+        io = IOBuffer(); to_csv(io, [v]); @test occursin("n,s", String(take!(io)))
+        io = IOBuffer(); to_msgpack(io, CamelCase(), v); @test parse_msgpack(take!(io))["n"] == 7
     end
 
     @testset "from_json invalid string for Int throws" begin

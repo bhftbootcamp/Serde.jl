@@ -115,6 +115,64 @@ function ser_pairs(strategy, val::T) where {T}
 end
 
 """
+    Serde.iter_fields(callback, val)
+    Serde.iter_fields(callback, strategy, val)
+
+Iterate over the serializable fields of `val`, applying the full trait
+pipeline ([`Serde.ser_value`](@ref), [`Serde.ser_type`](@ref),
+[`Serde.ser_skip`](@ref), [`Serde.ser_name`](@ref)) to each. `callback` is
+invoked as `callback(name::Symbol, value)` for every non-skipped field, with
+`name` the transformed key and `value` the transformed value.
+
+The callback's return value is ignored.
+
+# Examples
+```julia
+struct User; user_id::Int; name::String; end
+
+# Collect (key, value) pairs through CamelCase renaming.
+out = Tuple{Symbol,Any}[]
+Serde.iter_fields(CamelCase(), User(1, "Ada")) do k, v
+    push!(out, (k, v))
+end
+# out == [(:userId, 1), (:name, "Ada")]
+```
+
+See also: [`Serde.ser_pairs`](@ref).
+"""
+function iter_fields end
+
+function iter_fields(callback::F, strategy, val::T) where {F,T}
+    ct = ClassType(T)
+    (ct isa StructClass || ct isa NTupleClass || ct isa TaggedClass) ||
+        throw(ArgumentError(
+            "iter_fields: $T (ClassType $(ct)) is not a struct or NamedTuple"))
+    N = fieldcount(T)
+    N == 0 && return nothing
+    Base.@nexprs 32 i -> begin
+        if i <= N
+            fn_i = fieldname(T, i)
+            v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(val, fn_i)))
+            if !ser_skip(strategy, T, Val(fn_i), v_i)
+                k_i = ser_name(strategy, T, Val(fn_i))
+                callback(k_i isa Symbol ? k_i : Symbol(k_i), v_i)
+            end
+        end
+    end
+    if N > 32
+        for fn in fieldnames(T)[33:end]
+            v = ser_type(strategy, T, ser_value(strategy, T, Val(fn), getfield(val, fn)))
+            ser_skip(strategy, T, Val(fn), v) && continue
+            k = ser_name(strategy, T, Val(fn))
+            callback(k isa Symbol ? k : Symbol(k), v)
+        end
+    end
+    return nothing
+end
+
+iter_fields(callback::F, val) where {F} = iter_fields(callback, DefaultStrategy(), val)
+
+"""
     Serde.to_flatten(data; delimiter = "_") -> Dict{String, Any}
 
 Flattens a nested dictionary or struct into a single-level `Dict{String,Any}`.

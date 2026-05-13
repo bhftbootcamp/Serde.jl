@@ -43,28 +43,53 @@ const MP_MAP32    = UInt8(0xdf)
 const MP_EXT_TIMESTAMP = Int8(-1)
 const MP_UNIX_EPOCH    = Dates.DateTime(1970, 1, 1)
 
+const MP_DEFAULT_MAX_DEPTH = 1000
+
+@inline function _mp_check_remaining(io::IO, n::Integer)
+    n < 0 && throw(ParseError("MsgPack", "negative length: $n", ErrorException("bad length")))
+    if applicable(bytesavailable, io)
+        avail = bytesavailable(io)
+        n > avail && throw(ParseError("MsgPack", "length $n exceeds remaining $(avail) bytes", ErrorException("truncated")))
+    end
+    return nothing
+end
+
+@inline function _mp_check_count(io::IO, n::Integer, bytes_per_elem::Integer = 1)
+    n < 0 && throw(ParseError("MsgPack", "negative count: $n", ErrorException("bad count")))
+    if applicable(bytesavailable, io)
+        avail = bytesavailable(io)
+        Int(n) * Int(bytes_per_elem) > avail &&
+            throw(ParseError("MsgPack", "element count $n exceeds remaining bytes ($avail)", ErrorException("oversized")))
+    end
+    return nothing
+end
+
 function _msgpack_read_str(io::IO, n::Int)
+    _mp_check_remaining(io, n)
     return String(read(io, n))
 end
 
 function _msgpack_read_bin(io::IO, n::Int)
+    _mp_check_remaining(io, n)
     return read(io, n)
 end
 
-function _msgpack_read_arr(io::IO, n::Int)
+function _msgpack_read_arr(io::IO, n::Int, depth::Int, ::Type{D}, max_depth::Int) where {D<:AbstractDict}
+    _mp_check_count(io, n, 1)
     result = Vector{Any}(undef, n)
     for i in 1:n
-        result[i] = _msgpack_read(io)
+        result[i] = _msgpack_read(io, depth + 1, D, max_depth)
     end
     return result
 end
 
-function _msgpack_read_map(io::IO, n::Int)
-    result = Dict{String,Any}()
+function _msgpack_read_map(io::IO, n::Int, depth::Int, ::Type{D}, max_depth::Int) where {D<:AbstractDict}
+    _mp_check_count(io, n, 2)
+    result = D()
     sizehint!(result, n)
     for _ in 1:n
-        k = _msgpack_read(io)
-        v = _msgpack_read(io)
+        k = _msgpack_read(io, depth + 1, D, max_depth)
+        v = _msgpack_read(io, depth + 1, D, max_depth)
         result[string(k)] = v
     end
     return result
@@ -89,19 +114,25 @@ function _msgpack_read_timestamp(io::IO, len::Int)
 end
 
 function _msgpack_read_ext(io::IO, len::Int)
+    _mp_check_remaining(io, len + 1)
     type_byte = read(io, Int8)
     type_byte == MP_EXT_TIMESTAMP && return _msgpack_read_timestamp(io, len)
+    # Return raw body for unknown ext types; the type tag is documented as
+    # discarded in `parse_msgpack` (see docstring).
     return read(io, len)
 end
 
-function _msgpack_read(io::IO)
+@inline _mp_int64_or_uint64(v::UInt64) = v <= typemax(Int64) ? Int64(v) : v
+
+function _msgpack_read(io::IO, depth::Int = 0, ::Type{D} = Dict{String,Any}, max_depth::Int = MP_DEFAULT_MAX_DEPTH) where {D<:AbstractDict}
+    depth > max_depth && throw(ParseError("MsgPack", "nesting exceeds depth limit ($max_depth)", ErrorException("depth")))
     b = read(io, UInt8)
 
     b <= 0x7f && return Int64(b)
     b >= 0xe0 && return Int64(reinterpret(Int8, b))
 
-    b & 0xf0 == 0x80 && return _msgpack_read_map(io, Int(b & 0x0f))
-    b & 0xf0 == 0x90 && return _msgpack_read_arr(io, Int(b & 0x0f))
+    b & 0xf0 == 0x80 && return _msgpack_read_map(io, Int(b & 0x0f), depth, D, max_depth)
+    b & 0xf0 == 0x90 && return _msgpack_read_arr(io, Int(b & 0x0f), depth, D, max_depth)
     b & 0xe0 == 0xa0 && return _msgpack_read_str(io, Int(b & 0x1f))
 
     b == MP_NIL   && return nothing
@@ -114,7 +145,7 @@ function _msgpack_read(io::IO)
     b == MP_UINT8  && return Int64(read(io, UInt8))
     b == MP_UINT16 && return Int64(ntoh(read(io, UInt16)))
     b == MP_UINT32 && return Int64(ntoh(read(io, UInt32)))
-    b == MP_UINT64 && begin v = ntoh(read(io, UInt64)); return v <= typemax(Int64) ? Int64(v) : v end
+    b == MP_UINT64 && return _mp_int64_or_uint64(ntoh(read(io, UInt64)))
 
     b == MP_INT8  && return Int64(read(io, Int8))
     b == MP_INT16 && return Int64(ntoh(read(io, Int16)))
@@ -129,11 +160,11 @@ function _msgpack_read(io::IO)
     b == MP_STR16 && return _msgpack_read_str(io, Int(ntoh(read(io, UInt16))))
     b == MP_STR32 && return _msgpack_read_str(io, Int(ntoh(read(io, UInt32))))
 
-    b == MP_ARR16 && return _msgpack_read_arr(io, Int(ntoh(read(io, UInt16))))
-    b == MP_ARR32 && return _msgpack_read_arr(io, Int(ntoh(read(io, UInt32))))
+    b == MP_ARR16 && return _msgpack_read_arr(io, Int(ntoh(read(io, UInt16))), depth, D, max_depth)
+    b == MP_ARR32 && return _msgpack_read_arr(io, Int(ntoh(read(io, UInt32))), depth, D, max_depth)
 
-    b == MP_MAP16 && return _msgpack_read_map(io, Int(ntoh(read(io, UInt16))))
-    b == MP_MAP32 && return _msgpack_read_map(io, Int(ntoh(read(io, UInt32))))
+    b == MP_MAP16 && return _msgpack_read_map(io, Int(ntoh(read(io, UInt16))), depth, D, max_depth)
+    b == MP_MAP32 && return _msgpack_read_map(io, Int(ntoh(read(io, UInt32))), depth, D, max_depth)
 
     b == MP_FIXEXT1  && return _msgpack_read_ext(io, 1)
     b == MP_FIXEXT2  && return _msgpack_read_ext(io, 2)
@@ -179,10 +210,13 @@ See also: [`from_msgpack`](@ref), [`try_from_msgpack`](@ref).
 """
 function parse_msgpack end
 
-function parse_msgpack(x::Vector{UInt8})
+function parse_msgpack(x::Vector{UInt8};
+                       dict_type::Type{D} = Dict{String,Any},
+                       max_depth::Int = MP_DEFAULT_MAX_DEPTH,
+                       kw...) where {D<:AbstractDict}
     io = IOBuffer(x)
     try
-        return _msgpack_read(io)
+        return _msgpack_read(io, 0, D, max_depth)
     catch e
         e isa SerdeError && rethrow(e)
         throw(ParseError("MsgPack", "invalid MsgPack data", e))
@@ -225,16 +259,16 @@ Point(1, 2)
 
 See also: [`try_from_msgpack`](@ref), [`to_msgpack`](@ref), [`parse_msgpack`](@ref).
 """
-function from_msgpack(strategy, ::Type{T}, x::Vector{UInt8}) where {T}
-    return to_deser(strategy, T, parse_msgpack(x))
+function from_msgpack(strategy, ::Type{T}, x::Vector{UInt8}; kw...) where {T}
+    return to_deser(strategy, T, parse_msgpack(x; kw...))
 end
 
-from_msgpack(::Type{T}, x::Vector{UInt8}) where {T} = from_msgpack(DefaultStrategy(), T, x)
-from_msgpack(::Type{Nothing}, ::Vector{UInt8}) = nothing
-from_msgpack(::Type{Missing}, ::Vector{UInt8}) = missing
+from_msgpack(::Type{T}, x::Vector{UInt8}; kw...) where {T} = from_msgpack(DefaultStrategy(), T, x; kw...)
+from_msgpack(::Type{Nothing}, ::Vector{UInt8}; kw...) = nothing
+from_msgpack(::Type{Missing}, ::Vector{UInt8}; kw...) = missing
 
-function from_msgpack(f::Function, x::Vector{UInt8})
-    object = parse_msgpack(x)
+function from_msgpack(f::Function, x::Vector{UInt8}; kw...)
+    object = parse_msgpack(x; kw...)
     return to_deser(f(object), object)
 end
 
@@ -423,29 +457,14 @@ function _msgpack_write!(io::IO, strategy, val::NamedTuple)
 end
 
 function _msgpack_write!(io::IO, strategy, val::T) where {T}
+    pairs = Tuple{Symbol,Any}[]
     N = fieldcount(T)
-    count = 0
     Base.@nexprs 32 i -> begin
         if i <= N
             fn_i = fieldnames(T)[i]
             v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(val, fn_i)))
-            ser_skip(strategy, T, Val(fn_i), v_i) || (count += 1)
-        end
-    end
-    if N > 32
-        for field in fieldnames(T)[33:end]
-            v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(val, field)))
-            ser_skip(strategy, T, Val(field), v) || (count += 1)
-        end
-    end
-    _msgpack_map_header!(io, count)
-    Base.@nexprs 32 i -> begin
-        if i <= N
-            fn2_i = fieldnames(T)[i]
-            v2_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn2_i), getfield(val, fn2_i)))
-            if !ser_skip(strategy, T, Val(fn2_i), v2_i)
-                _msgpack_write!(io, strategy, string(ser_name(strategy, T, Val(fn2_i))))
-                _msgpack_write!(io, strategy, v2_i)
+            if !ser_skip(strategy, T, Val(fn_i), v_i)
+                push!(pairs, (ser_name(strategy, T, Val(fn_i)), v_i))
             end
         end
     end
@@ -453,9 +472,13 @@ function _msgpack_write!(io::IO, strategy, val::T) where {T}
         for field in fieldnames(T)[33:end]
             v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(val, field)))
             ser_skip(strategy, T, Val(field), v) && continue
-            _msgpack_write!(io, strategy, string(ser_name(strategy, T, Val(field))))
-            _msgpack_write!(io, strategy, v)
+            push!(pairs, (ser_name(strategy, T, Val(field)), v))
         end
+    end
+    _msgpack_map_header!(io, length(pairs))
+    for (k, v) in pairs
+        _msgpack_write!(io, strategy, string(k))
+        _msgpack_write!(io, strategy, v)
     end
 end
 
@@ -504,5 +527,14 @@ function to_msgpack(strategy, data)::Vector{UInt8}
 end
 
 to_msgpack(data) = to_msgpack(DefaultStrategy(), data)
+
+function to_msgpack(io::IO, data)
+    _msgpack_write!(io, DefaultStrategy(), data)
+    return nothing
+end
+function to_msgpack(io::IO, strategy, data)
+    _msgpack_write!(io, strategy, data)
+    return nothing
+end
 
 end

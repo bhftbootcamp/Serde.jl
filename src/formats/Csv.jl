@@ -1,12 +1,8 @@
 module SerdeCsv
 
-import CSV
-
 export parse_csv, from_csv, try_from_csv, to_csv
 
-import ..ParseError, ..SerdeError, ..to_deser, ..DefaultStrategy
-import ..ser_name, ..ser_value, ..ser_type, ..ser_skip
-import ..isnull, ..ClassType, ..StructClass
+import ..ParseError, ..SerdeError, ..DefaultStrategy
 
 """
     parse_csv(x::Union{AbstractString, Vector{UInt8}}; delimiter = ",", kw...) -> Vector{NamedTuple}
@@ -40,22 +36,6 @@ julia> parse_csv("name,age\\nAlice,30\\nBob,25")
 See also: [`from_csv`](@ref), [`try_from_csv`](@ref).
 """
 function parse_csv end
-
-function parse_csv(x::Vector{UInt8}; kw...)
-    return parse_csv(unsafe_string(pointer(x), length(x)); kw...)
-end
-
-function parse_csv(x::AbstractString; delimiter::AbstractString = ",", kw...)
-    io = IOBuffer(x)
-    try
-        return CSV.File(io; delim = delimiter, types = String, strict = true, kw...) |> CSV.rowtable
-    catch e
-        e isa SerdeError && rethrow(e)
-        throw(ParseError("CSV", "invalid CSV syntax", e))
-    finally
-        close(io)
-    end
-end
 
 """
     from_csv(::Type{T}, x; kw...) -> Vector{T}
@@ -97,26 +77,7 @@ julia> from_csv(Person, "name,age\\nAlice,30\\nBob,25")
 
 See also: [`try_from_csv`](@ref), [`to_csv`](@ref), [`parse_csv`](@ref).
 """
-function from_csv(strategy, ::Type{T}, x; kw...) where {T}
-    return to_deser(strategy, Vector{T}, parse_csv(x; kw...))
-end
-
-from_csv(::Type{T}, x; kw...) where {T} = from_csv(DefaultStrategy(), T, x; kw...)
-from_csv(::Type{Nothing}, _) = nothing
-from_csv(::Type{Missing}, _) = missing
-
-function from_csv(f::Function, x; kw...)
-    object = parse_csv(x; kw...)
-    return to_deser(f(object), object)
-end
-
-function _try_wrap(f, args...; kw...)
-    try
-        return f(args...; kw...)
-    catch e
-        return e isa SerdeError ? e : ParseError("CSV", string(e), e)
-    end
-end
+function from_csv end
 
 """
     try_from_csv(::Type{T}, x; kw...) -> Union{Vector{T}, SerdeError}
@@ -130,122 +91,7 @@ Like [`from_csv`](@ref) but returns a [`SerdeError`](@ref) instead of throwing o
 
 See also: [`from_csv`](@ref), [`SerdeError`](@ref).
 """
-try_from_csv(::Type{T}, x; kw...)           where {T} = _try_wrap(from_csv, T, x; kw...)
-try_from_csv(strategy, ::Type{T}, x; kw...) where {T} = _try_wrap(from_csv, strategy, T, x; kw...)
-
-@inline function _csv_needs_quote(c::Char, delim::String)
-    return c == '"' || c == '\n' || c == '\r' || (!isempty(delim) && c == delim[1])
-end
-
-function _csv_escape!(io::IO, s::AbstractString, delim::String)
-    needs_quote = false
-    for c in s
-        if _csv_needs_quote(c, delim)
-            needs_quote = true
-            break
-        end
-    end
-    if needs_quote
-        write(io, UInt8('"'))
-        for c in s
-            c == '"' && write(io, UInt8('"'))
-            write(io, c)
-        end
-        write(io, UInt8('"'))
-    else
-        write(io, s)
-    end
-end
-
-function _csv_flat_columns(strategy, ::Type{T}; delimiter::String = "_", prefix::String = "") where {T}
-    cols = String[]
-    for (i, field) in enumerate(fieldnames(T))
-        ser_skip(strategy, T, Val(field)) && continue
-        name = string(ser_name(strategy, T, Val(field)))
-        full = isempty(prefix) ? name : prefix * delimiter * name
-        ft = fieldtype(T, i)
-        if ClassType(ft) isa StructClass && fieldcount(ft) > 0
-            append!(cols, _csv_flat_columns(strategy, ft; delimiter, prefix = full))
-        else
-            push!(cols, full)
-        end
-    end
-    return cols
-end
-
-@inline function _csv_get_value(::Type{T}, field::Symbol, data) where {T}
-    return ser_type(T, ser_value(T, Val(field), getfield(data, field)))
-end
-
-@inline function _csv_is_nested(v)
-    return !isnull(v) && ClassType(v) isa StructClass && fieldcount(typeof(v)) > 0
-end
-
-function _csv_write_row!(io::IO, strategy, data::T, delim::String, written::Int)::Int where {T}
-    N = fieldcount(T)
-    Base.@nexprs 32 i -> begin
-        if i <= N
-            fn_i = fieldnames(T)[i]
-            if !ser_skip(strategy, T, Val(fn_i))
-                v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(data, fn_i)))
-                if _csv_is_nested(v_i)
-                    written = _csv_write_row!(io, strategy, v_i, delim, written)
-                else
-                    written > 0 && write(io, delim)
-                    isnull(v_i) || _csv_escape!(io, string(v_i), delim)
-                    written += 1
-                end
-            end
-        end
-    end
-    if N > 32
-        for field in fieldnames(T)[33:end]
-            ser_skip(strategy, T, Val(field)) && continue
-            v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(data, field)))
-            if _csv_is_nested(v)
-                written = _csv_write_row!(io, strategy, v, delim, written)
-            else
-                written > 0 && write(io, delim)
-                isnull(v) || _csv_escape!(io, string(v), delim)
-                written += 1
-            end
-        end
-    end
-    return written
-end
-
-function _csv_collect_values!(strategy, vals::Vector{Any}, data::T, idx::Int)::Int where {T}
-    N = fieldcount(T)
-    Base.@nexprs 32 i -> begin
-        if i <= N
-            fn_i = fieldnames(T)[i]
-            if !ser_skip(strategy, T, Val(fn_i))
-                v_i = ser_type(strategy, T, ser_value(strategy, T, Val(fn_i), getfield(data, fn_i)))
-                if _csv_is_nested(v_i)
-                    idx = _csv_collect_values!(strategy, vals, v_i, idx)
-                else
-                    vals[idx] = v_i
-                    idx += 1
-                end
-            end
-        end
-    end
-    if N > 32
-        for field in fieldnames(T)[33:end]
-            ser_skip(strategy, T, Val(field)) && continue
-            v = ser_type(strategy, T, ser_value(strategy, T, Val(field), getfield(data, field)))
-            if _csv_is_nested(v)
-                idx = _csv_collect_values!(strategy, vals, v, idx)
-            else
-                vals[idx] = v
-                idx += 1
-            end
-        end
-    end
-    return idx
-end
-
-# ── Context-aware serialization ──
+function try_from_csv end
 
 """
     to_csv(data::Vector{T}; delimiter = ",", headers = String[], with_names = true) -> String
@@ -288,57 +134,6 @@ Alice,30
 
 See also: [`from_csv`](@ref).
 """
-function to_csv(
-    strategy,
-    data::Vector{T};
-    delimiter::String = ",",
-    headers::Vector{String} = String[],
-    with_names::Bool = true,
-)::String where {T}
-    isempty(data) && return ""
-
-    all_cols = _csv_flat_columns(strategy, T)
-    use_custom = !isempty(headers)
-    out_cols = use_custom ? headers : all_cols
-
-    io = IOBuffer(; sizehint = length(data) * length(out_cols) * 16)
-    try
-        if with_names
-            for (i, col) in enumerate(out_cols)
-                i > 1 && write(io, delimiter)
-                write(io, col)
-            end
-            write(io, '\n')
-        end
-
-        if use_custom
-            col_map = Dict(name => i for (i, name) in enumerate(all_cols))
-            vals = Vector{Any}(undef, length(all_cols))
-            for item in data
-                _csv_collect_values!(strategy, vals, item, 1)
-                for (j, col) in enumerate(out_cols)
-                    j > 1 && write(io, delimiter)
-                    idx = get(col_map, col, 0)
-                    if idx > 0
-                        v = vals[idx]
-                        isnull(v) || _csv_escape!(io, string(v), delimiter)
-                    end
-                end
-                write(io, '\n')
-            end
-        else
-            for item in data
-                _csv_write_row!(io, strategy, item, delimiter, 0)
-                write(io, '\n')
-            end
-        end
-
-        return String(take!(io))
-    finally
-        close(io)
-    end
-end
-
-to_csv(data::Vector{T}; kw...) where {T} = to_csv(DefaultStrategy(), data; kw...)
+function to_csv end
 
 end

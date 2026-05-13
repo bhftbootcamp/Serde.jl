@@ -1,6 +1,6 @@
 @testset "With strategy composer" begin
 
-    # ── ser_name / deser_name: first-wins ─────────────────────────────────────
+    # ── ser_name / deser_name: chain of responsibility ──────────────────────
 
     @testset "With(CamelCase()) renames fields" begin
         struct _WithCamel
@@ -30,38 +30,78 @@
         @test obj.user_name == "Bob"
     end
 
-    @testset "first strategy wins for naming" begin
-        struct _WithNamingFirst
-            my_field::Int
+    @testset "naming composes as a chain" begin
+        struct _WithChain
+            user_id::Int
+            full_name::String
         end
-        # Two CamelCase strategies — the first one wins (both rename to camelCase, same result)
-        w = With(CamelCase(), PascalCase())
-        # CamelCase wins: myField (not MyField from PascalCase)
-        @test Serde.ser_name(w, _WithNamingFirst, Val(:my_field)) == :myField
+        # A custom prefix-and-capitalize strategy. The chain feeds it the
+        # previous step's output, so combining with CamelCase produces a
+        # composed result rather than dropping one of the two transforms.
+        struct _ApiPrefix end
+        Serde.ser_name(::_ApiPrefix, ::Type{T}, ::Val{x}) where {T,x}   =
+            Symbol("api" * uppercasefirst(string(x)))
+        Serde.deser_name(::_ApiPrefix, ::Type{T}, ::Val{x}) where {T,x} =
+            Symbol("api" * uppercasefirst(string(x)))
+
+        w = With(CamelCase(), _ApiPrefix())
+        # snake_case → camelCase → prefix-capitalize
+        @test Serde.ser_name(w, _WithChain, Val(:user_id))   === :apiUserId
+        @test Serde.ser_name(w, _WithChain, Val(:full_name)) === :apiFullName
+
+        # End-to-end JSON round trip — was impossible under the old first-wins
+        # semantic where one of the two transforms always got dropped.
+        json = to_json(w, _WithChain(42, "Ada"))
+        @test contains(json, "\"apiUserId\":42")
+        @test contains(json, "\"apiFullName\":\"Ada\"")
+        back = from_json(w, _WithChain, json)
+        @test back.user_id == 42
+        @test back.full_name == "Ada"
     end
 
-    @testset "unnamed fields fall through to type-level ser_name" begin
+    @testset "non-renaming strategies are transparent in the chain" begin
+        struct _WithIdentity
+            x::Int
+        end
+        # A strategy that doesn't override `ser_name` falls through to the
+        # default `ser_name(strategy, T, Val(x)) = x`, returning whatever the
+        # previous step produced — i.e. it's a no-op pass.
+        struct _NoNameStrat end
+        w = With(CamelCase(), _NoNameStrat(), CamelCase())
+        # CamelCase of `:x` is `:x` (no underscores); _NoNameStrat passes
+        # through; CamelCase again is `:x`. Final result: `:x`.
+        @test Serde.ser_name(w, _WithIdentity, Val(:x)) === :x
+    end
+
+    @testset "naming chain treats `nothing` as pass-through" begin
+        # Regression: a strategy returning `nothing` from `ser_name` used to
+        # be coerced to the literal Symbol `:nothing` (via `_to_name_sym`),
+        # poisoning the chain. The chain now skips the strategy and carries
+        # the previous name forward.
+        struct _WithNothingPass; user_id::Int; end
+
+        struct _PassThrough end
+        Serde.ser_name(::_PassThrough, ::Type{T}, ::Val{x}) where {T,x} = nothing
+
+        # On its own, _PassThrough is a no-op: the field name is unchanged.
+        @test Serde.ser_name(With(_PassThrough()), _WithNothingPass, Val(:user_id)) === :user_id
+        # In a chain, the surrounding strategies still apply.
+        @test Serde.ser_name(With(_PassThrough(), CamelCase()), _WithNothingPass, Val(:user_id)) === :userId
+        @test Serde.ser_name(With(CamelCase(), _PassThrough()), _WithNothingPass, Val(:user_id)) === :userId
+    end
+
+    @testset "naming chain bypasses type-level overrides (documented)" begin
         struct _WithFallthrough
             foo::Int
         end
         Serde.ser_name(::Type{_WithFallthrough}, ::Val{:foo}) = :FOO
-        # With(CamelCase()): CamelCase returns :foo (camelCase of "foo" = "foo"),
-        # which equals :foo, so falls through to next... but there's no next.
-        # Wait — actually CamelCase returns Symbol(to_camel_case("foo")) = :foo = x, so falls through.
-        # The _with_ser_name base case returns x = :foo.
-        # But type-level ser_name is NOT called by With directly; With calls strategy fallbacks.
-        # The type-level ser_name(T, Val(x)) is called via the generic fallback
-        # ser_name(strategy, T, Val(x)) = ser_name(T, Val(x)) when no strategy overrides.
-        # So for CamelCase: ser_name(CamelCase(), _WithFallthrough, Val(:foo)) = :foo (via CamelCase override).
-        # That equals :foo, so _with_ser_name falls through to base case returning :foo.
-        # The type-level override Serde.ser_name(::Type{_WithFallthrough}, ::Val{:foo}) = :FOO
-        # is NOT reached by With because With never calls ser_name(T, Val(x)) directly.
-        # This is by design: type-level overrides bypass With.
-        w = With(CamelCase())
-        # CamelCase doesn't change "foo" → "foo", falls through, base returns :foo
-        @test Serde.ser_name(w, _WithFallthrough, Val(:foo)) == :foo
-        # Type-level override is independent
-        @test Serde.ser_name(_WithFallthrough, Val(:foo)) == :FOO
+        # With's chain calls each strategy's `ser_name(strategy, T, Val(x))`
+        # in sequence. Each strategy defaults to "return the input unchanged",
+        # so the final result is the original field name `:foo` (or whatever
+        # the last strategy returns) — NOT the type-level override `:FOO`.
+        # The type-level override still applies in the no-strategy path.
+        @test Serde.ser_name(With(CamelCase()), _WithFallthrough, Val(:foo)) === :foo
+        @test Serde.ser_name(_WithFallthrough, Val(:foo)) === :FOO
     end
 
     # ── ser_skip: OR ──────────────────────────────────────────────────────────

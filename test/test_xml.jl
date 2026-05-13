@@ -1,3 +1,90 @@
+# ── EzXML feature passthrough ───────────────────────────────────────────────
+# `parse_xml` forwards kwargs into `_xml_parse_node`. The headline `force_array`
+# kwarg controls whether a child element with a single occurrence is wrapped
+# in a `Vector` (useful when the schema permits 0..N children but you don't
+# know up-front whether a given doc has 1 vs. many). Without it, single
+# children collapse to scalars and you'd have to special-case downstream.
+
+@testset "XML — force_array kwarg promotes single children to Vector" begin
+    xml = "<root><item>a</item></root>"
+    d_default = parse_xml(xml)
+    d_force   = parse_xml(xml; force_array = true)
+    # Default: single child collapses to a scalar (well, to its content dict).
+    @test !(d_default["item"] isa AbstractVector)
+    # force_array: single child is always wrapped.
+    @test d_force["item"] isa AbstractVector
+    @test length(d_force["item"]) == 1
+end
+
+@testset "XML — multiple children stay a Vector regardless of force_array" begin
+    xml = "<root><item>a</item><item>b</item></root>"
+    @test parse_xml(xml)["item"] isa AbstractVector
+    @test parse_xml(xml; force_array = true)["item"] isa AbstractVector
+end
+
+@testset "XML — dict_type kwarg flows into the recursive node parser" begin
+    using OrderedCollections
+    # Nested order is preserved when an ordered dict is requested.
+    d = parse_xml("<root x=\"1\" y=\"2\" z=\"3\"/>"; dict_type = OrderedDict{String,Any})
+    @test d isa OrderedDict{String,Any}
+    @test collect(keys(d)) == ["x", "y", "z"]
+end
+
+@testset "XML — CDATA sections (a feature of the underlying EzXML)" begin
+    # EzXML transparently surfaces CDATA content as the node text. CDATA is
+    # the natural way to embed payloads that contain XML-meta characters
+    # without escaping every angle bracket.
+    xml = "<root><payload><![CDATA[<not><xml>&\"</xml></not>]]></payload></root>"
+    d = parse_xml(xml)
+    @test d["payload"] == "<not><xml>&\"</xml></not>"
+end
+
+@testset "XML — naive DateTime is emitted without a Z suffix" begin
+    # Regression: emitting `Z` for a Julia DateTime is a lie about timezone.
+    # See the matching TOML fix.
+    using Dates
+    struct _XmlDT; t::DateTime; end
+    out = to_xml(_XmlDT(DateTime(2024, 1, 2, 3, 4, 5)))
+    @test !occursin("Z\"", out)
+    @test occursin("2024-01-02T03:04:05", out)
+end
+
+@testset "XML — entity escaping (CRITICAL)" begin
+    # C6: text content and attribute values must be entity-escaped.
+    struct _XmlEsc; v::String; end
+    xml = to_xml(_XmlEsc("<foo>&\"a"))
+    # No raw <, &, or " inside an attribute value
+    @test !occursin("v=\"<foo>", xml)
+    # Round-trip through EzXML must succeed
+    back = from_xml(_XmlEsc, xml)
+    @test back.v == "<foo>&\"a"
+
+    # Same for text-content paths
+    xml2 = to_xml(Dict("t" => "a < b & c > d"); key = "root")
+    @test !occursin("a < b", xml2) || occursin("&lt;", xml2)
+    @test occursin("&amp;", xml2)
+    parse_xml(xml2)  # must not throw
+end
+
+@testset "XML — child-element-as-value deserialization (CRITICAL)" begin
+    # C7: <root><x>1</x><y>2</y></root> must deserialize into struct{x::Int, y::Int}.
+    struct _XmlChildVal; x::Int; y::Int; end
+    res = from_xml(_XmlChildVal, "<root><x>1</x><y>2</y></root>")
+    @test res === _XmlChildVal(1, 2)
+end
+
+@testset "XML — try_from_xml" begin
+    # H14
+    struct _XmlTry; n::Int; end
+    @test try_from_xml(_XmlTry, "<r n=\"7\"/>").n == 7
+    @test try_from_xml(_XmlTry, "<broken") isa SerdeError
+    @test try_from_xml(CamelCase(), _XmlTry, "<r n=\"3\"/>").n == 3
+end
+
+@testset "XML — invalid element name rejected on serialize" begin
+    @test_throws ArgumentError to_xml(Dict("hello world" => 1); key = "r")
+end
+
 @testset "XML — _xml_node_content and text content" begin
 
     @testset "to_xml struct with _ field (text content)" begin

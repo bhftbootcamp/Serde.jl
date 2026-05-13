@@ -4,7 +4,8 @@ export parse_query, from_query, try_from_query, to_query
 
 import ..ParseError, ..SerdeError, ..to_deser, ..DefaultStrategy
 import ..ser_name, ..ser_value, ..ser_type, ..ser_skip
-import ..isnull, ..parse_value
+import ..isnull, ..parse_value, ..deser_name
+import ..ClassType, ..StructClass
 
 # ── Internal utilities ──
 
@@ -54,7 +55,12 @@ function parse_value(::Type{ST}, ::Type{Union{Missing,FT}}, value) where {ST,FT}
 end
 
 function parse_value(::Type{ST}, ::Type{FT}, value) where {ST,FT<:Union{AbstractVector,AbstractSet}}
-    return String[m.match for m in eachmatch(r"[^\s\[\],]+", value)]
+    s = String(value)
+    if !isempty(s) && s[1] == '[' && s[end] == ']'
+        s = s[2:end-1]
+    end
+    isempty(s) && return String[]
+    return String[String(strip(part)) for part in split(s, ',')]
 end
 
 # ── Parsing ──
@@ -100,11 +106,11 @@ function parse_query(
     try
         result = D()
         for part in split(x, delimiter)
-            key, value = _query_cut(part, "=")
-            isempty(key) && continue
-            key   = _query_unescape(key)
-            contains(key, ';') && throw(ParseError("Query", "invalid semicolon separator in query key", ErrorException("semicolon")))
-            value = _query_unescape(value)
+            raw_key, raw_value = _query_cut(part, "=")
+            isempty(raw_key) && continue
+            contains(raw_key, ';') && throw(ParseError("Query", "invalid semicolon separator in query key", ErrorException("semicolon")))
+            key   = _query_unescape(raw_key)
+            value = _query_unescape(raw_value)
             if haskey(result, key)
                 push!(result[key], value)
             else
@@ -165,10 +171,21 @@ See also: [`try_from_query`](@ref), [`to_query`](@ref), [`parse_query`](@ref).
 """
 function from_query(strategy, ::Type{T}, x; kw...) where {T}
     dict = parse_query(x; kw...)
-    for key in keys(dict)
-        sym = Symbol(key)
-        sym in fieldnames(T) || continue
-        dict[key] = parse_value(T, fieldtype(T, sym), dict[key])
+    if ClassType(T) isa StructClass && fieldcount(T) > 0
+        field_lookup = Dict{Symbol,Tuple{Symbol,Type}}()
+        for (i, fn) in enumerate(fieldnames(T))
+            ft = fieldtype(T, i)
+            field_lookup[fn] = (fn, ft)
+            nm = Symbol(deser_name(strategy, T, Val(fn)))
+            field_lookup[nm] = (fn, ft)
+        end
+        for key in collect(keys(dict))
+            sym = Symbol(key)
+            entry = get(field_lookup, sym, nothing)
+            entry === nothing && continue
+            _fn, ft = entry
+            dict[key] = parse_value(T, ft, dict[key])
+        end
     end
     return to_deser(strategy, T, dict)
 end
@@ -339,5 +356,14 @@ function to_query(
 end
 
 to_query(data; kw...) = to_query(DefaultStrategy(), data; kw...)
+
+function to_query(io::IO, data; kw...)
+    write(io, to_query(DefaultStrategy(), data; kw...))
+    return nothing
+end
+function to_query(io::IO, strategy, data; kw...)
+    write(io, to_query(strategy, data; kw...))
+    return nothing
+end
 
 end

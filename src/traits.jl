@@ -103,6 +103,10 @@ nulltype(::Type{T}) where {T}                  = nothing
 nulltype(::Type{Missing})                      = missing
 nulltype(::Type{Union{Nothing,T}}) where {T}   = nothing
 nulltype(::Type{Union{Missing,T}}) where {T}   = missing
+# `Any` matches both Union{Nothing,T} and Union{Missing,T} forms, producing an
+# ambiguity. Pin a concrete method to disambiguate; the value is `nothing` to
+# stay consistent with the default branch above.
+nulltype(::Type{Any})                          = nothing
 
 """
     Serde.isempty_value(::Type{T}, ::Val{field}, value) -> Bool
@@ -328,6 +332,12 @@ Serde.tag_key(::Type{<:Message}) = "type"
 See also: [`Serde.tag_subtypes`](@ref), [`register_tagged_subtype`](@ref).
 """
 tag_key(::Type{T}) where {T} = nothing
+@inline tag_key(strategy, ::Type{T}) where {T} = nothing
+
+@inline function _resolve_tag_key(strategy, ::Type{T}) where {T}
+    tk = tag_key(strategy, T)
+    return tk === nothing ? tag_key(T) : tk
+end
 
 """
     Serde.tag_subtypes(::Type{T}) -> Tuple
@@ -339,11 +349,41 @@ against the tag values in this tuple and then deserializes the full object as th
 corresponding subtype.
 
 Prefer [`register_tagged_subtype`](@ref) to adding entries here manually, as it handles
-dynamic registration without requiring a module re-evaluation.
+dynamic registration through a thread-safe runtime registry without method overwrites.
 
 See also: [`Serde.tag_key`](@ref), [`register_tagged_subtype`](@ref).
 """
-tag_subtypes(::Type{T}) where {T} = ()
+tag_subtypes(::Type{T}) where {T} = _tag_subtypes_lookup(T)
+@inline tag_subtypes(strategy, ::Type{T}) where {T} = ()
+
+@inline function _resolve_tag_subtypes(strategy, ::Type{T}) where {T}
+    ts = tag_subtypes(strategy, T)
+    return isempty(ts) ? tag_subtypes(T) : ts
+end
+
+const _TAG_REGISTRY_LOCK = ReentrantLock()
+const _TAG_REGISTRY = Dict{Type,Vector{Pair{String,Type}}}()
+const _TAG_LOOKUP_CACHE = Dict{Type,Tuple}()
+
+function _tag_subtypes_lookup(::Type{T}) where {T}
+    isempty(_TAG_REGISTRY) && return ()
+    lock(_TAG_REGISTRY_LOCK) do
+        cached = get(_TAG_LOOKUP_CACHE, T, nothing)
+        cached === nothing || return cached
+        best_parent = nothing
+        best_subs = nothing
+        for (parent, subs) in _TAG_REGISTRY
+            T <: parent || continue
+            if best_parent === nothing || parent <: best_parent
+                best_parent = parent
+                best_subs = subs
+            end
+        end
+        result = best_subs === nothing ? () : Tuple(best_subs)
+        _TAG_LOOKUP_CACHE[T] = result
+        return result
+    end
+end
 
 """
     register_tagged_subtype(parent::Type, tag_val::String, subtype::Type)
@@ -385,8 +425,17 @@ from_json(Event, json)  # → LoginEvent(42)
 See also: [`Serde.tag_key`](@ref), [`Serde.tag_subtypes`](@ref), [`TaggedClass`](@ref).
 """
 function register_tagged_subtype(parent::Type, tag_val::String, subtype::Type)
-    existing = Pair{String,Type}[p for p in tag_subtypes(parent)]
-    push!(existing, tag_val => subtype)
-    new_subtypes = Tuple(existing)
-    @eval tag_subtypes(::Type{T}) where {T<:$parent} = $new_subtypes
+    subtype <: parent || throw(ArgumentError(
+        "register_tagged_subtype: $subtype is not a subtype of $parent"))
+    lock(_TAG_REGISTRY_LOCK) do
+        subs = get!(() -> Pair{String,Type}[], _TAG_REGISTRY, parent)
+        idx = findfirst(p -> first(p) == tag_val, subs)
+        if idx === nothing
+            push!(subs, tag_val => subtype)
+        else
+            subs[idx] = tag_val => subtype
+        end
+        empty!(_TAG_LOOKUP_CACHE)
+    end
+    return nothing
 end

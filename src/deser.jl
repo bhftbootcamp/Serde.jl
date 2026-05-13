@@ -86,8 +86,8 @@ deser(strategy, ::Type{T}, data) where {T} = deser(strategy, ClassType(T), T, da
 # ── PrimitiveClass ────────────────────────────────────────────────────────────
 
 deser(strategy, ::PrimitiveClass, ::Type{T}, data::T) where {T} = data
-deser(strategy, ::PrimitiveClass, ::Type{T}, data::AbstractString) where {T<:Symbol} = Symbol(data)
-deser(strategy, ::PrimitiveClass, ::Type{T}, data::AbstractString) where {T<:Number} = tryparse(T, data)
+deser(strategy, ::PrimitiveClass, ::Type{Symbol}, data::AbstractString) = Symbol(data)
+deser(strategy, ::PrimitiveClass, ::Type{T}, data::AbstractString) where {T<:Number} = parse(T, data)
 deser(strategy, ::PrimitiveClass, ::Type{T}, data::Number) where {T<:Number} = T(data)
 deser(strategy, ::PrimitiveClass, ::Type{T}, data::Integer) where {T<:AbstractFloat} = data
 deser(strategy, ::PrimitiveClass, ::Type{T}, data::AbstractString) where {T<:AbstractString} = T(data)
@@ -103,7 +103,7 @@ function deser(strategy, ::PrimitiveClass, ::Type{T}, data::Symbol) where {T<:En
     for (index, name) in Base.Enums.namemap(T)
         name === data && return T(index)
     end
-    return nothing
+    throw(ArgumentError("invalid $T value: $(repr(data))"))
 end
 
 # ── NullClass ─────────────────────────────────────────────────────────────────
@@ -127,9 +127,18 @@ deser(::Type{Missing}, ::Any) = throw(MethodError(deser, (Missing, missing)))
 
 # ── Field-type dispatch ───────────────────────────────────────────────────────
 
-deser(strategy, ::Type{T}, ::Type{Union{Nothing,E}}, data) where {T,E} = deser(strategy, E, data)
-deser(strategy, ::Type{T}, ::Type{E}, data) where {T,E} = deser(strategy, E, data)
+const _NO_USER_DESER = Some(Some(nothing))
+
+deser(::Type{T}, ::Type{F}, data) where {T,F} = _NO_USER_DESER
+
+deser(strategy, ::Type{T}, ::Type{Union{Nothing,E}}, data) where {T,E} = deser(strategy, T, E, data)
 deser(strategy, ::Type{T}, ::Type{Nothing}, data) where {T} = deser(Nothing, data)
+
+function deser(strategy, ::Type{T}, ::Type{E}, data) where {T,E}
+    r = deser(T, E, data)
+    r === _NO_USER_DESER || return r::E
+    return deser(strategy, E, data)
+end
 
 # ── NTupleClass ───────────────────────────────────────────────────────────────
 
@@ -167,7 +176,7 @@ function deser(strategy, ::DictClass, ::Type{T}, data::AbstractDict{K,D}) where 
         try
             target[deser(keytype(target), k)] = deser(strategy, valtype(target), v)
         catch e
-            if e isa MethodError
+            if e isa MethodError || e isa ArgumentError || e isa InexactError
                 throw(TypeMismatchError(T, Symbol(k), valtype(target), typeof(v), v))
             else
                 rethrow(e)
@@ -175,6 +184,26 @@ function deser(strategy, ::DictClass, ::Type{T}, data::AbstractDict{K,D}) where 
         end
     end
     return target
+end
+
+@inline function _pair_kv_params(::Type{T}) where {T<:Pair}
+    body = T
+    while body isa UnionAll
+        body = body.body
+    end
+    ps = body.parameters
+    K = length(ps) >= 1 && ps[1] isa Type ? ps[1] : String
+    V = length(ps) >= 2 && ps[2] isa Type ? ps[2] : Any
+    return (K, V)
+end
+
+function deser(strategy, ::DictClass, ::Type{T}, data::AbstractDict) where {T<:Pair}
+    length(data) == 1 || throw(ArgumentError("Pair requires a single-entry input, got $(length(data))"))
+    K, V = _pair_kv_params(T)
+    k_in, v_in = first(data)
+    k_out = k_in isa K ? k_in : deser(strategy, K, k_in)
+    v_out = v_in isa V ? v_in : deser(strategy, V, v_in)
+    return Pair{K,V}(k_out, v_out)
 end
 
 # ── Helper functions (strategy first) ──────────────────────────────────────────────
@@ -213,6 +242,7 @@ end
 
 function deser(strategy, ::StructClass, ::Type{T}, data::AbstractVector) where {T}
     N = fieldcount(T)
+    N == 0 && return T()
     constructor = (args...) -> T(args...)
     Base.@nexprs 32 i -> begin
         if i <= N
@@ -241,6 +271,7 @@ end
 
 function deser(strategy, ::StructClass, ::Type{T}, data::AbstractDict{K,D}) where {T,K<:Union{AbstractString,Symbol},D}
     N = fieldcount(T)
+    N == 0 && return T()
     constructor = (args...) -> T(args...)
     Base.@nexprs 32 i -> begin
         if i <= N
@@ -272,11 +303,11 @@ function deser(strategy, ::StructClass, ::Type{T}, data::AbstractDict{K,D}) wher
 end
 
 function deser(strategy, ::TaggedClass, ::Type{T}, data::AbstractDict{K,D}) where {T,K<:Union{AbstractString,Symbol},D}
-    tk = tag_key(T)
+    tk = _resolve_tag_key(strategy, T)
     tag_val = get(data, isa(tk, K) ? tk : deser(K, tk), nothing)
     if tag_val !== nothing
-        for (tv, ST) in tag_subtypes(T)
-            string(tag_val) == string(tv) && return deser(strategy, ST, data)
+        for (tv, ST) in _resolve_tag_subtypes(strategy, T)
+            string(tag_val) == string(tv) && return deser(strategy, StructClass(), ST, data)
         end
     end
     throw(TypeMismatchError(T, Symbol(tk), T, typeof(tag_val), tag_val))
@@ -284,6 +315,7 @@ end
 
 function deser(strategy, ::StructClass, ::Type{T}, data::NamedTuple) where {T}
     N = fieldcount(T)
+    N == 0 && return T()
     constructor = (args...) -> T(args...)
     Base.@nexprs 32 i -> begin
         if i <= N

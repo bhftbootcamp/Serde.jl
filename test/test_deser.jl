@@ -1,3 +1,16 @@
+@testset "Deser — 3-arg user override fires (README pattern)" begin
+    # README shows `Serde.deser(::Type{T}, ::Type{F}, v) = ...` as the canonical
+    # per-field type conversion override. Verify it runs from a strategy-aware
+    # call site (such as the JSON fast path).
+    struct _UserDeser3
+        d::Dates.Date
+    end
+    Serde.deser(::Type{_UserDeser3}, ::Type{Dates.Date}, v::String) =
+        Dates.Date(v, "U d, yyyy")
+    @test from_json(_UserDeser3, "{\"d\":\"July 9, 2024\"}").d == Dates.Date("2024-07-09")
+    @test from_json(CamelCase(), _UserDeser3, "{\"d\":\"July 9, 2024\"}").d == Dates.Date("2024-07-09")
+end
+
 @testset "Deser engine" begin
     @testset "Primitives" begin
         @test Serde.deser(Int, 42) === 42

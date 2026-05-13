@@ -9,13 +9,15 @@ well-defined combination rule per trait:
 
 | Trait | Rule |
 |---|---|
-| `ser_name` / `deser_name` | first-wins: use the first strategy that renames the field |
+| `ser_name` / `deser_name` | chain: each strategy receives the previous strategy's output |
 | `ser_skip` | OR: skip if any strategy says skip |
 | `ser_value` / `ser_type` / `deser_transform` | chain: apply each strategy in order |
 | `has_default` | OR: field has a default if any strategy provides one |
 | `deser_default` | first-wins: use the first strategy that has a default |
 | `isempty_value` | OR: treat as empty if any strategy says so |
 | `deser_validate` | all: run every strategy's validator |
+| `tag_key` | first non-`nothing` strategy wins |
+| `tag_subtypes` | first non-empty strategy wins |
 
 # Examples
 ```julia
@@ -39,25 +41,26 @@ end
 
 With(args...) = With(args)
 
-# ── ser_name: first-wins ──────────────────────────────────────────────────────
+@inline _to_name_sym(::Nothing)         = nothing
+@inline _to_name_sym(x::Symbol)         = x
+@inline _to_name_sym(x::AbstractString) = Symbol(x)
+@inline _to_name_sym(x)                 = Symbol(x)
 
-_with_ser_name(::Tuple{}, ::Type{T}, ::Val{x}) where {T,x} = x
-function _with_ser_name(ctxs::Tuple, ::Type{T}, ::Val{x}) where {T,x}
-    v = ser_name(first(ctxs), T, Val(x))
-    return v === x ? _with_ser_name(Base.tail(ctxs), T, Val(x)) : v
+_with_ser_name(::Tuple{}, ::Type{T}, current::Symbol) where {T} = current
+function _with_ser_name(ctxs::Tuple, ::Type{T}, current::Symbol) where {T}
+    next = _to_name_sym(ser_name(first(ctxs), T, Val(current)))
+    return _with_ser_name(Base.tail(ctxs), T, next === nothing ? current : next)
 end
 
-ser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_ser_name(w.ctxs, T, Val(x))
+ser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_ser_name(w.ctxs, T, x)
 
-# ── deser_name: first-wins ────────────────────────────────────────────────────
-
-_with_deser_name(::Tuple{}, ::Type{T}, ::Val{x}) where {T,x} = x
-function _with_deser_name(ctxs::Tuple, ::Type{T}, ::Val{x}) where {T,x}
-    v = deser_name(first(ctxs), T, Val(x))
-    return v === x ? _with_deser_name(Base.tail(ctxs), T, Val(x)) : v
+_with_deser_name(::Tuple{}, ::Type{T}, current::Symbol) where {T} = current
+function _with_deser_name(ctxs::Tuple, ::Type{T}, current::Symbol) where {T}
+    next = _to_name_sym(deser_name(first(ctxs), T, Val(current)))
+    return _with_deser_name(Base.tail(ctxs), T, next === nothing ? current : next)
 end
 
-deser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_deser_name(w.ctxs, T, Val(x))
+deser_name(w::With, ::Type{T}, ::Val{x}) where {T,x} = _with_deser_name(w.ctxs, T, x)
 
 # ── ser_skip: OR ──────────────────────────────────────────────────────────────
 
@@ -143,3 +146,21 @@ function _with_deser_validate(ctxs::Tuple, ::Type{T}, ::Val{x}, v) where {T,x}
 end
 
 deser_validate(w::With, ::Type{T}, ::Val{x}, v) where {T,x} = _with_deser_validate(w.ctxs, T, Val(x), v)
+
+function tag_key(w::With, ::Type{T}) where {T}
+    current = nothing
+    for s in w.ctxs
+        tk = tag_key(s, T)
+        tk === nothing || (current = tk)
+    end
+    return current
+end
+
+function tag_subtypes(w::With, ::Type{T}) where {T}
+    current = ()
+    for s in w.ctxs
+        ts = tag_subtypes(s, T)
+        isempty(ts) || (current = ts)
+    end
+    return current
+end

@@ -55,17 +55,20 @@ using .SerdeYaml
 include("formats/Xml.jl")
 using .SerdeXml
 
+include("formats/Parquet.jl")
+using .SerdeParquet
+
 export CamelCase, PascalCase, KebabCase, LowerCase
 export With
 
-export from_json, from_toml, from_yaml, from_xml, from_csv, from_query, from_msgpack, from_bson
+export from_json, from_toml, from_yaml, from_xml, from_csv, from_query, from_msgpack, from_bson, from_parquet
 
-export to_json, to_toml, to_yaml, to_xml, to_csv, to_query, to_msgpack, to_bson
+export to_json, to_toml, to_yaml, to_xml, to_csv, to_query, to_msgpack, to_bson, to_parquet
 export to_pretty_json
 
-export parse_json, parse_toml, parse_yaml, parse_xml, parse_csv, parse_query, parse_msgpack, parse_bson
+export parse_json, parse_toml, parse_yaml, parse_xml, parse_csv, parse_query, parse_msgpack, parse_bson, parse_parquet
 
-export try_from_json, try_from_toml, try_from_yaml, try_from_query, try_from_csv, try_from_msgpack, try_from_bson
+export try_from_json, try_from_toml, try_from_yaml, try_from_query, try_from_csv, try_from_msgpack, try_from_bson, try_from_xml, try_from_parquet
 
 export SerdeError, ParseError, DeserError, MissingFieldError, TypeMismatchError, ValidationError
 
@@ -74,5 +77,7 @@ export DefaultStrategy
 export register_tagged_subtype
 
 export to_flatten
+
+export BSONObjectId, BSONDecimal128, BSONTimestamp
 
 end

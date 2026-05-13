@@ -1,3 +1,107 @@
+# ── TOML stdlib feature passthrough ─────────────────────────────────────────
+# `parse_toml` delegates to `TOML.parse`. The stdlib parser supports the full
+# TOML 1.0 grammar including typed datetimes, multi-line strings, and
+# array-of-tables. Serde gets these for free; the tests below pin them.
+
+@testset "TOML — array-of-tables syntax" begin
+    # `[[servers]]` is the canonical TOML form for a list of records.
+    toml = """
+    [[servers]]
+    name = "alpha"
+    port = 8001
+
+    [[servers]]
+    name = "beta"
+    port = 8002
+    """
+    d = parse_toml(toml)
+    @test d["servers"] isa AbstractVector
+    @test length(d["servers"]) == 2
+    @test d["servers"][1]["name"] == "alpha"
+    @test d["servers"][2]["port"] == 8002
+end
+
+@testset "TOML — typed datetimes (date, time, local + offset datetime)" begin
+    # The stdlib TOML.parse returns native Julia Date / Time / DateTime types,
+    # honouring the TOML 1.0 distinction between local and offset datetimes.
+    using Dates
+    toml = """
+    odt = 1979-05-27T07:32:00Z
+    ldt = 1979-05-27T07:32:00
+    ld  = 1979-05-27
+    lt  = 07:32:00
+    """
+    d = parse_toml(toml)
+    @test d["ld"] == Date(1979, 5, 27)
+    @test d["lt"] == Time(7, 32)
+    @test d["ldt"] isa DateTime
+    # The TOML stdlib represents offset-datetime as a String (it preserves
+    # the offset) rather than collapsing to Julia's naive DateTime.
+    @test d["odt"] isa Union{String, DateTime}
+end
+
+@testset "TOML — multi-line basic & literal strings" begin
+    # Triple-quoted basic strings honour escape sequences; triple-quoted
+    # literal strings ('''...''') don't.
+    toml = """
+    basic = \"\"\"
+    line\\none\"\"\"
+    literal = '''
+    line\\none'''
+    """
+    d = parse_toml(toml)
+    @test d["basic"] == "line\none"      # \n → newline
+    @test d["literal"] == "line\\none"   # literal — backslash preserved
+end
+
+@testset "TOML — quoted-key escape is TOML-conformant" begin
+    # Regression: `_toml_key` used `Base.escape_string`, which (a) does not
+    # escape `"` and (b) emits non-conformant `\xNN` for control bytes.
+    out = to_toml(Dict("a\"b" => 1, "\x01foo" => 2))
+    @test occursin("\"a\\\"b\"", out)        # quote is escaped
+    @test occursin("\"\\u0001foo\"", out)    # control byte uses \uXXXX
+    @test !occursin("\\x", out)               # never emits \xNN
+    # And the output must round-trip through the TOML parser.
+    parsed = parse_toml(out)
+    @test parsed["a\"b"] == 1
+    @test parsed["\x01foo"] == 2
+end
+
+@testset "TOML — Inf encoding" begin
+    # H9
+    struct _TomlInf; x::Float64; y::Float64; z::Float64; end
+    out = to_toml(_TomlInf(Inf, -Inf, NaN))
+    @test occursin("inf", out)
+    @test occursin("-inf", out)
+    @test occursin("nan", out)
+    # And the result must parse back
+    parse_toml(out)
+end
+
+@testset "TOML — local datetime (no Z suffix)" begin
+    # H11: Julia's DateTime is naive, must emit as TOML local-datetime.
+    using Dates
+    struct _TomlDT; t::DateTime; end
+    out = to_toml(_TomlDT(DateTime(2024, 1, 2, 3, 4, 5, 6)))
+    @test !occursin("Z", out)
+    parsed = parse_toml(out)
+    @test parsed["t"] == DateTime(2024, 1, 2, 3, 4, 5, 6)
+end
+
+@testset "TOML — Char field is emitted as inline string" begin
+    # MEDIUM
+    struct _TomlChar; c::Char; end
+    out = to_toml(_TomlChar('x'))
+    @test occursin("c = \"x\"", out)
+end
+
+@testset "TOML — heterogeneous array dispatch via all-simple check" begin
+    # MEDIUM: previously dispatched on val[1] only.
+    out = to_toml(Dict("xs" => [1, "two", 3.0]))
+    parsed = parse_toml(out)
+    @test parsed["xs"] == [1, "two", 3.0]
+end
+
 @testset "TOML format" begin
     @testset "parse_toml" begin
         d = parse_toml("key = \"value\"\nnum = 42")

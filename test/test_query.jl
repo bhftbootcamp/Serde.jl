@@ -1,3 +1,29 @@
+@testset "Query — strategy / deser_name flow into parse_value" begin
+    # H8: parse_value (which turns "[1,2]" into ["1","2"]) used to dispatch on
+    # raw Julia field names, ignoring CamelCase / deser_name renames.
+    struct _QStrat; my_list::Vector{Int}; end
+    res = from_query(CamelCase(), _QStrat, "myList=[1,2,3]")
+    @test res.my_list == [1, 2, 3]
+
+    struct _QName; items::Vector{Int}; end
+    Serde.deser_name(::Type{_QName}, ::Val{:items}) = :things
+    res2 = from_query(_QName, "things=[4,5]")
+    @test res2.items == [4, 5]
+end
+
+@testset "Query — vector parser preserves spaces inside elements" begin
+    # MEDIUM: regex previously split on whitespace.
+    struct _QVec; xs::Vector{String}; end
+    res = from_query(_QVec, "xs=[hello world,foo bar]")
+    @test res.xs == ["hello world", "foo bar"]
+end
+
+@testset "Query — semicolon check applies to raw (encoded) key" begin
+    # MEDIUM: previously rejected `%3B` after decoding.
+    @test parse_query("a%3Bb=1")["a;b"] == "1"
+    @test_throws ParseError parse_query("a;b=1")
+end
+
 @testset "Query format" begin
     @testset "parse_query basic" begin
         d = parse_query("key=value&num=42")
