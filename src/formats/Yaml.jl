@@ -130,4 +130,13 @@ See also: [`from_yaml`](@ref).
 """
 function to_yaml end
 
+const _YAML_HINT = "YAML support requires the `YAML` package. " *
+                   "Run `import Pkg; Pkg.add(\"YAML\")` and then " *
+                   "`import YAML` to activate the extension."
+
+parse_yaml(args...; kw...)    = throw(ArgumentError(_YAML_HINT))
+from_yaml(args...; kw...)     = throw(ArgumentError(_YAML_HINT))
+try_from_yaml(args...; kw...) = throw(ArgumentError(_YAML_HINT))
+to_yaml(args...; kw...)       = throw(ArgumentError(_YAML_HINT))
+
 end

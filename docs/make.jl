@@ -24,6 +24,7 @@ makedocs(;
             "pages/yaml.md",
             "pages/msgpack.md",
             "pages/bson.md",
+            "pages/parquet.md",
             "pages/strategies.md",
             "pages/utils.md",
         ],

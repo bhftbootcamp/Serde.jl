@@ -136,4 +136,13 @@ See also: [`from_csv`](@ref).
 """
 function to_csv end
 
+const _CSV_HINT = "CSV support requires the `CSV` package. " *
+                  "Run `import Pkg; Pkg.add(\"CSV\")` and then " *
+                  "`import CSV` to activate the extension."
+
+parse_csv(args...; kw...)    = throw(ArgumentError(_CSV_HINT))
+from_csv(args...; kw...)     = throw(ArgumentError(_CSV_HINT))
+try_from_csv(args...; kw...) = throw(ArgumentError(_CSV_HINT))
+to_csv(args...; kw...)       = throw(ArgumentError(_CSV_HINT))
+
 end
