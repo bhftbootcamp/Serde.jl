@@ -4,17 +4,17 @@
 
 ```@docs
 Serde.parse_yaml
-Serde.YamlSyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_yaml
+from_yaml
+try_from_yaml
 ```
 
 ## Serialization
 
 ```@docs
-Serde.to_yaml
+to_yaml
 ```

@@ -1,48 +1,42 @@
-# [Extended deserialization](@id ex_deser)
+# Extended deserialization
 
-Serde.jl allows users to define how their custom data will be processed during deserialization.
+Serde.jl lets you customise how data is mapped onto your types by overriding a small set of
+trait functions.
 
-```@docs
-Serde.deser(::Type, ::Any)
-```
-
-## Custom deserialization behavior
-
-If you need to deserialize non-standard custom data types, it will be useful to define a behavior to handle them.
+## Core deserialization hook
 
 ```@docs
-Serde.deser(::Type, ::Type, ::Any)
+Serde.deser
 ```
 
-## Empty values handling
-
-We can also determine which data types and their values will be treated as `nothing`.
+## Renaming input keys
 
 ```@docs
-Serde.isempty
+Serde.deser_name
 ```
 
-## Names aliases
-
-Sometimes, the field names of the incoming data structure differ from their intended destination.
-In this case, it is convenient to specify name aliases.
+## Default values
 
 ```@docs
-Serde.custom_name
+Serde.has_default
+Serde.deser_default
 ```
 
-## Custom default values
-
-We can also define default values for certain data types.
-
-```@docs
-Serde.default_value
-```
-
-## Null types handling
-
-We can also determine the 'nulltype' for custom types when they are empty or not specified at all.
+## Null handling
 
 ```@docs
 Serde.nulltype
+Serde.isempty_value
+```
+
+## Value transformation
+
+```@docs
+Serde.deser_transform
+```
+
+## Validation
+
+```@docs
+Serde.deser_validate
 ```

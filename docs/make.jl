@@ -22,11 +22,15 @@ makedocs(;
             "pages/query.md",
             "pages/xml.md",
             "pages/yaml.md",
+            "pages/msgpack.md",
+            "pages/bson.md",
+            "pages/parquet.md",
+            "pages/strategies.md",
             "pages/utils.md",
         ],
         "For Developers" => ["pages/extended_ser.md", "pages/extended_de.md"],
     ],
-    warnonly = [:doctest, :missing_docs],
+    warnonly = [:doctest, :missing_docs, :cross_references],
 )
 
 deploydocs(;

@@ -4,17 +4,16 @@
 
 ```@docs
 Serde.parse_xml
-Serde.XmlSyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_xml
+from_xml
 ```
 
 ## Serialization
 
 ```@docs
-Serde.to_xml
+to_xml
 ```

@@ -4,18 +4,18 @@
 
 ```@docs
 Serde.parse_json
-Serde.JsonSyntaxError
 ```
 
 ## Deserialization
 
 ```@docs
-Serde.deser_json
+from_json
+try_from_json
 ```
 
 ## Serialization
 
 ```@docs
-Serde.to_json
-Serde.to_pretty_json
+to_json
+to_pretty_json
 ```
